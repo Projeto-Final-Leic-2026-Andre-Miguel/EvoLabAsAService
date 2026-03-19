@@ -1,9 +1,12 @@
-package pt.isel.repointerface
+package pt.isel.repo.repoUser
 
+import pt.isel.domain.AuthProvider
 import pt.isel.domain.User
+import pt.isel.repo.Repository
 
+//import java.security.AuthProvider Será que rende
 
-interface RepositoryUser {
+interface RepositoryUser : Repository<User>{
     fun createLocalUser(
         name: String,
         email: String,
@@ -18,7 +21,8 @@ interface RepositoryUser {
     ): User
 
     fun findByEmail(email: String): User?
+
     fun findByProvider(provider: AuthProvider, providerId: String): User?
-    fun findById(id: Int): User?
+
     fun count(): Long
 }
