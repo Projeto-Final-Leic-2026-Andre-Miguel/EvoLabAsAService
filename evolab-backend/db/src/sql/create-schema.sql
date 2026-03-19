@@ -16,7 +16,7 @@ CREATE TABLE users (
                        email           VARCHAR(255)    NOT NULL UNIQUE,
                        password_hash   VARCHAR(255),                       -- NULL se OAuth
                        auth_provider   auth_provider   NOT NULL DEFAULT 'LOCAL',
-                       provider_id     VARCHAR(255),                       -- ID do OAuth provider
+                       provider_id     VARCHAR(255)    NOT NULL DEFAULT 'LOCAL',                       -- ID do OAuth provider
                        created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 

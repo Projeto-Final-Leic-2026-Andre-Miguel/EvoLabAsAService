@@ -4,7 +4,8 @@ import org.jdbi.v3.core.Handle
 import pt.isel.domain.AuthProvider
 import pt.isel.domain.User
 import org.jdbi.v3.core.kotlin.mapTo
-import org.slf4j.LoggerFactory
+import java.sql.Types
+import java.time.Instant
 
 class RepositoryUserJdbi(
     private val handle: Handle,
@@ -20,12 +21,17 @@ class RepositoryUserJdbi(
                 .createUpdate(UserSql.CREATE_USER)
                 .bind("name", name)
                 .bind("email", email)
-                .bind("password_validation", passwordValidation.validationInfo)
+                .bind("password_hash", passwordHash)
                 .executeAndReturnGeneratedKeys()
                 .mapTo(Int::class.java)
                 .one()
 
-        return User(id, name, email, passwordValidation)
+        return User(
+            id, name, email, passwordHash,
+            authProvider = AuthProvider.LOCAL,
+            providerId = null,
+            createdAt = Instant.now()
+        )
     }
 
     override fun createOAuthUser(
@@ -36,15 +42,22 @@ class RepositoryUserJdbi(
     ): User {
         val id =
             handle
-                .createUpdate(UserSql.CREATE_USER)
+                .createUpdate(UserSql.CREATE_OAUTH_USER)
                 .bind("name", name)
                 .bind("email", email)
-                .bind("password_validation", passwordValidation.validationInfo)
+                .bindNull("password_hash", Types.VARCHAR)
+                .bind("auth_provider", provider)
+                .bind("provider_id", providerId)
                 .executeAndReturnGeneratedKeys()
                 .mapTo(Int::class.java)
                 .one()
 
-        return User(id, name, email, passwordValidation)
+        return User(
+            id, name, email, null,
+            authProvider = provider,
+            providerId = providerId,
+            createdAt = Instant.now()
+        )
     }
 
     override fun findByEmail(email: String): User? =
@@ -58,7 +71,15 @@ class RepositoryUserJdbi(
     override fun findByProvider(
         provider: AuthProvider,
         providerId: String,
-    ): User? = TODO("Implement user lookup by provider and provider id")
+    ): User? =
+
+        handle
+            .createQuery(UserSql.FIND_BY_PROVIDER)
+            .bind("provider", provider)
+            .bind("providerId", providerId)
+            .mapTo<User>()
+            .findOne()
+            .orElse(null)
 
     override fun findById(id: Int): User? =
         handle
@@ -68,8 +89,30 @@ class RepositoryUserJdbi(
             .findOne()
             .orElse(null)
 
+    override fun findAll(): List<User> =
+        handle
+            .createQuery(UserSql.FIND_ALL)
+            .mapTo<User>()
+            .list()
+
+    override fun save(entity: User) {
+        TODO("Not yet implemented")
+    }
+
+    override fun deleteById(id: Int): Boolean =
+        handle
+            .createUpdate(UserSql.DELETE_BY_ID)
+            .bind("id", id)
+            .execute() > 0
+
+    override fun clear() {
+        handle
+            .createUpdate(UserSql.CLEAR)
+            .execute()
+    }
+
     override fun count(): Long =
-        handle.createQuery("SELECT COUNT(*) FROM dbo.users")
+        handle.createQuery("SELECT COUNT(*) FROM users")
             .mapTo<Long>()
             .one()
 
