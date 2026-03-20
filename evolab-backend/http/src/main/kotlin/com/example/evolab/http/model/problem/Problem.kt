@@ -8,7 +8,7 @@ import kotlin.text.split
 
 private const val MEDIA_TYPE = "application/problem+json"
 private const val PROBLEM_URI_PATH =
-    "https://github.com/isel-leic-daw/2025-daw-leic52d-2025-leic52d-05/tree/main/docs/Problems"
+    "https://github.com/Projeto-Final-Leic-2026-Andre-Miguel/EvoLabAsAService/tree/main/docs/Problems"
 
 sealed class Problem(
     typeUri: URI,
