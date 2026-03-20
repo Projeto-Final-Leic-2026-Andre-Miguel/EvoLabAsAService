@@ -1,12 +1,11 @@
-package pt.isel.repo.repoUser
+package com.example.evolab.repo.repoUser
 
-import pt.isel.domain.AuthProvider
-import pt.isel.domain.User
-import pt.isel.repo.Repository
+import com.example.evolab.repo.Repository
+import com.example.evolab.domain.user.AuthProvider
+import com.example.evolab.domain.user.User
 
-//import java.security.AuthProvider Será que rende
 
-interface RepositoryUser : Repository<User>{
+interface RepositoryUser : Repository<User> {
     fun createLocalUser(
         name: String,
         email: String,

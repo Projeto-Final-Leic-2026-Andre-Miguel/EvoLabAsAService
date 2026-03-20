@@ -1,4 +1,4 @@
-package pt.isel.repo.repoUser
+package com.example.evolab.repo.repoUser
 
 object UserSql {
     const val FIND_ALL = """

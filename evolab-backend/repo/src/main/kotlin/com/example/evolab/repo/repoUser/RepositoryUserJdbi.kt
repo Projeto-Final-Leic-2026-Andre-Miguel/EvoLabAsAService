@@ -1,8 +1,8 @@
-package pt.isel.repo.repoUser
+package com.example.evolab.repo.repoUser
 
 import org.jdbi.v3.core.Handle
-import pt.isel.domain.AuthProvider
-import pt.isel.domain.User
+import com.example.evolab.domain.user.AuthProvider
+import com.example.evolab.domain.user.User
 import org.jdbi.v3.core.kotlin.mapTo
 import java.sql.Types
 import java.time.Instant
@@ -10,6 +10,8 @@ import java.time.Instant
 class RepositoryUserJdbi(
     private val handle: Handle,
 ) : RepositoryUser {
+
+
     override fun createLocalUser(
         name: String,
         email: String,

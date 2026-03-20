@@ -1,4 +1,4 @@
-package pt.isel.repo
+package com.example.evolab.repo
 
 /**
  * Generic repository interface for basic CRUD operations

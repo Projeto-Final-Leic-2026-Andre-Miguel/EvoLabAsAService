@@ -1,4 +1,4 @@
-package pt.isel.domain
+package com.example.evolab.domain.token
 
 data class Token(
 	val tokenValidation: String,
