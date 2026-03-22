@@ -2,8 +2,6 @@ package pt.isel.http.argumentResolverandInterceptor
 
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Component
-import pt.isel.domain.user.AuthenticatedUser
-import pt.isel.service.userService.UserAuthService
 
 @Component
 class RequestTokenProcessor(

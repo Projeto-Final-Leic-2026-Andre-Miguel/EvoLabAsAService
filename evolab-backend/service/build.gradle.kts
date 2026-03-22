@@ -13,6 +13,10 @@ dependencies {
     implementation(project(":evolab-backend:domain"))
     implementation(project(":evolab-backend:repo"))
 
+    implementation("jakarta.inject:jakarta.inject-api:2.0.1")
+    implementation("org.springframework.security:spring-security-crypto:6.5.1")
+
+
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     testImplementation(kotlin("test"))
 }
