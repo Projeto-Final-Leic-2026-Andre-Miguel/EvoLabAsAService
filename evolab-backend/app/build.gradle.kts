@@ -23,7 +23,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-authorization-server")
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
+    implementation("org.jdbi:jdbi3-core:3.47.0")
+    implementation("org.jdbi:jdbi3-kotlin:3.47.0")
+    implementation("org.jdbi:jdbi3-postgres:3.47.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    runtimeOnly("org.postgresql:postgresql:42.7.4")
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

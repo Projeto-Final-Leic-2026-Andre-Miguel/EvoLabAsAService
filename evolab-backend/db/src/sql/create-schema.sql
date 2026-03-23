@@ -41,7 +41,7 @@ CREATE TABLE llm_credentials (
 CREATE TABLE evolution_configs (
                                    id                      SERIAL          PRIMARY KEY,
                                    user_id                 INTEGER         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                                   model_provider          llm_provider    NOT NULL,
+                                   llm_credential_id       INTEGER         NOT NULL REFERENCES llm_credentials(id) ON DELETE RESTRICT,
                                    model_name              VARCHAR(255)    NOT NULL,
                                    max_iterations          INTEGER         NOT NULL DEFAULT 100,
                                    checkpoint_interval     INTEGER         NOT NULL DEFAULT 10,
@@ -66,7 +66,6 @@ CREATE TABLE jobs (
                       project_id          INTEGER         NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                       status              job_status      NOT NULL DEFAULT 'CREATED',
                       container_id        VARCHAR(255),                   -- ID do contentor Docker
-                      worker_id           INTEGER,                        -- FK adicionada depois dos workers
                       started_at          TIMESTAMPTZ,
                       finished_at         TIMESTAMPTZ,
                       best_solution       TEXT,                           -- melhor programa encontrado
@@ -74,19 +73,6 @@ CREATE TABLE jobs (
                       created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE workers (
-                         id                  SERIAL          PRIMARY KEY,
-                         hostname            VARCHAR(255)    NOT NULL,
-                         status              worker_status   NOT NULL DEFAULT 'IDLE',
-                         current_job_id      INTEGER         REFERENCES jobs(id) ON DELETE SET NULL,
-                         last_heartbeat      TIMESTAMPTZ,
-                         created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
-);
-
--- FK jobs -> workers (adicionada após criar workers)
-ALTER TABLE jobs
-    ADD CONSTRAINT fk_jobs_worker
-        FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE SET NULL;
 
 CREATE TABLE metrics (
                          id                  SERIAL          PRIMARY KEY,
@@ -100,8 +86,9 @@ CREATE TABLE metrics (
 CREATE TABLE checkpoints (
                              id                  SERIAL          PRIMARY KEY,
                              job_id              INTEGER         NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                             metrics_id          INTEGER         NOT NULL REFERENCES metrics(id) ON DELETE CASCADE,
                              iteration           INTEGER         NOT NULL,
-                             file_path           TEXT            NOT NULL,       -- caminho para o ficheiro guardado
+                             solution            TEXT            NOT NULL,       -- caminho para o ficheiro guardado
                              created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 

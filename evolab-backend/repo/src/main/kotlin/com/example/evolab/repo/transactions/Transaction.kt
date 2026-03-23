@@ -1,5 +1,6 @@
 package com.example.evolab.repo.transactions
 
+import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
 import com.example.evolab.repo.repoUser.RepositoryUser
 
 /**
@@ -11,6 +12,7 @@ import com.example.evolab.repo.repoUser.RepositoryUser
  */
 interface Transaction {
     val repoUsers: RepositoryUser
+    val repoLLmCredentials: RepositoryLLMCredentials
 
     fun rollback()
 }
