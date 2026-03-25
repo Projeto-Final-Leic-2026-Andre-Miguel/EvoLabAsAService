@@ -98,7 +98,10 @@ class RepositoryUserJdbi(
             .list()
 
     override fun save(entity: User) {
-        TODO("Not yet implemented")
+        handle
+            .createUpdate(UserSql.SAVE)
+            .bindBean(entity)
+            .execute()
     }
 
     override fun deleteById(id: Int): Boolean =

@@ -1,12 +1,13 @@
 package com.example.evolab.repo.transactions
 
 
-import com.example.evolab.repo.evolutionConfig.RepositoryConfigJdbi
+import com.example.evolab.repo.repoConfig.RepositoryConfigJdbi
 import com.example.evolab.repo.repoCheckpoints.RepositoryCheckpointsJdbi
 import com.example.evolab.repo.repoJobs.RepositoryJobsJdbi
 import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentialsJdbi
 import com.example.evolab.repo.repoMetrics.RepositoryMetricsJdbi
 import com.example.evolab.repo.repoProject.RepositoryProjectJdbi
+import com.example.evolab.repo.repoToken.RepositoryTokenJdbi
 import com.example.evolab.repo.repoUser.RepositoryUserJdbi
 import org.jdbi.v3.core.Handle
 
@@ -14,6 +15,8 @@ class TransactionJdbi(
     private val handle: Handle,
 ) : Transaction {
     override val repoUsers = RepositoryUserJdbi(handle)
+
+    override val repoTokens = RepositoryTokenJdbi(handle)
 
     override val repoLLmCredentials = RepositoryLLMCredentialsJdbi(handle)
 

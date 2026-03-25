@@ -1,4 +1,4 @@
-package com.example.evolab.repo.evolutionConfig
+package com.example.evolab.repo.repoConfig
 
 object ConfigSql {
     private const val BASE_SELECT = """

@@ -1,7 +1,7 @@
 package pt.isel.domain.authentication
 
+import com.example.evolab.domain.token.TokenValidationInfo
 import pt.isel.domain.token.TokenEncoder
-import pt.isel.domain.token.TokenValidationInfo
 import java.security.MessageDigest
 import java.util.Base64
 

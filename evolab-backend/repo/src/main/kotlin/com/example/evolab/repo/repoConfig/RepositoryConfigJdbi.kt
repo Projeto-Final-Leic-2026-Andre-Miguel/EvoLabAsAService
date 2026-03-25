@@ -1,4 +1,4 @@
-package com.example.evolab.repo.evolutionConfig
+package com.example.evolab.repo.repoConfig
 
 import com.example.evolab.domain.config.Config
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper

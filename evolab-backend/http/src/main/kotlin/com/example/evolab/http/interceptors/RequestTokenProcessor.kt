@@ -1,11 +1,13 @@
 package pt.isel.http.argumentResolverandInterceptor
 
+import com.example.evolab.domain.user.AuthenticatedUser
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Component
+import com.example.evolab.service.tokenService.TokenService
 
 @Component
 class RequestTokenProcessor(
-    val usersService: UserAuthService,
+    val tokenService: TokenService,
 ) {
     fun processAuthorizationHeaderValue(authorizationValue: String?): AuthenticatedUser? {
         if (authorizationValue == null) {
@@ -18,7 +20,7 @@ class RequestTokenProcessor(
         if (parts[0].lowercase() != SCHEME) {
             return null
         }
-        return usersService.getUserByToken(parts[1])?.let {
+        return tokenService.getUserByToken(parts[1])?.let {
             AuthenticatedUser(
                 it,
                 parts[1],
@@ -30,7 +32,7 @@ class RequestTokenProcessor(
         val cookies = request.cookies ?: return null
         val tokenCookie = cookies.find { it.name == COOKIE_NAME } ?: return null
 
-        return usersService.getUserByToken(tokenCookie.value)?.let {
+        return tokenService.getUserByToken(tokenCookie.value)?.let {
             AuthenticatedUser(it, tokenCookie.value)
         }
     }

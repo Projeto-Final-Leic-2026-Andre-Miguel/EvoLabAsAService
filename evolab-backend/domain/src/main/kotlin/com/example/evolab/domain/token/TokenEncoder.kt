@@ -1,5 +1,7 @@
 package pt.isel.domain.token
 
+import com.example.evolab.domain.token.TokenValidationInfo
+
 /**
  * Defines the contract for encoding tokens into a validation representation.
  * Implementations are responsible for transforming a raw token into a

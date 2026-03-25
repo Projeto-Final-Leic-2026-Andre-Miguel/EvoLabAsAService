@@ -1,5 +1,6 @@
 package pt.isel.http.argumentResolverandInterceptor
 
+import com.example.evolab.domain.user.AuthenticatedUser
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.stereotype.Component
