@@ -14,21 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder
 @Configuration
 class AppConfig {
 
-	@Bean
-	fun dbUrl(
-		@Value("\${DB_URL:jdbc:postgresql://localhost:5432/db?user=dbuser&password=changeit}") dbUrl: String,
-	): String = dbUrl
+    // ADICIONAR AQUI OS INTERCEPTORS E ARGUMENT RESOLVERS
 
-	@Bean
-	fun jdbi(dbUrl: String): Jdbi =
-		Jdbi.create(dbUrl)
-			.installPlugin(KotlinPlugin())
-			.installPlugin(PostgresPlugin())
 
-	@Bean
-	fun transactionManager(jdbi: Jdbi): TransactionManager = TransactionManagerJdbi(jdbi)
-
-	@Bean
-	fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }
 
