@@ -1,4 +1,4 @@
-package com.example.evolab.service.LLMCredentials
+package com.example.evolab.service.LLMCredentials.Validator
 
 import com.example.evolab.service.auxiliary.Either
 

@@ -1,4 +1,4 @@
-package com.example.evolab.service.LLMCredentials
+package com.example.evolab.service.LLMCredentials.Validator
 
 sealed class LLMValidatorErrors {
 
