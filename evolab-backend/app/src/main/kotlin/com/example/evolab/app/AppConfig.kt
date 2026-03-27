@@ -35,36 +35,4 @@ import java.time.Duration
 @Configuration
 class AppConfig {
 
-	@Bean
-	fun dbUrl(
-		@Value("\${DB_URL:jdbc:postgresql://localhost:5432/evolab?user=evolabuser&password=changeit}") dbUrl: String,
-	): String = dbUrl
-
-	@Bean
-	fun jdbi(dbUrl: String): Jdbi =
-		Jdbi.create(dbUrl)
-			.installPlugin(KotlinPlugin())
-			.installPlugin(PostgresPlugin())
-
-	@Bean
-	fun transactionManager(jdbi: Jdbi): TransactionManager = TransactionManagerJdbi(jdbi)
-
-	@Bean
-	fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
-
-	@Bean
-	fun tokenEncoder(): TokenEncoder = Sha256TokenEncoder()
-
-	@Bean
-	fun usersDomainConfig(): UsersDomainConfig =
-		UsersDomainConfig(
-			tokenSizeInBytes = 32,
-			tokenTtl = Duration.ofHours(24),
-			tokenRollingTtl = Duration.ofHours(1),
-			maxTokensPerUser = 3,
-		)
-
-	@Bean
-	fun clock(): Clock = Clock.systemUTC()
-
 }

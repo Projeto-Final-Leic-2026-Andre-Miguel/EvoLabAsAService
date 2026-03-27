@@ -27,7 +27,7 @@ dependencies {
     implementation("org.jdbi:jdbi3-kotlin:3.47.0")
     implementation("org.jdbi:jdbi3-postgres:3.47.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    runtimeOnly("org.postgresql:postgresql:42.7.4")
+    implementation("org.postgresql:postgresql:42.7.4")
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -41,5 +41,11 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+    environment("DB_URL", "jdbc:postgresql://localhost:5432/evolab?user=evolabuser&password=changeit")
+
 }
 
+
+tasks.bootRun{
+    environment("DB_URL", "jdbc:postgresql://localhost:5432/evolab?user=evolabuser&password=changeit")
+}
