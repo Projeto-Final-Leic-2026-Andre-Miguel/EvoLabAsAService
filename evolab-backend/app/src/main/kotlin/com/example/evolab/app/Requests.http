@@ -1,0 +1,53 @@
+@baseUrl = http://localhost:8080
+@token =
+@userIdToDelete = 1
+@localEmail = Teste@evolab.dev
+@localPassword = 12345
+@nome = Teste
+
+### Criar utilizador local
+POST {{baseUrl}}/api/users/local
+Content-Type: application/json
+
+{
+  "name": "user-local-1",
+  "email": "{{localEmail}}",
+  "password": "{{localPassword}}"
+}
+
+### Criar utilizador OAuth (GOOGLE)
+POST {{baseUrl}}/api/users/oauth
+Content-Type: application/json
+
+{
+  "name": "user-oauth-1",
+  "email": "user-oauth-1@example.com",
+  "provider": "GOOGLE",
+  "providerId": "google-sub-123"
+}
+
+### Obter token (login local)
+POST {{baseUrl}}/api/users/token
+Content-Type: application/json
+
+{
+  "email": "{{localEmail}}",
+  "password": "{{localPassword}}"
+}
+
+
+### Obter utilizador autenticado
+GET {{baseUrl}}/api/me
+Authorization: Bearer {{token}}
+
+### Logout
+POST {{baseUrl}}/api/logout
+Authorization: Bearer {{token}}
+
+### Listar todos os users
+GET http://localhost:8080/api/users
+
+### Apagar user por id
+DELETE {{baseUrl}}/api/users/{{userIdToDelete}}
+Authorization: Bearer {{token}}
+
