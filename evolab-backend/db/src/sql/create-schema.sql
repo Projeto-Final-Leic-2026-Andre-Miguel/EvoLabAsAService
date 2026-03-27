@@ -97,6 +97,6 @@ CREATE INDEX idx_tokens_user_id ON tokens(user_id);
 CREATE INDEX idx_llm_credentials_user_id  ON llm_credentials(user_id);
 CREATE INDEX idx_projects_user_id         ON projects(user_id);
 CREATE INDEX idx_jobs_project_id          ON jobs(project_id);
-CREATE INDEX idx_jobs_worker_id           ON jobs(worker_id);
+--CREATE INDEX idx_jobs_worker_id           ON jobs(worker_id);
 CREATE INDEX idx_metrics_job_id           ON metrics(job_id);
 CREATE INDEX idx_checkpoints_job_id       ON checkpoints(job_id);
