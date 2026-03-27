@@ -1,5 +1,7 @@
 package com.example.evolab.service.LLMCredentials.Validator
 
+import com.example.evolab.domain.LLMCredentials.LLM
+import com.example.evolab.service.LLMCredentials.service.LLMCredentialsServiceErrors
 import com.example.evolab.service.auxiliary.Either
 
 /**
@@ -10,11 +12,7 @@ import com.example.evolab.service.auxiliary.Either
 
 interface LLMCrendentialsValidator {
 
-    suspend fun openAiKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean>
-
-    suspend fun geminiKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean>
-
-    suspend fun localModelsKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean>
+    suspend fun validateApiKeyForLLM(llm: LLM, apiKey: String?): Either<LLMValidatorErrors, Boolean>
 
 
 }

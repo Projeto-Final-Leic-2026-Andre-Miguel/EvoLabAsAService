@@ -1,6 +1,10 @@
 package com.example.evolab.service.LLMCredentials.Validator
 
+import com.example.evolab.domain.LLMCredentials.LLM
+import com.example.evolab.service.LLMCredentials.service.LLMCredentialsServiceErrors
 import com.example.evolab.service.auxiliary.Either
+import com.example.evolab.service.auxiliary.Failure
+import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.auxiliary.failure
 import com.example.evolab.service.auxiliary.success
 import io.ktor.client.HttpClient
@@ -14,7 +18,6 @@ import jakarta.inject.Named
 @Named
 class LLMCredentialValidatorImp(
     private val client : HttpClient
-
 ) : LLMCrendentialsValidator {
 
 
@@ -30,7 +33,7 @@ class LLMCredentialValidatorImp(
     }
 
 
-    override suspend fun openAiKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
+    private suspend fun openAiKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
 
 
         if (!validateKeyFormat(apiKey, OPENAI_KEY_PREFIX)) {
@@ -55,7 +58,7 @@ class LLMCredentialValidatorImp(
 
     }
 
-    override suspend fun geminiKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
+    private suspend fun geminiKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
 
         if (!validateKeyFormat(apiKey, GEMINI_KEY_PREFIX)) {
             return failure(LLMValidatorErrors.InvalidKeyFormat("Gemini API key must start with '$GEMINI_KEY_PREFIX'"))
@@ -83,14 +86,46 @@ class LLMCredentialValidatorImp(
 
 
 
-    override suspend fun localModelsKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
+    private suspend fun localModelsKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
         TODO("Not yet implemented")
+    }
+
+
+    override suspend fun validateApiKeyForLLM(
+        llm: LLM,
+        apiKey: String?,
+    ): Either<LLMValidatorErrors, Boolean> {
+
+        val normalizedApiKey = normalizeApiKey(apiKey)
+            ?: return failure(LLMValidatorErrors.InvalidKeyFormat("API key cannot be null or blank"))
+
+        val validationResult =
+            when (llm) {
+                LLM.OPENAI -> openAiKeyValidator(normalizedApiKey)
+                LLM.GEMINI -> geminiKeyValidator(normalizedApiKey)
+                LLM.LOCAL_MODEL -> localModelsKeyValidator(normalizedApiKey)
+            }
+
+        return when (validationResult) {
+            is Failure -> failure(validationResult.value)
+            is Success -> success(true)
+        }
     }
 
 
     private fun validateKeyFormat(apiKey: String, prefix: String): Boolean {
         return apiKey.startsWith(prefix)
     }
+
+    /**
+     * Função responsavél por validar se a api_key está no formato esperado ou não, retornando null caso não esteja.
+     *
+     * */
+    private fun normalizeApiKey(apiKey: String?): String? =
+        apiKey
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && it.none(Char::isWhitespace) }
+
 
 
 }
