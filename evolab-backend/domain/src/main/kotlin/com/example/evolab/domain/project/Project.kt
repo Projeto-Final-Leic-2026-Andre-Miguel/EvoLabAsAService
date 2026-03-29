@@ -10,8 +10,8 @@ data class Project(
     val configId: Int?,
     val name: String,
     val description: String?,
-    val initialProgram: String,  // validar se é mesmo String ou TEXT
-    val evaluatorCode: String,
+    val initialProgram: String?,
+    val evaluatorCode: String?,
     val status: EvolutionStatus,
     val createdAt: Instant,
 )

@@ -1,7 +1,6 @@
-package com.example.evolab.service.LLMCredentials.Validator
+package com.example.evolab.service.LLMCredentials.validator
 
 import com.example.evolab.domain.LLMCredentials.LLM
-import com.example.evolab.service.LLMCredentials.service.LLMCredentialsServiceErrors
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success

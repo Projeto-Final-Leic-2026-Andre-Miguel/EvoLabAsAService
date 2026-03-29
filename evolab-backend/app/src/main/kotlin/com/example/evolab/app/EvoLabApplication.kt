@@ -68,6 +68,7 @@ class EvoLabApplication {
             maxTokensPerUser = 3,
         )
 
+
     @Bean
     fun clock(): Clock = Clock.systemUTC()
 

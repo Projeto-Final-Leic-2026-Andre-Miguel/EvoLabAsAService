@@ -3,6 +3,7 @@ package com.example.evolab.repo.repoProject
 import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.domain.project.Project
 import org.jdbi.v3.core.Handle
+import org.jdbi.v3.core.kotlin.mapTo
 
 class RepositoryProjectJdbi(
     private val handle: Handle,
@@ -13,10 +14,10 @@ class RepositoryProjectJdbi(
         configId: Int?,
         name: String,
         description: String?,
-        initialProgram: String,
-        evaluatorCode: String,
+        initialProgram: String?,
+        evaluatorCode: String?,
         status: EvolutionStatus,
-    ): Int =
+    ): Project =
         handle
             .createQuery(ProjectSql.CREATE_PROJECT)
             .bind("userId", userId)
@@ -26,8 +27,10 @@ class RepositoryProjectJdbi(
             .bind("initialProgram", initialProgram)
             .bind("evaluatorCode", evaluatorCode)
             .bind("status", status.name)
-            .mapTo(Int::class.java)
+            .mapTo<Project>()
             .one()
+
+
 
     override fun findAllByUserId(userId: Int): List<Project> =
         handle

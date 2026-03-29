@@ -55,8 +55,8 @@ CREATE TABLE projects (
                           config_id           INTEGER         REFERENCES evolution_configs(id) ON DELETE SET NULL,
                           name                VARCHAR(255)    NOT NULL,
                           description         TEXT,
-                          initial_program     TEXT            NOT NULL,       -- código inicial a evoluir
-                          evaluator_code      TEXT            NOT NULL,       -- código que avalia a solução
+                          initial_program     TEXT            ,       -- código inicial a evoluir
+                          evaluator_code      TEXT            ,       -- código que avalia a solução
                           status              job_status      NOT NULL DEFAULT 'CREATED',
                           created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );

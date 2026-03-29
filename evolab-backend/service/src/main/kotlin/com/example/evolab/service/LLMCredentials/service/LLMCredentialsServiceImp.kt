@@ -4,8 +4,8 @@ import com.example.evolab.domain.LLMCredentials.LLM
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
 import com.example.evolab.repo.transactions.Transaction
 import com.example.evolab.repo.transactions.TransactionManager
-import com.example.evolab.service.LLMCredentials.Validator.LLMCrendentialsValidator
-import com.example.evolab.service.LLMCredentials.Validator.LLMValidatorErrors
+import com.example.evolab.service.LLMCredentials.validator.LLMCrendentialsValidator
+import com.example.evolab.service.LLMCredentials.validator.LLMValidatorErrors
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success

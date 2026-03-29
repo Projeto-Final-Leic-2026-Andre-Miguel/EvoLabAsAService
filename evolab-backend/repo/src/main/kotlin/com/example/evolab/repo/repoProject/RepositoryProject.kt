@@ -10,10 +10,10 @@ interface RepositoryProject : Repository<Project> {
         configId: Int?,
         name: String,
         description: String?,
-        initialProgram: String,
-        evaluatorCode: String,
+        initialProgram: String?,
+        evaluatorCode: String?,
         status: EvolutionStatus = EvolutionStatus.CREATED,
-    ): Int
+    ): Project
 
     fun findAllByUserId(userId: Int): List<Project>
 
