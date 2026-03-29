@@ -1,11 +1,14 @@
 package com.example.evolab.app
 
 import com.example.evolab.domain.user.UsersDomainConfig
+import com.example.evolab.repo.repoToken.RepositoryToken
+import com.example.evolab.repo.repoToken.RepositoryTokenJdbi
+import com.example.evolab.repo.repoUser.RepositoryUser
+import com.example.evolab.repo.repoUser.RepositoryUserJdbi
 import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.repo.transactions.TransactionManagerJdbi
 import org.jdbi.v3.core.Jdbi
 import org.postgresql.ds.PGSimpleDataSource
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -15,6 +18,10 @@ import pt.isel.domain.authentication.Sha256TokenEncoder
 import pt.isel.domain.token.TokenEncoder
 import java.time.Clock
 import java.time.Duration
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
 
 @SpringBootApplication(scanBasePackages = ["com.example.evolab", "pt.isel"])
 class EvoLabApplication {
@@ -28,8 +35,23 @@ class EvoLabApplication {
             }
         )
 
+    @Bean(destroyMethod = "close")
+    fun httpClient(): HttpClient {
+        return HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+    }
+
     @Bean
     fun transactionManager(jdbi: Jdbi): TransactionManager = TransactionManagerJdbi(jdbi)
+
+    @Bean
+    fun repositoryUser(jdbi: Jdbi): RepositoryUser = RepositoryUserJdbi(jdbi.open())
+
+    @Bean
+        fun repositoryToken(jdbi: Jdbi): RepositoryToken = RepositoryTokenJdbi(jdbi.open())
 
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
@@ -54,4 +76,3 @@ class EvoLabApplication {
 fun main(args: Array<String>) {
     runApplication<EvoLabApplication>(*args)
 }
-

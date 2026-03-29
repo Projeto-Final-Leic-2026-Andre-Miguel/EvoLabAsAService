@@ -12,4 +12,8 @@ sealed class LLMCredentialsServiceErrors {
 
     data class PersistenceError(val message: String) : LLMCredentialsServiceErrors()
 
+    data class UnknownError(val message: String) : LLMCredentialsServiceErrors()
+
+    data class UnauthorizedAccess(val message: String) : LLMCredentialsServiceErrors()
+
 }

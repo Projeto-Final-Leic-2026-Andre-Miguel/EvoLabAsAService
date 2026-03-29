@@ -23,4 +23,23 @@ sealed class Problem(
             .header("Content-Type", MEDIA_TYPE)
             .body(this)
 
+
+    data object InvalidLLMProvider : Problem(URI("$PROBLEM_URI_PATH/invalid-llm-provider"))
+
+    data object InvalidAPIKey : Problem(URI("$PROBLEM_URI_PATH/invalid-api-key"))
+
+    data object LLMCrendentialsNotFound : Problem(URI("$PROBLEM_URI_PATH/llm-credentials-not-found"))
+
+    data object CredentialWithProviderAlreadyInUse : Problem(URI("$PROBLEM_URI_PATH/credential-with-provider-already-in-use"))
+
+    data object PersistenceError : Problem(URI("$PROBLEM_URI_PATH/persistence-error"))
+
+    data object UnknownError : Problem(URI("$PROBLEM_URI_PATH/unknown-error"))
+
+    data object UnauthorizedAccess : Problem(URI("$PROBLEM_URI_PATH/unauthorized-access"))
+
+
 }
+
+
+

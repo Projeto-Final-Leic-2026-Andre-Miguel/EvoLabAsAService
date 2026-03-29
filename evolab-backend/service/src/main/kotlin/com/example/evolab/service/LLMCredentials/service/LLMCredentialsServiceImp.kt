@@ -2,7 +2,7 @@ package com.example.evolab.service.LLMCredentials.service
 
 import com.example.evolab.domain.LLMCredentials.LLM
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
-import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
+import com.example.evolab.repo.transactions.Transaction
 import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.LLMCredentials.Validator.LLMCrendentialsValidator
 import com.example.evolab.service.LLMCredentials.Validator.LLMValidatorErrors
@@ -16,7 +16,6 @@ import jakarta.inject.Named
 
 @Named
 class LLMCredentialsServiceImp(
-    private val repoLLMCredentials: RepositoryLLMCredentials,
     private val llmValidator: LLMCrendentialsValidator,
     private val trxManager: TransactionManager,
 ) : LLMCredentialsService {
@@ -25,35 +24,42 @@ class LLMCredentialsServiceImp(
         userId: Int,
         llm: LLM,
         apiKey: String?,
-    ): Either<LLMCredentialsServiceErrors, LLMCredentials> =
+    ): Either<LLMCredentialsServiceErrors, LLMCredentials> {
 
-        when (val validated = llmValidator.validateApiKeyForLLM(llm, apiKey)) {
-            is Failure-> failure(mapValidatorError(validated.value))
-            is Success ->  // Depois de validade a api_key...
-                trxManager.run {
-                    if (!canCreateLLMCredential(userId, llm)) {
-                        return@run failure(
-                            LLMCredentialsServiceErrors.CredentialWithProviderAlreadyInUse(
-                                "User already has credentials for provider '$llm'",
-                            ),
-                        )
-                    }
-
-                    val apiKeyEncrypted: String = "por fazer"
-
-                    TODO("FALTA VER QUAL O MELHOR METODO DE GUARDAR A CHAVE ENCRPITADA DO CLIENTE.")
-
-                    val created = repoLLMCredentials.createLLMCredential(userId, llm, apiKeyEncrypted)
-                    return@run success(created)
-                }
+        when (val validation = llmValidator.validateApiKeyForLLM(llm, apiKey)) {
+            is Failure -> return failure(mapValidatorError(validation.value))
+            is Success -> {  }
         }
 
-    override fun getLLMCredentialById(id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials> =
+        return trxManager.run {
+            if (!canCreateLLMCredential(userId, llm)) {
+                return@run failure(
+                    LLMCredentialsServiceErrors.CredentialWithProviderAlreadyInUse(
+                        "User already has credentials for provider '$llm'"
+                    )
+                )
+            }
+
+            // TODO: Melhor metodo de guardar a chave encriptada do cliente
+            val apiKeyEncrypted = "por fazer"
+
+            val created = repoLLmCredentials.createLLMCredential(userId, llm, apiKeyEncrypted)
+            success(created)
+        }
+    }
+
+    override fun getLLMCredentialById(userId : Int, id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials> =
         trxManager.run {
             val credential = getLLMCredentialsById(id)
                 ?: return@run failure(
                     LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' was not found"),
                 )
+
+            if(credential.userId != userId) {
+                return@run failure(
+                    LLMCredentialsServiceErrors.UnauthorizedAccess("User with id $userId is not the owner of credential with id '$id'"),
+                )
+            }
             return@run success(credential)
         }
 
@@ -62,49 +68,58 @@ class LLMCredentialsServiceImp(
             success(getAllUserCredentialsById(userId))
         }
 
+    /**
+     *
+     * Aqui a unica coisa que se pode atualizar é a api_key
+     * A validação da chave é feita antes de entrar na transação, para evitar fazer uma transação de escrita desnecessária caso a chave seja inválida
+     * Portanto começamos por verificar se a credencial pertence ou não ao utilizador, depois validamos a chave, e só depois entramos na transação para atualizar a chave na BD
+     * O bloco {} em is Sucess, é intencionalmente deixado vazio, porque se a validação for bem sucedida, não é necessário fazer nada nesse momento, apenas avançar para a atualização na BD
+     */
+
     override suspend fun updateLLMCredential(
         id: Int,
-        llm: LLM,
+        userId: Int,
         apiKey: String?,
     ): Either<LLMCredentialsServiceErrors, LLMCredentials> {
-        val validated = llmValidator.validateApiKeyForLLM(llm, apiKey)
 
-        if (!validated) {
-            return failure(mapValidatorError(validated.value))
+        val credential = trxManager.run {
+            repoLLmCredentials.findById(id)
+        } ?: return failure(LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' not found"))
+
+        if(credential.userId != userId) {
+            return failure(
+                LLMCredentialsServiceErrors.UnauthorizedAccess("User with id $userId is not the owner of credential with id '$id'"),
+            )
         }
 
 
+        when (val validation = llmValidator.validateApiKeyForLLM(credential.llm, apiKey)) {
+            is Failure -> return failure(mapValidatorError(validation.value))
+            is Success -> {  } // é validado com sucesso, não é necessário fazer nada aqui, avançar para a atualização na BD
+        }
+
         return trxManager.run {
-            val existing = repoLLmCredentials.findById(id)
-                ?: return@run failure(
-                    LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' was not found"),
-                )
+            // TODO: Aplicar a encriptação da chave antes de guardar
+            val apiKeyEncrypted = "por fazer"
 
-            val duplicatedProviderInSameUser =
-                repoLLmCredentials
-                    .findAllByUserId(existing.userId)
-                    .any { it.id != id && it.llm == llm }
-
-            if (duplicatedProviderInSameUser) {
-                return@run failure(
-                    LLMCredentialsServiceErrors.CredentialWithProviderAlreadyInUse(
-                        "User already has credentials for provider '$llm'",
-                    ),
-                )
-            }
-
-            val updated = existing.copy(llm = llm, apiKeyEncrypted = validatedKey)
+            val updated = credential.copy(apiKeyEncrypted = apiKeyEncrypted)
             repoLLmCredentials.save(updated)
             success(updated)
         }
     }
 
-    override fun deleteLLMCredential(id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials> =
+    override fun deleteLLMCredential(userId : Int,id: Int): Either<LLMCredentialsServiceErrors, Int> =
         trxManager.run {
             val existing = repoLLmCredentials.findById(id)
                 ?: return@run failure(
                     LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' was not found"),
                 )
+
+            if(existing.userId != userId) {
+                return@run failure(
+                    LLMCredentialsServiceErrors.UnauthorizedAccess("User with id $userId is not the owner of credential with id '$id'"),
+                )
+            }
 
             val deleted = repoLLmCredentials.deleteById(id)
             if (!deleted) {
@@ -113,21 +128,24 @@ class LLMCredentialsServiceImp(
                 )
             }
 
-            success(existing)
+            success(id) // sendo id o id da credencial eliminada
         }
 
     /**
      * Valida se o utilizador tem ou não alguma credencial com o provider especificado
      *
      * */
-    private fun canCreateLLMCredential(userId: Int, llm: LLM): Boolean =
-        repoLLMCredentials.findAllByUserId(userId).none { credential -> credential.llm == llm }
+    private fun Transaction.canCreateLLMCredential(userId: Int, llm: LLM): Boolean =
+        repoLLmCredentials.findAllByUserId(userId).none { credential -> credential.llm == llm }
 
-    private fun getLLMCredentialsById(id : Int): LLMCredentials? =
-        repoLLMCredentials.findById(id)
+    private fun Transaction.getLLMCredentialsById(id : Int): LLMCredentials? =
+        repoLLmCredentials.findById(id)
 
-    private fun getAllUserCredentialsById(userId : Int): List<LLMCredentials> =
-        repoLLMCredentials.findAllByUserId(userId)
+    private fun Transaction.getAllUserCredentialsById(userId : Int): List<LLMCredentials> =
+        repoLLmCredentials.findAllByUserId(userId)
+
+    private fun Transaction.findUserCredentialById(userId: Int, credentialId : Int) : LLMCredentials? =
+        repoLLmCredentials.findAllByUserId(userId).find { credential -> credential.id == credentialId }
 
     private fun mapValidatorError(error: LLMValidatorErrors): LLMCredentialsServiceErrors =
         when (error) {
@@ -138,4 +156,3 @@ class LLMCredentialsServiceImp(
             is LLMValidatorErrors.UnknownError -> LLMCredentialsServiceErrors.InvalidApiKey(error.message)
         }
 }
-

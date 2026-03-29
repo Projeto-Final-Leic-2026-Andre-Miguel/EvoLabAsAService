@@ -21,15 +21,15 @@ interface LLMCredentialsService {
 
     ): Either<LLMCredentialsServiceErrors, LLMCredentials>
 
-    fun getLLMCredentialById(id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials>
+    fun getLLMCredentialById(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials>
 
     fun getLLMCredentialsByUserId(userId: Int): Either<LLMCredentialsServiceErrors,List<LLMCredentials>>
 
     suspend fun updateLLMCredential(
         id: Int,
-        llm: LLM,
+        userId: Int,
         apiKey: String?
     ): Either<LLMCredentialsServiceErrors, LLMCredentials>
 
-    fun deleteLLMCredential(id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials>
+    fun deleteLLMCredential(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, Int>
 }
