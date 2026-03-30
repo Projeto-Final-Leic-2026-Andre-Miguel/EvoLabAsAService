@@ -8,7 +8,9 @@ sealed class ProjectServiceErrors {
 
     data class NotProjectOwner(val message: String) : ProjectServiceErrors()
 
-    data class DuplicateProjectName(val name: String) : ProjectServiceErrors()
+    data class DuplicateProjectName(val message: String) : ProjectServiceErrors()
+
+    data class InvalidProjectStatus(val message: String) : ProjectServiceErrors()
 
 
 }
