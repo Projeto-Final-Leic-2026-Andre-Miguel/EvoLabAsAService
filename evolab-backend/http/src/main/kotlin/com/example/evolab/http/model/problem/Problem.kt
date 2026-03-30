@@ -23,7 +23,6 @@ sealed class Problem(
             .header("Content-Type", MEDIA_TYPE)
             .body(this)
 
-
     data object InvalidLLMProvider : Problem(URI("$PROBLEM_URI_PATH/invalid-llm-provider"))
 
     data object InvalidAPIKey : Problem(URI("$PROBLEM_URI_PATH/invalid-api-key"))
@@ -38,8 +37,13 @@ sealed class Problem(
 
     data object UnauthorizedAccess : Problem(URI("$PROBLEM_URI_PATH/unauthorized-access"))
 
+    data object ProjectNotFound : Problem(URI("$PROBLEM_URI_PATH/project-not-found"))
 
+    data object InvalidProjectInput : Problem(URI("$PROBLEM_URI_PATH/invalid-project-input"))
+
+    data object NotProjectOwner : Problem(URI("$PROBLEM_URI_PATH/not-project-owner"))
+
+    data object DuplicateProjectName : Problem(URI("$PROBLEM_URI_PATH/duplicate-project-name"))
+
+    data object InvalidProjectStatus : Problem(URI("$PROBLEM_URI_PATH/invalid-project-status"))
 }
-
-
-

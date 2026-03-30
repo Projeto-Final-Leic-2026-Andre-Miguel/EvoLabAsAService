@@ -36,5 +36,5 @@ interface ProjectService {
 
     fun getAllProjects(): Either<ProjectServiceErrors, List<Project>>
 
-    fun deleteProject(projectId: Int, userId: Int): Either<ProjectServiceErrors, Project>
+    fun deleteProject(projectId: Int, userId: Int): Either<ProjectServiceErrors, Int>
 }
