@@ -80,13 +80,12 @@ class TokenServiceImpl(
         }
 
         val tokenValidationInfo = tokenEncoder.createValidationInformation(token)
-        val userAndToken =
-            repoTokens.getTokenByTokenValidationInfo(tokenValidationInfo)
-                ?: return failure(TokenError.TokenNotFound)
+        val tokenEntity = repoTokens.findByTokenValidation(tokenValidationInfo) ?: return failure(TokenError.TokenNotFound)
+        val user = repoUsers.findByTokenValidation(tokenValidationInfo) ?: return failure(TokenError.TokenNotFound)
 
-        return if (isTokenTimeValid(userAndToken.second)) {
+        return if (isTokenTimeValid(tokenEntity)) {
             repoTokens.updateTokenLastUsed(tokenValidationInfo, clock.instant().toEpochMilli())
-            success(userAndToken.first)
+            success(user)
         } else {
             failure(TokenError.TokenExpired)
         }

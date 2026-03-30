@@ -29,6 +29,13 @@ object UserSql {
         SELECT * FROM users WHERE auth_provider = :provider AND provider_id = :providerId
     """
 
+    const val FIND_BY_TOKEN_VALIDATION = """
+        SELECT u.*
+        FROM users u
+        JOIN tokens t ON t.user_id = u.id
+        WHERE t.token_validation = :tokenValidation
+    """
+
     const val SAVE = """
         UPDATE users
         SET name = :name,

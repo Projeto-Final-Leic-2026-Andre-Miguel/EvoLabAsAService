@@ -1,16 +1,17 @@
 @baseUrl = http://localhost:8080
-@token =
-@userIdToDelete = 1
-@localEmail = Teste@evolab.dev
+@token =v88DSl17Dafi6eGYIM3q6SgY2Dhv5zs01uDTc1ysBy8=
+@userIdToDelete = 8
+@localEmail = Teste3@evolab.dev
 @localPassword = 12345
 @nome = Teste
 
+//TODO: Ver tratamento de erros quando já existe, no caso ver o pq do erro 409
 ### Criar utilizador local
 POST {{baseUrl}}/api/users/local
 Content-Type: application/json
 
 {
-  "name": "user-local-1",
+  "name": "user-local-3",
   "email": "{{localEmail}}",
   "password": "{{localPassword}}"
 }
@@ -35,7 +36,8 @@ Content-Type: application/json
   "password": "{{localPassword}}"
 }
 
-
+###
+//TODO: Ver o tratamento de erros, não pode rebentar com 500 acho eu?
 ### Obter utilizador autenticado
 GET {{baseUrl}}/api/me
 Authorization: Bearer {{token}}

@@ -22,18 +22,22 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import org.jdbi.v3.core.kotlin.KotlinPlugin
+import org.jdbi.v3.postgres.PostgresPlugin
 
 @SpringBootApplication(scanBasePackages = ["com.example.evolab", "pt.isel"])
 class EvoLabApplication {
 
 
     @Bean
-    fun jdbi() : Jdbi =
+    fun jdbi(): Jdbi =
         Jdbi.create(
             PGSimpleDataSource().apply {
                 setURL(Environment.getUrl())
             }
         )
+            .installPlugin(KotlinPlugin())
+            .installPlugin(PostgresPlugin())
 
     @Bean(destroyMethod = "close")
     fun httpClient(): HttpClient {
@@ -51,7 +55,7 @@ class EvoLabApplication {
     fun repositoryUser(jdbi: Jdbi): RepositoryUser = RepositoryUserJdbi(jdbi.open())
 
     @Bean
-        fun repositoryToken(jdbi: Jdbi): RepositoryToken = RepositoryTokenJdbi(jdbi.open())
+    fun repositoryToken(jdbi: Jdbi): RepositoryToken = RepositoryTokenJdbi(jdbi.open())
 
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()

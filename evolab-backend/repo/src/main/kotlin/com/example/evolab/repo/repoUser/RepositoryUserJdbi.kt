@@ -1,5 +1,6 @@
 package com.example.evolab.repo.repoUser
 
+import com.example.evolab.domain.token.TokenValidationInfo
 import org.jdbi.v3.core.Handle
 import com.example.evolab.domain.user.AuthProvider
 import com.example.evolab.domain.user.User
@@ -88,6 +89,24 @@ class RepositoryUserJdbi(
             .createQuery(UserSql.FIND_BY_ID)
             .bind("id", id)
             .mapTo<User>()
+            .findOne()
+            .orElse(null)
+
+    override fun findByTokenValidation(tokenValidationInfo: TokenValidationInfo): User? =
+        handle
+            .createQuery(UserSql.FIND_BY_TOKEN_VALIDATION)
+            .bind("tokenValidation", tokenValidationInfo.validationInfo)
+            .map { rs, _ ->
+                User(
+                    id = rs.getInt("id"),
+                    name = rs.getString("name"),
+                    email = rs.getString("email"),
+                    passwordHash = rs.getString("password_hash"),
+                    authProvider = AuthProvider.valueOf(rs.getString("auth_provider")),
+                    providerId = rs.getString("provider_id"),
+                    createdAt = rs.getTimestamp("created_at").toInstant(),
+                )
+            }
             .findOne()
             .orElse(null)
 

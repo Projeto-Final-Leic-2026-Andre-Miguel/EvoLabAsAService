@@ -36,8 +36,7 @@ class RepositoryTokenJdbi(
 	override fun findByTokenValidation(tokenValidation: TokenValidationInfo): Token? =
 		handle
 			.createQuery(TokenSql.FIND_BY_TOKEN_VALIDATION)
-			.bind("tokenValidation", tokenValidation)
-			.map { rs, _ -> rs.toToken() }
+			.bind("tokenValidation", tokenValidation.validationInfo)			.map { rs, _ -> rs.toToken() }
 			.findOne()
 			.orElse(null)
 
