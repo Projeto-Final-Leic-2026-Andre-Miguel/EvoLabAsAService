@@ -32,7 +32,7 @@ class RepositoryUserJdbi(
         return User(
             id, name, email, passwordHash,
             authProvider = AuthProvider.LOCAL,
-            providerId = null,
+            providerId = AuthProvider.LOCAL.name,
             createdAt = Instant.now()
         )
     }
@@ -117,9 +117,17 @@ class RepositoryUserJdbi(
             .list()
 
     override fun save(entity: User) {
+        val providerId =
+            entity.providerId ?: if (entity.authProvider == AuthProvider.LOCAL) AuthProvider.LOCAL.name else null
+
         handle
             .createUpdate(UserSql.SAVE)
-            .bindBean(entity)
+            .bind("id", entity.id)
+            .bind("name", entity.name)
+            .bind("email", entity.email)
+            .bind("passwordHash", entity.passwordHash)
+            .bind("authProvider", entity.authProvider)
+            .bind("providerId", providerId)
             .execute()
     }
 

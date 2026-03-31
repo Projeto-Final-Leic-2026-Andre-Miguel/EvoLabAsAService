@@ -33,11 +33,11 @@ interface ConfigService {
         config: Config,
         projectId: Int,
         jobId: Int,
-    ): Map<String, Any>
+    ): Config
 
     fun generateTemporaryConfigFile(
         runtimeConfig: Map<String, Any>,
-    ): Path
+    ): Either<ConfigError, Path>
 
-    fun cleanupTemporaryConfigFile(path: Path): Boolean
+    fun cleanupTemporaryConfigFile(path: Path): Either<ConfigError, Boolean>
 }

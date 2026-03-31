@@ -40,9 +40,9 @@ object UserSql {
         UPDATE users
         SET name = :name,
             email = :email,
-            password_hash = :password_hash,
-            auth_provider = :auth_provider,
-            provider_id = :provider_id
+            password_hash = :passwordHash,
+            auth_provider = :authProvider,
+            provider_id = :providerId
         WHERE id = :id
     """
 

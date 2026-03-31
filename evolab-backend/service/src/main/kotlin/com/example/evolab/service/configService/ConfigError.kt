@@ -11,6 +11,10 @@ sealed class ConfigError {
 
     data object InvalidCheckpointInterval : ConfigError()
 
+    data class InvalidOpenEvolveConfig(
+        val reason: String,
+    ) : ConfigError()
+
     data object ErrorDeletingConfig : ConfigError()
 
     data object ErrorCreatingTemporaryConfigFile : ConfigError()

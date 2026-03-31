@@ -40,9 +40,14 @@ class UserAuthService(
         }
 
         val passwordValidationInfo = createPasswordValidationInformation(password)
-        val newUser = repoUsers.createLocalUser(name, email, passwordValidationInfo.validationInfo)
-        return success(newUser)
+        return try {
+            val newUser = repoUsers.createLocalUser(name, email, passwordValidationInfo.validationInfo)
+            success(newUser)
+        } catch (e: Exception) {
+            failure(UserError.UnexpectedError)
+        }
     }
+
 
     fun createOAuthUser(
         name: String,
@@ -59,9 +64,14 @@ class UserAuthService(
             return success(existingOAuth)
         }
 
-        val newUser = repoUsers.createOAuthUser(name, email, provider, providerId)
-        return success(newUser)
+        return try {
+            val newUser = repoUsers.createOAuthUser(name, email, provider, providerId)
+            success(newUser)
+        } catch (e: Exception) {
+            failure(UserError.UnexpectedError)
+        }
     }
+
 
     fun deleteUser(userId: Int): Either<UserError, Boolean> {
         val user = repoUsers.findById(userId) ?: return failure(UserError.UserNotFound)
@@ -70,4 +80,5 @@ class UserAuthService(
     }
 
     fun getAllUsers(): List<User> = repoUsers.findAll()
+
 }
