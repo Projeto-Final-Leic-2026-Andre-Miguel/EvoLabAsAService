@@ -24,7 +24,7 @@ class SecurityConfig(
                         "/api/users/local",
                         "/api/users/token",
                     ).permitAll()
-                    .anyRequest().permitAll()
+                    .anyRequest().permitAll() // trocar para authenticated() depois de validarmos isto
             }
             .oauth2ResourceServer { it.disable() }
             .oauth2Login { oauth2 ->

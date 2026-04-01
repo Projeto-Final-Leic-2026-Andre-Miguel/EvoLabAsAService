@@ -5,6 +5,8 @@ import com.example.evolab.http.model.user.CreateLocalUserInput
 import com.example.evolab.http.model.user.CreateOAuthUserInput
 import com.example.evolab.http.model.user.CreateTokenInput
 import com.example.evolab.service.auxiliary.Either
+import com.example.evolab.service.auxiliary.Failure
+import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.tokenService.TokenError
 import com.example.evolab.service.tokenService.TokenService
 import org.springframework.http.HttpStatus
@@ -29,7 +31,7 @@ class UserController(
 		@RequestBody input: CreateLocalUserInput,
 	): ResponseEntity<*> {
 		return when (val result = userService.createLocalUser(input.name, input.email, input.password)) {
-			is Either.Right -> {
+			is Success -> {
 				val user = result.value
 				ResponseEntity
 					.status(HttpStatus.CREATED)
@@ -42,7 +44,7 @@ class UserController(
 					)
 			}
 
-			is Either.Left ->
+			is Failure->
 				when (result.value) {
 					UserError.AlreadyUsedEmailAddress -> ResponseEntity.status(HttpStatus.CONFLICT).build<Unit>()
 					UserError.InsecurePassword -> ResponseEntity.status(HttpStatus.BAD_REQUEST).build<Unit>()

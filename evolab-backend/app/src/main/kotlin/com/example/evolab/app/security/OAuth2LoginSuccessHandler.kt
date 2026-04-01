@@ -20,11 +20,12 @@ class OAuth2LoginSuccessHandler(
 ) : AuthenticationSuccessHandler {
 
     override fun onAuthenticationSuccess(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        authentication: Authentication,
+        request: HttpServletRequest,  // The redirect request from the google auth, containg the code and state
+        response: HttpServletResponse, // where we can send the cookie with the token and redirect to the frontend
+        authentication: Authentication, // the user authentication object containing the user details from google
     ) {
         val oauthUser = authentication.principal as? OAuth2User
+
         if (oauthUser == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth principal not available")
             return
@@ -32,7 +33,7 @@ class OAuth2LoginSuccessHandler(
 
         val email = oauthUser.attributes["email"] as? String
         val name = oauthUser.attributes["name"] as? String ?: email ?: "oauth-user"
-        val providerId = oauthUser.attributes["sub"] as? String
+        val providerId = oauthUser.attributes["sub"] as? String // sub = subject
 
         if (email.isNullOrBlank() || providerId.isNullOrBlank()) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing required OAuth attributes")

@@ -4,7 +4,7 @@
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
 @nome = Teste
-@emailTeste = pedrof@gmail.com
+@emailTeste = pedrofdd@gmail.com
 
 //TODO: Ver tratamento de erros quando já existe, no caso ver o pq do erro 409
 ### Criar utilizador local
@@ -12,15 +12,13 @@ POST {{baseUrl}}/api/users/local
 Content-Type: application/json
 
 {
-  "name": "da",
+  "name": "teste",
   "email": "{{emailTeste}}",
   "password": "{{localPassword}}"
 }
 
-
-### Criar utilizador OAuth (GOOGLE)
-GET {{baseUrl}}/oauth2/authorization/google
-Content-Type: application/json
+### http://localhost:8080/oauth2/authorization/google
+// Este é o endpoint para autenticação via google, quando concluido, redireciona automaticamnete para o endpoint /me
 
 
 ### Obter token (login local)

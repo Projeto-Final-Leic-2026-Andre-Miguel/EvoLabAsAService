@@ -2,6 +2,8 @@ package pt.isel.http.argumentResolverandInterceptor
 
 import com.example.evolab.domain.user.AuthenticatedUser
 import com.example.evolab.service.auxiliary.Either
+import com.example.evolab.service.auxiliary.Failure
+import com.example.evolab.service.auxiliary.Success
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Component
 import com.example.evolab.service.tokenService.TokenService
@@ -22,12 +24,12 @@ class RequestTokenProcessor(
             return null
         }
         return when (val result = tokenService.getUserByToken(parts[1])) {
-            is Either.Right ->
+            is Success ->
                 AuthenticatedUser(
                     result.value,
                     parts[1],
                 )
-            is Either.Left -> null
+            is Failure -> null
         }
     }
 
@@ -36,8 +38,8 @@ class RequestTokenProcessor(
         val tokenCookie = cookies.find { it.name == COOKIE_NAME } ?: return null
 
         return when (val result = tokenService.getUserByToken(tokenCookie.value)) {
-            is Either.Right -> AuthenticatedUser(result.value, tokenCookie.value)
-            is Either.Left -> null
+            is Success -> AuthenticatedUser(result.value, tokenCookie.value)
+            is Failure -> null
         }
     }
 
