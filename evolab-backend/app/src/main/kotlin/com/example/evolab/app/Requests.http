@@ -1,12 +1,12 @@
 @baseUrl = http://localhost:8080
-@token =N1wd97R4SCIr0mzRU4FPzgFApnWrOf7JxJCgIx2kHdQ=
+@token =PY-aayGcDphotce_xbOI_jIvX4LvF8epyHotG1NDOiM=
 @userIdToDelete = 4
 @localEmail = Teste1@evolab.dev
 @localPassword = 12345
 @nome = Teste
 @llmCredentialId = 1
 @configId = 4
-@projectId = 4
+@projectId = 6
 @jobId = 4
 
 ### Criar utilizador local
@@ -65,6 +65,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
+  "projectId": {{projectId}},
   "llmCredentialsId": {{llmCredentialId}},
   "modelName": "gpt-4o-mini",
   "maxIter": 20,
@@ -111,4 +112,52 @@ Authorization: Bearer {{token}}
 DELETE {{baseUrl}}/api/configs/{{configId}}
 Authorization: Bearer {{token}}
 
+### Criar projeto
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Projeto Demo",
+  "description": "Projeto de teste para o modulo Project",
+  "initialProgram": "def solve(x): return x",
+  "evaluatorCode": "def evaluate(candidate): return 1.0"
+}
+
+### Obter projeto por id
+GET {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{token}}
+
+### Listar projetos do utilizador autenticado
+GET {{baseUrl}}/api/projects/me
+Authorization: Bearer {{token}}
+
+### Listar todos os projetos
+GET {{baseUrl}}/api/projects
+
+### Atualizar detalhes do projeto
+PUT {{baseUrl}}/api/projects/{{projectId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Projeto Demo Atualizado",
+  "description": "Descricao atualizada do projeto",
+  "configId": {{configId}},
+  "initialProgram": "def solve(x): return x * 2",
+  "evaluatorCode": "def evaluate(candidate): return 2.0"
+}
+
+### Atualizar estado do projeto
+PUT {{baseUrl}}/api/projects/{{projectId}}/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "QUEUED"
+}
+
+### Apagar projeto
+DELETE {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{token}}
 

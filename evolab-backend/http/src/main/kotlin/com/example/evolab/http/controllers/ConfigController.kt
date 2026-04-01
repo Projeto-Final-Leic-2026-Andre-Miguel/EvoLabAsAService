@@ -6,6 +6,7 @@ import com.example.evolab.http.model.config.GenerateTemporaryConfigFileInput
 import com.example.evolab.http.model.config.TemporaryConfigFileOutput
 import com.example.evolab.http.model.config.UpdateConfigInput
 import com.example.evolab.http.model.config.UserConfigOutput
+import com.example.evolab.http.model.problem.Problem
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
@@ -33,44 +34,51 @@ class ConfigController(
     fun createConfig(
         @RequestBody input: CreateConfigInput,
         authenticatedUser: AuthenticatedUser,
-    ): ResponseEntity<*> {
-        val result =
-            configService.createConfig(
-                userId = authenticatedUser.user.id,
-                llmCredentialsId = input.llmCredentialsId,
-                modelName = input.modelName,
-                maxIter = input.maxIter,
-                checkPointInterval = input.checkPointInterval,
-                additionalParams = input.additionalParams,
-            )
+    ): ResponseEntity<*> =
+        try {
+            val result =
+                configService.createConfig(
+                    userId = authenticatedUser.user.id,
+                    projectId = input.projectId,
+                    llmCredentialsId = input.llmCredentialsId,
+                    modelName = input.modelName,
+                    maxIter = input.maxIter,
+                    checkPointInterval = input.checkPointInterval,
+                    additionalParams = input.additionalParams,
+                )
 
-        return when (result) {
-            is Success -> {
-                ResponseEntity.status(HttpStatus.CREATED)
-                    .header("Location", "/api/configs/${result.value.id}")
-                    .body(result.value)
+            when (result) {
+                is Success -> {
+                    ResponseEntity.status(HttpStatus.CREATED)
+                        .header("Location", "/api/configs/${result.value.id}")
+                        .body(result.value)
+                }
+
+                is Failure -> mapServiceErrors(result.value)
             }
-
-            is Failure -> mapServiceErrors(result.value)
+        } catch (_: Exception) {
+            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
-    }
 
     @GetMapping("/{id}")
     fun getConfigById(
         @PathVariable id: Int,
         authenticatedUser: AuthenticatedUser,
-    ): ResponseEntity<*> {
-        val result: Either<ConfigError, *> =
-            configService.getConfigById(
-                configId = id,
-                userId = authenticatedUser.user.id,
-            )
+    ): ResponseEntity<*> =
+        try {
+            val result: Either<ConfigError, *> =
+                configService.getConfigById(
+                    configId = id,
+                    userId = authenticatedUser.user.id,
+                )
 
-        return when (result) {
-            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-            is Failure -> mapServiceErrors(result.value)
+            when (result) {
+                is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+                is Failure -> mapServiceErrors(result.value)
+            }
+        } catch (_: Exception) {
+            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
-    }
 
     @GetMapping("/me")
     fun listConfigsByUser(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
@@ -182,7 +190,9 @@ class ConfigController(
     private fun mapServiceErrors(error: ConfigError): ResponseEntity<*> {
         return when (error) {
             is ConfigError.ConfigNotFound -> ResponseEntity.status(HttpStatus.NOT_FOUND).build<Unit>()
+            is ConfigError.ProjectNotFound -> Problem.ProjectNotFound.response(HttpStatus.NOT_FOUND)
             is ConfigError.AccessDenied -> ResponseEntity.status(HttpStatus.FORBIDDEN).build<Unit>()
+            is ConfigError.ProjectNotEditable -> Problem.InvalidProjectStatus.response(HttpStatus.CONFLICT)
             is ConfigError.InvalidModelName,
             is ConfigError.InvalidMaxIterations,
             is ConfigError.InvalidCheckpointInterval,

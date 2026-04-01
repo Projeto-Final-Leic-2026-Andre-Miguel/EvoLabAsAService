@@ -1,7 +1,9 @@
 package com.example.evolab.service.configService
 
 import com.example.evolab.domain.config.Config
+import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.repo.repoConfig.RepositoryConfig
+import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.failure
 import com.example.evolab.service.auxiliary.success
@@ -12,9 +14,11 @@ import java.nio.file.Path
 @Named
 class ConfigServiceImpl(
     private val repoConfig: RepositoryConfig,
+    private val trxManager: TransactionManager,
 ) : ConfigService {
     override fun createConfig(
         userId: Int,
+        projectId: Int?,
         llmCredentialsId: Int,
         modelName: String,
         maxIter: Int,
@@ -23,17 +27,33 @@ class ConfigServiceImpl(
     ): Either<ConfigError, Config> {
         validateInput(modelName, maxIter, checkPointInterval)?.let { return failure(it) }
 
-        val id = repoConfig.createConfig(
-            userId = userId,
-            llmCredentialsId = llmCredentialsId,
-            modelName = modelName,
-            maxIter = maxIter,
-            checkPointInterval = checkPointInterval,
-            additionalParams = additionalParams,
-        )
+        return trxManager.run {
+            val project =
+                projectId?.let { projectId ->
+                    val current = repoProjects.findById(projectId) ?: return@run failure(ConfigError.ProjectNotFound)
+                    if (current.userId != userId) return@run failure(ConfigError.AccessDenied)
+                    if (current.status != EvolutionStatus.CREATED) return@run failure(ConfigError.ProjectNotEditable)
+                    current
+                }
 
-        val created = repoConfig.findById(id) ?: return failure(ConfigError.ConfigNotFound)
-        return success(created)
+            val id =
+                repoConfigs.createConfig(
+                    userId = userId,
+                    llmCredentialsId = llmCredentialsId,
+                    modelName = modelName,
+                    maxIter = maxIter,
+                    checkPointInterval = checkPointInterval,
+                    additionalParams = additionalParams,
+                )
+
+            val created = repoConfigs.findById(id) ?: return@run failure(ConfigError.ConfigNotFound)
+
+            if (project != null) {
+                repoProjects.save(project.copy(configId = created.id))
+            }
+
+            success(created)
+        }
     }
 
     override fun getConfigById(configId: Int, userId: Int): Either<ConfigError, Config> {

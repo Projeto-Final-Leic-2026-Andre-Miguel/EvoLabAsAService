@@ -1,7 +1,27 @@
 package com.example.evolab.service.configService
 
 import com.example.evolab.domain.config.Config
+import com.example.evolab.domain.LLMCredentials.LLM
+import com.example.evolab.domain.LLMCredentials.LLMCredentials
+import com.example.evolab.domain.checkpoint.Checkpoint
+import com.example.evolab.domain.evolution.EvolutionStatus
+import com.example.evolab.domain.job.Job
+import com.example.evolab.domain.metrics.Metric
+import com.example.evolab.domain.project.Project
+import com.example.evolab.domain.token.Token
+import com.example.evolab.domain.token.TokenValidationInfo
+import com.example.evolab.domain.user.AuthProvider
+import com.example.evolab.domain.user.User
+import com.example.evolab.repo.repoCheckpoints.RepositoryCheckpoints
 import com.example.evolab.repo.repoConfig.RepositoryConfig
+import com.example.evolab.repo.repoJobs.RepositoryJobs
+import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
+import com.example.evolab.repo.repoMetrics.RepositoryMetrics
+import com.example.evolab.repo.repoProject.RepositoryProject
+import com.example.evolab.repo.repoToken.RepositoryToken
+import com.example.evolab.repo.repoUser.RepositoryUser
+import com.example.evolab.repo.transactions.Transaction
+import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.auxiliary.Either
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -12,27 +32,27 @@ import java.time.Instant
 class ConfigServiceImplTest {
     @Test
     fun createConfigRejectsInvalidModelName() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
 
-        val result = service.createConfig(1, 1, " ", 10, 1, emptyMap())
+        val result = service.createConfig(1, null, 1, " ", 10, 1, emptyMap())
 
         assertLeftEquals(result, ConfigError.InvalidModelName)
     }
 
     @Test
     fun createConfigRejectsInvalidMaxIter() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
 
-        val result = service.createConfig(1, 1, "model", 0, 1, emptyMap())
+        val result = service.createConfig(1, null, 1, "model", 0, 1, emptyMap())
 
         assertLeftEquals(result, ConfigError.InvalidMaxIterations)
     }
 
     @Test
     fun createConfigRejectsInvalidCheckpoint() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
 
-        val result = service.createConfig(1, 1, "model", 5, 6, emptyMap())
+        val result = service.createConfig(1, null, 1, "model", 5, 6, emptyMap())
 
         assertLeftEquals(result, ConfigError.InvalidCheckpointInterval)
     }
@@ -40,9 +60,9 @@ class ConfigServiceImplTest {
     @Test
     fun createConfigReturnsCreatedConfig() {
         val repo = FakeRepositoryConfig()
-        val service = ConfigServiceImpl(repo)
+        val service = createService(configRepo = repo)
 
-        val result = service.createConfig(7, 10, "model", 20, 5, mapOf("k" to "v"))
+        val result = service.createConfig(7, null, 10, "model", 20, 5, mapOf("k" to "v"))
         val config = assertRight(result)
 
         assertEquals(7, config.userId)
@@ -50,10 +70,32 @@ class ConfigServiceImplTest {
     }
 
     @Test
+    fun createConfigAssignsConfigToProjectWhenProjectIdIsProvided() {
+        val configRepo = FakeRepositoryConfig()
+        val projectRepo = FakeRepositoryProject()
+        val project = projectRepo.seed(userId = 7, configId = null, status = EvolutionStatus.CREATED)
+        val service = createService(configRepo = configRepo, projectRepo = projectRepo)
+
+        val result = service.createConfig(7, project.id, 10, "model", 20, 5, mapOf("k" to "v"))
+        val created = assertRight(result)
+
+        assertEquals(created.id, projectRepo.findById(project.id)?.configId)
+    }
+
+    @Test
+    fun createConfigRejectsUnknownProject() {
+        val service = createService()
+
+        val result = service.createConfig(7, 999, 10, "model", 20, 5, emptyMap())
+
+        assertLeftEquals(result, ConfigError.ProjectNotFound)
+    }
+
+    @Test
     fun getConfigByIdRejectsAccessFromDifferentUser() {
         val repo = FakeRepositoryConfig()
         val config = repo.seed(userId = 1)
-        val service = ConfigServiceImpl(repo)
+        val service = createService(configRepo = repo)
 
         val result = service.getConfigById(config.id, userId = 2)
 
@@ -64,7 +106,7 @@ class ConfigServiceImplTest {
     fun updateConfigPersistsNewValues() {
         val repo = FakeRepositoryConfig()
         val current = repo.seed(userId = 1)
-        val service = ConfigServiceImpl(repo)
+        val service = createService(configRepo = repo)
 
         val result =
             service.updateConfig(
@@ -86,7 +128,7 @@ class ConfigServiceImplTest {
     fun deleteConfigReturnsErrorWhenRepositoryDeleteFails() {
         val repo = FakeRepositoryConfig(forceDeleteFailure = true)
         val current = repo.seed(userId = 1)
-        val service = ConfigServiceImpl(repo)
+        val service = createService(configRepo = repo)
 
         val result = service.deleteConfig(current.id, userId = 1)
 
@@ -95,7 +137,7 @@ class ConfigServiceImplTest {
 
     @Test
     fun buildRuntimeConfigEnrichesAdditionalParamsWithProjectAndJob() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
         val config =
             Config(
                 id = 1,
@@ -117,7 +159,7 @@ class ConfigServiceImplTest {
 
     @Test
     fun generateAndCleanupTemporaryConfigFileWorks() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
 
         val fileResult = service.generateTemporaryConfigFile(validRuntimePayload())
         val path = assertRight(fileResult)
@@ -134,7 +176,7 @@ class ConfigServiceImplTest {
 
     @Test
     fun generateTemporaryConfigFileReturnsErrorWhenPayloadIsInvalid() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
         val invalidPayload = mapOf("max_iterations" to 100)
 
         val result = service.generateTemporaryConfigFile(invalidPayload)
@@ -145,7 +187,7 @@ class ConfigServiceImplTest {
 
     @Test
     fun generateTemporaryConfigFileReturnsErrorWhenCustomFeaturesAreNotDeclared() {
-        val service = ConfigServiceImpl(FakeRepositoryConfig())
+        val service = createService()
         val payload = validRuntimePayload().toMutableMap()
         val database = (payload["database"] as Map<String, Any>).toMutableMap()
         database["feature_dimensions"] = listOf("complexity", "correctness")
@@ -166,6 +208,11 @@ class ConfigServiceImplTest {
         assertTrue(result is Either.Left)
         assertEquals(expected, (result as Either.Left).value)
     }
+
+    private fun createService(
+        configRepo: FakeRepositoryConfig = FakeRepositoryConfig(),
+        projectRepo: FakeRepositoryProject = FakeRepositoryProject(),
+    ) = ConfigServiceImpl(configRepo, FakeTransactionManager(configRepo, projectRepo))
 }
 
 private fun validRuntimePayload(): Map<String, Any> =
@@ -279,6 +326,147 @@ private class FakeRepositoryConfig(
     override fun clear() {
         configs.clear()
     }
+}
+
+private class FakeRepositoryProject : RepositoryProject {
+    private val projects = linkedMapOf<Int, Project>()
+    private var nextId = 1
+
+    fun seed(
+        userId: Int,
+        configId: Int?,
+        status: EvolutionStatus,
+    ): Project {
+        val project =
+            Project(
+                id = nextId++,
+                userId = userId,
+                configId = configId,
+                name = "project-$nextId",
+                description = null,
+                initialProgram = "def solve(x): return x",
+                evaluatorCode = "def evaluate(candidate): return 1.0",
+                status = status,
+                createdAt = Instant.now(),
+            )
+        projects[project.id] = project
+        return project
+    }
+
+    override fun createProject(
+        userId: Int,
+        name: String,
+        description: String?,
+        initialProgram: String?,
+        evaluatorCode: String?,
+        status: EvolutionStatus,
+    ): Project = error("unused")
+
+    override fun findAllByUserId(userId: Int): List<Project> = projects.values.filter { it.userId == userId }
+
+    override fun findAllByConfigId(configId: Int): List<Project> = projects.values.filter { it.configId == configId }
+
+    override fun findAllByStatus(status: EvolutionStatus): List<Project> = projects.values.filter { it.status == status }
+
+    override fun findAllByName(name: String): List<Project> = projects.values.filter { it.name == name }
+
+    override fun findById(id: Int): Project? = projects[id]
+
+    override fun findAll(): List<Project> = projects.values.toList()
+
+    override fun save(entity: Project) {
+        projects[entity.id] = entity
+    }
+
+    override fun deleteById(id: Int): Boolean = projects.remove(id) != null
+
+    override fun clear() {
+        projects.clear()
+    }
+}
+
+private class FakeTransactionManager(
+    private val configRepo: RepositoryConfig,
+    private val projectRepo: RepositoryProject,
+) : TransactionManager {
+    override fun <R> run(block: Transaction.() -> R): R = FakeTransaction(configRepo, projectRepo).block()
+}
+
+private class FakeTransaction(
+    override val repoConfigs: RepositoryConfig,
+    override val repoProjects: RepositoryProject,
+) : Transaction {
+    override val repoUsers: RepositoryUser =
+        object : RepositoryUser {
+            override fun createLocalUser(name: String, email: String, passwordHash: String): User = error("unused")
+            override fun createOAuthUser(name: String, email: String, provider: AuthProvider, providerId: String): User = error("unused")
+            override fun findByEmail(email: String): User? = error("unused")
+            override fun findByProvider(provider: AuthProvider, providerId: String): User? = error("unused")
+            override fun findByTokenValidation(tokenValidationInfo: TokenValidationInfo): User? = error("unused")
+            override fun count(): Long = error("unused")
+            override fun findById(id: Int): User? = error("unused")
+            override fun findAll(): List<User> = error("unused")
+            override fun save(entity: User) = error("unused")
+            override fun deleteById(id: Int): Boolean = error("unused")
+            override fun clear() = error("unused")
+        }
+    override val repoLLmCredentials: RepositoryLLMCredentials =
+        object : RepositoryLLMCredentials {
+            override fun createLLMCredential(userId: Int, provider: LLM, apiKeyEncrypted: String): LLMCredentials = error("unused")
+            override fun findAllByUserId(userId: Int): List<LLMCredentials> = error("unused")
+            override fun findAllByProvider(provider: LLM): List<LLMCredentials> = error("unused")
+            override fun findById(id: Int): LLMCredentials? = error("unused")
+            override fun findAll(): List<LLMCredentials> = error("unused")
+            override fun save(entity: LLMCredentials) = error("unused")
+            override fun deleteById(id: Int): Boolean = error("unused")
+            override fun clear() = error("unused")
+        }
+    override val repoJobs: RepositoryJobs =
+        object : RepositoryJobs {
+            override fun createJob(projectId: Int, status: EvolutionStatus, containerId: String?, startedAt: Instant?, finishedAt: Instant?, bestSolution: String?, executionLogs: String?): Int = error("unused")
+            override fun findAllByProjectId(projectId: Int): List<Job> = error("unused")
+            override fun findAllByStatus(status: EvolutionStatus): List<Job> = error("unused")
+            override fun findByContainerId(containerId: String): Job? = error("unused")
+            override fun findById(id: Int): Job? = error("unused")
+            override fun findAll(): List<Job> = error("unused")
+            override fun save(entity: Job) = error("unused")
+            override fun deleteById(id: Int): Boolean = error("unused")
+            override fun clear() = error("unused")
+        }
+    override val repoMetrics: RepositoryMetrics =
+        object : RepositoryMetrics {
+            override fun createMetric(jobId: Int, iteration: Int, fitnessScore: Double, executionTime: Double?): Int = error("unused")
+            override fun findAllByJobId(jobId: Int): List<Metric> = error("unused")
+            override fun findByJobIdAndIteration(jobId: Int, iteration: Int): Metric? = error("unused")
+            override fun findById(id: Int): Metric? = error("unused")
+            override fun findAll(): List<Metric> = error("unused")
+            override fun save(entity: Metric) = error("unused")
+            override fun deleteById(id: Int): Boolean = error("unused")
+            override fun clear() = error("unused")
+        }
+    override val repoCheckpoints: RepositoryCheckpoints =
+        object : RepositoryCheckpoints {
+            override fun createCheckpoint(jobId: Int, metricsId: Int, iteration: Int, solution: String): Int = error("unused")
+            override fun findAllByJobId(jobId: Int): List<Checkpoint> = error("unused")
+            override fun findAllByMetricsId(metricsId: Int): List<Checkpoint> = error("unused")
+            override fun findByJobIdAndIteration(jobId: Int, iteration: Int): Checkpoint? = error("unused")
+            override fun findById(id: Int): Checkpoint? = error("unused")
+            override fun findAll(): List<Checkpoint> = error("unused")
+            override fun save(entity: Checkpoint) = error("unused")
+            override fun deleteById(id: Int): Boolean = error("unused")
+            override fun clear() = error("unused")
+        }
+    override val repoTokens: RepositoryToken =
+        object : RepositoryToken {
+            override fun createToken(token: Token, maxTokens: Int) = error("unused")
+            override fun findByTokenValidation(tokenValidation: TokenValidationInfo): Token? = error("unused")
+            override fun findAllByUserId(userId: Int): List<Token> = error("unused")
+            override fun getTokenByTokenValidationInfo(tokenValidationInfo: TokenValidationInfo): Pair<User, Token>? = error("unused")
+            override fun updateTokenLastUsed(tokenValidationInfo: TokenValidationInfo, now: Long) = error("unused")
+            override fun removeTokenByValidationInfo(tokenValidationInfo: TokenValidationInfo): Int = error("unused")
+        }
+
+    override fun rollback() {}
 }
 
 

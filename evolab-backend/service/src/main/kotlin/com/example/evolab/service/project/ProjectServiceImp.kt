@@ -16,7 +16,6 @@ class ProjectServiceImp(
 
     override fun createProject(
         userId: Int,
-        configId: Int?,
         name: String,
         description: String?,
         initialProgram: String?,
@@ -36,7 +35,6 @@ class ProjectServiceImp(
             success(
                 repoProjects.createProject(
                     userId = userId,
-                    configId = configId,
                     name = name,
                     description = description,
                     initialProgram = initialProgram,
@@ -59,6 +57,7 @@ class ProjectServiceImp(
 
             validateOwnership(project, userId)?.let { return@run it }
             validateMutableStatus(project)?.let { return@run it }
+            validateConfigAccess(configId, userId)?.let { return@run it }
 
             if (name != null) {
                 validateName(name)?.let { return@run it }
@@ -142,6 +141,27 @@ class ProjectServiceImp(
 
     private fun failureNotFound(projectId: Int) =
         failure(ProjectServiceErrors.ProjectNotFound("Project with id '$projectId' was not found"))
+
+    private fun Transaction.validateConfigAccess(
+        configId: Int?,
+        userId: Int,
+    ): Either<ProjectServiceErrors, Nothing>? {
+        if (configId == null) return null
+
+        val config =
+            repoConfigs.findById(configId)
+                ?: return failure(ProjectServiceErrors.ConfigNotFound("Config with id '$configId' was not found"))
+
+        if (config.userId != userId) {
+            return failure(
+                ProjectServiceErrors.ConfigAccessDenied(
+                    "User with id '$userId' cannot use config with id '$configId'",
+                ),
+            )
+        }
+
+        return null
+    }
 
     private fun validateName(name: String): Either<ProjectServiceErrors, Nothing>? {
         if (name.isBlank()) {

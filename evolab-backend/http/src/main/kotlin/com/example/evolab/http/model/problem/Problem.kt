@@ -1,3 +1,4 @@
+
 package com.example.evolab.http.model.problem
 
 import org.springframework.http.HttpStatus
@@ -39,9 +40,13 @@ sealed class Problem(
 
     data object ProjectNotFound : Problem(URI("$PROBLEM_URI_PATH/project-not-found"))
 
+    data object ConfigNotFound : Problem(URI("$PROBLEM_URI_PATH/config-not-found"))
+
     data object InvalidProjectInput : Problem(URI("$PROBLEM_URI_PATH/invalid-project-input"))
 
     data object NotProjectOwner : Problem(URI("$PROBLEM_URI_PATH/not-project-owner"))
+
+    data object ConfigAccessDenied : Problem(URI("$PROBLEM_URI_PATH/config-access-denied"))
 
     data object DuplicateProjectName : Problem(URI("$PROBLEM_URI_PATH/duplicate-project-name"))
 

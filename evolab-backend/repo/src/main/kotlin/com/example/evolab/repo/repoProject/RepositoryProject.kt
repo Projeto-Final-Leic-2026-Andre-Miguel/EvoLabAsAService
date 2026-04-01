@@ -7,7 +7,6 @@ import com.example.evolab.repo.Repository
 interface RepositoryProject : Repository<Project> {
     fun createProject(
         userId: Int,
-        configId: Int?,
         name: String,
         description: String?,
         initialProgram: String?,

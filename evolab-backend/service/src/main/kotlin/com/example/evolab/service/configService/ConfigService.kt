@@ -7,6 +7,7 @@ import java.nio.file.Path
 interface ConfigService {
     fun createConfig(
         userId: Int,
+        projectId: Int?,
         llmCredentialsId: Int,
         modelName: String,
         maxIter: Int,

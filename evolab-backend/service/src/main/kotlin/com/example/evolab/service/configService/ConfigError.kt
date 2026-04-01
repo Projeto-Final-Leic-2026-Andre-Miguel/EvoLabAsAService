@@ -3,7 +3,11 @@ package com.example.evolab.service.configService
 sealed class ConfigError {
     data object ConfigNotFound : ConfigError()
 
+    data object ProjectNotFound : ConfigError()
+
     data object AccessDenied : ConfigError()
+
+    data object ProjectNotEditable : ConfigError()
 
     data object InvalidModelName : ConfigError()
 
