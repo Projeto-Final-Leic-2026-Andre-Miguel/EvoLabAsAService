@@ -3,13 +3,21 @@ package com.example.evolab.service.configService
 sealed class ConfigError {
     data object ConfigNotFound : ConfigError()
 
+    data object ProjectNotFound : ConfigError()
+
     data object AccessDenied : ConfigError()
+
+    data object ProjectNotEditable : ConfigError()
 
     data object InvalidModelName : ConfigError()
 
     data object InvalidMaxIterations : ConfigError()
 
     data object InvalidCheckpointInterval : ConfigError()
+
+    data class InvalidOpenEvolveConfig(
+        val reason: String,
+    ) : ConfigError()
 
     data object ErrorDeletingConfig : ConfigError()
 

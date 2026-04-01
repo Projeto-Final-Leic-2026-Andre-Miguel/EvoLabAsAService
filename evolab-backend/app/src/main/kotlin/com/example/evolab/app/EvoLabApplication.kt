@@ -1,6 +1,8 @@
 package com.example.evolab.app
 
 import com.example.evolab.domain.user.UsersDomainConfig
+import com.example.evolab.repo.repoConfig.RepositoryConfig
+import com.example.evolab.repo.repoConfig.RepositoryConfigJdbi
 import com.example.evolab.repo.repoToken.RepositoryToken
 import com.example.evolab.repo.repoToken.RepositoryTokenJdbi
 import com.example.evolab.repo.repoUser.RepositoryUser
@@ -58,6 +60,9 @@ class EvoLabApplication {
     fun repositoryToken(jdbi: Jdbi): RepositoryToken = RepositoryTokenJdbi(jdbi.open())
 
     @Bean
+    fun repositoryConfig(jdbi: Jdbi): RepositoryConfig = RepositoryConfigJdbi(jdbi.open())
+
+    @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 
     @Bean
@@ -81,3 +86,4 @@ class EvoLabApplication {
 fun main(args: Array<String>) {
     runApplication<EvoLabApplication>(*args)
 }
+

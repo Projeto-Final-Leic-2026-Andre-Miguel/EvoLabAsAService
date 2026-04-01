@@ -18,7 +18,6 @@ object ProjectSql {
     const val CREATE_PROJECT = """
         INSERT INTO projects (
             user_id,
-            config_id,
             name,
             description,
             initial_program,
@@ -27,7 +26,6 @@ object ProjectSql {
         )
         VALUES (
             :userId,
-            :configId,
             :name,
             :description,
             :initialProgram,

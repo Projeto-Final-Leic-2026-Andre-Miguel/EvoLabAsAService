@@ -8,7 +8,6 @@ interface ProjectService {
 
     fun createProject(
         userId: Int,
-        configId: Int?,
         name: String,
         description: String?,
         initialProgram: String?,

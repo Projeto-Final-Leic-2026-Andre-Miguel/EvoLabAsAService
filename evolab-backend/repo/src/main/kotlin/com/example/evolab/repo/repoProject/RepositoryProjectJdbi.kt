@@ -11,24 +11,26 @@ class RepositoryProjectJdbi(
 
     override fun createProject(
         userId: Int,
-        configId: Int?,
         name: String,
         description: String?,
         initialProgram: String?,
         evaluatorCode: String?,
         status: EvolutionStatus,
-    ): Project =
-        handle
-            .createQuery(ProjectSql.CREATE_PROJECT)
-            .bind("userId", userId)
-            .bind("configId", configId)
-            .bind("name", name)
-            .bind("description", description)
-            .bind("initialProgram", initialProgram)
-            .bind("evaluatorCode", evaluatorCode)
-            .bind("status", status.name)
-            .mapTo<Project>()
-            .one()
+    ): Project {
+        val id =
+            handle
+                .createQuery(ProjectSql.CREATE_PROJECT)
+                .bind("userId", userId)
+                .bind("name", name)
+                .bind("description", description)
+                .bind("initialProgram", initialProgram)
+                .bind("evaluatorCode", evaluatorCode)
+                .bind("status", status.name)
+                .mapTo<Int>()
+                .one()
+
+        return findById(id) ?: error("Project with id '$id' was created but could not be loaded")
+    }
 
 
 

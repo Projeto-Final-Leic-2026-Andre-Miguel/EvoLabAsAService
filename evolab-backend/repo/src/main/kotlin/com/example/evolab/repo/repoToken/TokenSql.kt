@@ -1,7 +1,7 @@
 package com.example.evolab.repo.repoToken
 
 object TokenSql {
-	private const val BASE_SELECT = """
+    private const val BASE_SELECT = """
 		SELECT
 			token_validation AS \"tokenValidation\",
 			user_id AS \"userId\",
@@ -10,7 +10,7 @@ object TokenSql {
 		FROM tokens
 	"""
 
-	const val CREATE_TOKEN = """
+    const val CREATE_TOKEN = """
 		INSERT INTO tokens (
 			token_validation,
 			user_id,
@@ -25,18 +25,18 @@ object TokenSql {
 		)
 	"""
 
-	const val FIND_BY_TOKEN_VALIDATION = """
+    const val FIND_BY_TOKEN_VALIDATION = """
 		$BASE_SELECT
 		WHERE token_validation = :tokenValidation
 	"""
 
-	const val FIND_ALL_BY_USER_ID = """
+    const val FIND_ALL_BY_USER_ID = """
 		$BASE_SELECT
 		WHERE user_id = :userId
 		ORDER BY last_used_at DESC, created_at DESC
 	"""
 
-	const val GET_USER_AND_TOKEN_BY_VALIDATION = """
+    const val GET_USER_AND_TOKEN_BY_VALIDATION = """
 		SELECT
 			u.id AS u_id,
 			u.name AS u_name,
@@ -54,24 +54,24 @@ object TokenSql {
 		WHERE t.token_validation = :tokenValidation
 	"""
 
-	const val DELETE_OLDEST_TOKENS = """
+    const val DELETE_OLDEST_TOKENS = """
 		DELETE FROM tokens
 		WHERE token_validation IN (
 			SELECT token_validation
 			FROM tokens
 			WHERE user_id = :userId
-			ORDER BY last_used_at ASC, created_at ASC
-			OFFSET :offset
+            ORDER BY last_used_at DESC, created_at DESC
+            OFFSET :offset
 		)
 	"""
 
-	const val UPDATE_TOKEN_LAST_USED = """
+    const val UPDATE_TOKEN_LAST_USED = """
 		UPDATE tokens
 		SET last_used_at = :lastUsedAt
 		WHERE token_validation = :tokenValidation
 	"""
 
-	const val REMOVE_TOKEN_BY_VALIDATION = """
+    const val REMOVE_TOKEN_BY_VALIDATION = """
 		DELETE FROM tokens
 		WHERE token_validation = :tokenValidation
 	"""

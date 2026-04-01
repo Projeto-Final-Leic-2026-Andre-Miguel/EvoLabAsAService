@@ -6,11 +6,11 @@ import com.example.evolab.http.model.problem.Problem
 import com.example.evolab.http.model.project.CreateProjectInput
 import com.example.evolab.http.model.project.UpdateProjectDetailsInput
 import com.example.evolab.http.model.project.UpdateProjectStatusInput
-import com.example.evolab.service.project.ProjectService
-import com.example.evolab.service.project.ProjectServiceErrors
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
+import com.example.evolab.service.project.ProjectService
+import com.example.evolab.service.project.ProjectServiceErrors
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -22,99 +22,41 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-
 @RestController
 @RequestMapping("/api/projects")
 class ProjectController(
     private val projectService: ProjectService,
 ) {
-
     @PostMapping
     fun createProject(
         @RequestBody input: CreateProjectInput,
         authenticatedUser: AuthenticatedUser,
-    ): ResponseEntity<*> {
-        val result: Either<ProjectServiceErrors, Project> =
-            projectService.createProject(
-                userId = authenticatedUser.user.id,
-                configId = input.configId,
-                name = input.name,
-                description = input.description,
-                initialProgram = input.initialProgram,
-                evaluatorCode = input.evaluatorCode,
-            )
+    ): ResponseEntity<*> =
+        try {
+            val result: Either<ProjectServiceErrors, Project> =
+                projectService.createProject(
+                    userId = authenticatedUser.user.id,
+                    name = input.name,
+                    description = input.description,
+                    initialProgram = input.initialProgram,
+                    evaluatorCode = input.evaluatorCode,
+                )
 
-        return when (result) {
-            is Success -> {
-                ResponseEntity.status(HttpStatus.CREATED)
-                    .header("Location", "/api/projects/${result.value.id}")
-                    .body(result.value)
+            when (result) {
+                is Success ->
+                    ResponseEntity
+                        .status(HttpStatus.CREATED)
+                        .header("Location", "/api/projects/${result.value.id}")
+                        .body(result.value)
+
+                is Failure -> mapServiceErrors(result.value)
             }
-
-            is Failure -> mapServiceErrors(result.value)
+        } catch (_: Exception) {
+            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
-    }
-
-    @PutMapping("/{id}")
-    fun updateProjectDetails(
-        @PathVariable id: Int,
-        @RequestBody input: UpdateProjectDetailsInput,
-        authenticatedUser: AuthenticatedUser,
-    ): ResponseEntity<*> {
-        val result: Either<ProjectServiceErrors, Project> =
-            projectService.updateProjectDetails(
-                projectId = id,
-                userId = authenticatedUser.user.id,
-                name = input.name,
-                description = input.description,
-                configId = input.configId,
-                initialProgram = input.initialProgram,
-                evaluatorCode = input.evaluatorCode,
-            )
-
-        return when (result) {
-            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-            is Failure -> mapServiceErrors(result.value)
-        }
-    }
-
-    // Worker-driven status transition endpoint: no authenticated user ownership check.
-//    @PutMapping("/{id}/status")
-//    fun updateProjectStatus(
-//        @PathVariable id: Int,
-//        @RequestBody input: UpdateProjectStatusInput,
-//    ): ResponseEntity<*> {
-//        val result: Either<ProjectServiceErrors, Project> =
-//            projectService.updateProjectStatus(
-//                projectId = id,
-//                newStatus = input.status,
-//            )
-//
-//        return when (result) {
-//            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-//            is Failure -> mapServiceErrors(result.value)
-//        }
-//    }
-
-    @GetMapping("/{id}")
-    fun getProject(
-        @PathVariable id: Int,
-        authenticatedUser: AuthenticatedUser,
-    ): ResponseEntity<*> {
-        val result: Either<ProjectServiceErrors, Project> =
-            projectService.getProject(
-                projectId = id,
-                userId = authenticatedUser.user.id,
-            )
-
-        return when (result) {
-            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-            is Failure -> mapServiceErrors(result.value)
-        }
-    }
 
     @GetMapping("/me")
-    fun getAllProjectsFromUser(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
+    fun getProjectsFromAuthenticatedUser(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
         val result = projectService.getAllProjectsFromUser(authenticatedUser.user.id)
 
         return when (result) {
@@ -133,6 +75,67 @@ class ProjectController(
         }
     }
 
+    @GetMapping("/{id}")
+    fun getProject(
+        @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser,
+    ): ResponseEntity<*> {
+        val result: Either<ProjectServiceErrors, Project> =
+            projectService.getProject(
+                projectId = id,
+                userId = authenticatedUser.user.id,
+            )
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
+    @PutMapping("/{id}")
+    fun updateProjectDetails(
+        @PathVariable id: Int,
+        @RequestBody input: UpdateProjectDetailsInput,
+        authenticatedUser: AuthenticatedUser,
+    ): ResponseEntity<*> =
+        try {
+            val result: Either<ProjectServiceErrors, Project> =
+                projectService.updateProjectDetails(
+                    projectId = id,
+                    userId = authenticatedUser.user.id,
+                    name = input.name,
+                    description = input.description,
+                    configId = input.configId,
+                    initialProgram = input.initialProgram,
+                    evaluatorCode = input.evaluatorCode,
+                )
+
+            when (result) {
+                is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+                is Failure -> mapServiceErrors(result.value)
+            }
+        } catch (_: Exception) {
+            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
+        }
+
+    // Worker lifecycle updates should not depend on project ownership from the API caller.
+    @PutMapping("/{id}/status")
+    fun updateProjectStatus(
+        @PathVariable id: Int,
+        @RequestBody input: UpdateProjectStatusInput,
+    ): ResponseEntity<*> {
+        val result: Either<ProjectServiceErrors, Project> =
+            projectService.updateProjectStatus(
+                projectId = id,
+                newStatus = input.status,
+            )
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
     @DeleteMapping("/{id}")
     fun deleteProject(
         @PathVariable id: Int,
@@ -141,8 +144,10 @@ class ProjectController(
         val result = projectService.deleteProject(id, authenticatedUser.user.id)
 
         return when (result) {
-            is Success -> ResponseEntity.status(HttpStatus.OK)
-                .body("Project with id '${result.value}' was successfully deleted")
+            is Success ->
+                ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body("Project with id '${result.value}' was successfully deleted")
 
             is Failure -> mapServiceErrors(result.value)
         }
@@ -151,15 +156,11 @@ class ProjectController(
     private fun mapServiceErrors(error: ProjectServiceErrors): ResponseEntity<*> =
         when (error) {
             is ProjectServiceErrors.ProjectNotFound -> Problem.ProjectNotFound.response(HttpStatus.NOT_FOUND)
+            is ProjectServiceErrors.ConfigNotFound -> Problem.ConfigNotFound.response(HttpStatus.NOT_FOUND)
             is ProjectServiceErrors.InvalidProjectInput -> Problem.InvalidProjectInput.response(HttpStatus.BAD_REQUEST)
             is ProjectServiceErrors.NotProjectOwner -> Problem.NotProjectOwner.response(HttpStatus.FORBIDDEN)
+            is ProjectServiceErrors.ConfigAccessDenied -> Problem.ConfigAccessDenied.response(HttpStatus.FORBIDDEN)
             is ProjectServiceErrors.DuplicateProjectName -> Problem.DuplicateProjectName.response(HttpStatus.CONFLICT)
             is ProjectServiceErrors.InvalidProjectStatus -> Problem.InvalidProjectStatus.response(HttpStatus.CONFLICT)
         }
-
-
-
-
-
-
 }

@@ -52,7 +52,7 @@ CREATE TABLE evolution_configs (
 CREATE TABLE projects (
                           id                  SERIAL          PRIMARY KEY,
                           user_id             INTEGER         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                          config_id           INTEGER         REFERENCES evolution_configs(id) ON DELETE SET NULL,
+                          config_id           INTEGER         DEFAULT NULL REFERENCES evolution_configs(id) ON DELETE SET NULL,
                           name                VARCHAR(255)    NOT NULL,
                           description         TEXT,
                           initial_program     TEXT            ,       -- código inicial a evoluir

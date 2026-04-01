@@ -20,6 +20,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
 }
 
 kotlin {
