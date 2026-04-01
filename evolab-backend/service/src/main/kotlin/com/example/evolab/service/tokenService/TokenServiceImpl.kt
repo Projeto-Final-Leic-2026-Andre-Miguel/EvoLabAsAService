@@ -50,6 +50,13 @@ class TokenServiceImpl(
             return failure(TokenError.InvalidCredentials)
         }
 
+        return issueTokenFor(user)
+    }
+
+    override fun createTokenForUser(user: User): Either<TokenError, TokenExternalInfo> =
+        issueTokenFor(user)
+
+    private fun issueTokenFor(user: User): Either<TokenError, TokenExternalInfo> {
         val tokenValue = generateTokenValue()
         val now = clock.instant().toEpochMilli()
         val newToken =

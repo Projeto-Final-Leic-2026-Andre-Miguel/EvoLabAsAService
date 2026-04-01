@@ -1,4 +1,4 @@
-package com.example.evolab.app
+package com.example.evolab.app.security
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -6,7 +6,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
-class SecurityConfig {
+class SecurityConfig(
+    private val oAuth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
+) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -15,11 +17,19 @@ class SecurityConfig {
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
             .authorizeHttpRequests { auth ->
-                auth.anyRequest().permitAll()
+                auth
+                    .requestMatchers(
+                        "/oauth2/**",
+                        "/login/**",
+                        "/api/users/local",
+                        "/api/users/token",
+                    ).permitAll()
+                    .anyRequest().permitAll()
             }
             .oauth2ResourceServer { it.disable() }
-            .oauth2Login { it.disable() }
-            .oauth2Client { it.disable() }
+            .oauth2Login { oauth2 ->
+                oauth2.successHandler(oAuth2LoginSuccessHandler)
+            }
 
         return http.build()
     }

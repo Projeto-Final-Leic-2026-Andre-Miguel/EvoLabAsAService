@@ -10,6 +10,8 @@ interface TokenService {
         password: String,
     ): Either<TokenError, TokenExternalInfo>
 
+    fun createTokenForUser(user: User): Either<TokenError, TokenExternalInfo>
+
     fun revokeToken(token: String): Either<TokenError, Boolean>
 
     fun getUserByToken(token: String): Either<TokenError, User>
