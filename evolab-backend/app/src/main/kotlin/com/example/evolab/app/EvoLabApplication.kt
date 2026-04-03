@@ -3,6 +3,8 @@ package com.example.evolab.app
 import com.example.evolab.domain.user.UsersDomainConfig
 import com.example.evolab.repo.repoConfig.RepositoryConfig
 import com.example.evolab.repo.repoConfig.RepositoryConfigJdbi
+import com.example.evolab.repo.repoProject.RepositoryProject
+import com.example.evolab.repo.repoProject.RepositoryProjectJdbi
 import com.example.evolab.repo.repoToken.RepositoryToken
 import com.example.evolab.repo.repoToken.RepositoryTokenJdbi
 import com.example.evolab.repo.repoUser.RepositoryUser
@@ -55,6 +57,9 @@ class EvoLabApplication {
 
     @Bean
     fun repositoryUser(jdbi: Jdbi): RepositoryUser = RepositoryUserJdbi(jdbi.open())
+
+    @Bean
+    fun repositoryProject(jdbi: Jdbi): RepositoryProject = RepositoryProjectJdbi(jdbi.open())
 
     @Bean
     fun repositoryToken(jdbi: Jdbi): RepositoryToken = RepositoryTokenJdbi(jdbi.open())
