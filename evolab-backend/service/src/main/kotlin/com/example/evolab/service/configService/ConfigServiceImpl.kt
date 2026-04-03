@@ -3,6 +3,7 @@ package com.example.evolab.service.configService
 import com.example.evolab.domain.config.Config
 import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.repo.repoConfig.RepositoryConfig
+import com.example.evolab.repo.repoProject.RepositoryProject
 import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.failure
@@ -14,7 +15,7 @@ import java.nio.file.Path
 @Named
 class ConfigServiceImpl(
     private val repoConfig: RepositoryConfig,
-    private val trxManager: TransactionManager,
+    private val repoProject: RepositoryProject
 ) : ConfigService {
     override fun createConfig(
         userId: Int,
@@ -27,17 +28,16 @@ class ConfigServiceImpl(
     ): Either<ConfigError, Config> {
         validateInput(modelName, maxIter, checkPointInterval)?.let { return failure(it) }
 
-        return trxManager.run {
             val project =
                 projectId?.let { projectId ->
-                    val current = repoProjects.findById(projectId) ?: return@run failure(ConfigError.ProjectNotFound)
-                    if (current.userId != userId) return@run failure(ConfigError.AccessDenied)
-                    if (current.status != EvolutionStatus.CREATED) return@run failure(ConfigError.ProjectNotEditable)
+                    val current = repoProject.findById(projectId) ?: return failure(ConfigError.ProjectNotFound)
+                    if (current.userId != userId) return failure(ConfigError.AccessDenied)
+                    if (current.status != EvolutionStatus.CREATED) return failure(ConfigError.ProjectNotEditable)
                     current
                 }
 
             val id =
-                repoConfigs.createConfig(
+                repoConfig.createConfig(
                     userId = userId,
                     llmCredentialsId = llmCredentialsId,
                     modelName = modelName,
@@ -46,15 +46,15 @@ class ConfigServiceImpl(
                     additionalParams = additionalParams,
                 )
 
-            val created = repoConfigs.findById(id) ?: return@run failure(ConfigError.ConfigNotFound)
+            val created = repoConfig.findById(id) ?: return failure(ConfigError.ConfigNotFound)
 
             if (project != null) {
-                repoProjects.save(project.copy(configId = created.id))
+                repoProject.save(project.copy(configId = created.id))
             }
 
-            success(created)
+            return success(created)
         }
-    }
+
 
     override fun getConfigById(configId: Int, userId: Int): Either<ConfigError, Config> {
         val config = repoConfig.findById(configId) ?: return failure(ConfigError.ConfigNotFound)
@@ -114,14 +114,14 @@ class ConfigServiceImpl(
     override fun generateTemporaryConfigFile(
         runtimeConfig: Map<String, Any>,
     ): Either<ConfigError, Path> {
-        val openEvolveConfig = OpenEvolveConfigAuxiliary.toOpenEvolveConfig(runtimeConfig)
+        val openEvolveConfig = OpenEvolveConfigParser.toOpenEvolveConfig(runtimeConfig)
             ?: return failure(ConfigError.InvalidOpenEvolveConfig("Invalid OpenEvolve payload structure"))
 
-        OpenEvolveConfigAuxiliary.validateOpenEvolveConfig(openEvolveConfig)?.let { return failure(it) }
+        OpenEvolveConfigValidator.validateOpenEvolveConfig(openEvolveConfig)?.let { return failure(it) }
 
         return try {
             val tempFile = Files.createTempFile("evolab-config-", ".yaml")
-            Files.writeString(tempFile, OpenEvolveConfigAuxiliary.renderOpenEvolveYaml(openEvolveConfig))
+            Files.writeString(tempFile, OpenEvolveYamlRenderer.renderOpenEvolveYaml(openEvolveConfig))
             success(tempFile)
         } catch (_: Exception) {
             failure(ConfigError.ErrorCreatingTemporaryConfigFile)
