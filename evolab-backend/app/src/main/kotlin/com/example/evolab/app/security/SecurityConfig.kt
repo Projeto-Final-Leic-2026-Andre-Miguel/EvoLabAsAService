@@ -4,11 +4,21 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.beans.factory.annotation.Value
+import com.example.evolab.service.security.EncryptionService
+import com.example.evolab.service.security.EncryptionServiceImpl
 
 @Configuration
 class SecurityConfig(
     private val oAuth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
 ) {
+
+    @Bean
+    fun encryptionService(
+        @Value("\${encryption.secret-key}") secretKey: String
+    ): EncryptionService {
+        return EncryptionServiceImpl(secretKey)
+    }
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -34,5 +44,3 @@ class SecurityConfig(
         return http.build()
     }
 }
-
-

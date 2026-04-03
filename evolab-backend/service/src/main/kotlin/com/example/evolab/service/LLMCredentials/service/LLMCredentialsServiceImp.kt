@@ -11,6 +11,7 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.auxiliary.failure
 import com.example.evolab.service.auxiliary.success
+import com.example.evolab.service.security.EncryptionService
 import jakarta.inject.Named
 
 
@@ -18,12 +19,13 @@ import jakarta.inject.Named
 class LLMCredentialsServiceImp(
     private val llmValidator: LLMCrendentialsValidator,
     private val trxManager: TransactionManager,
+    private val encryptionService: EncryptionService
 ) : LLMCredentialsService {
 
     override suspend fun createLLMCredential(
         userId: Int,
         llm: LLM,
-        apiKey: String?,
+        apiKey: String,
     ): Either<LLMCredentialsServiceErrors, LLMCredentials> {
 
         when (val validation = llmValidator.validateApiKeyForLLM(llm, apiKey)) {
@@ -40,8 +42,7 @@ class LLMCredentialsServiceImp(
                 )
             }
 
-            // TODO: Melhor metodo de guardar a chave encriptada do cliente
-            val apiKeyEncrypted = "por fazer"
+            val apiKeyEncrypted = encryptionService.encrypt(apiKey)
 
             val created = repoLLmCredentials.createLLMCredential(userId, llm, apiKeyEncrypted)
             success(created)
@@ -79,7 +80,7 @@ class LLMCredentialsServiceImp(
     override suspend fun updateLLMCredential(
         id: Int,
         userId: Int,
-        apiKey: String?,
+        apiKey: String,
     ): Either<LLMCredentialsServiceErrors, LLMCredentials> {
 
         val credential = trxManager.run {
@@ -99,8 +100,7 @@ class LLMCredentialsServiceImp(
         }
 
         return trxManager.run {
-            // TODO: Aplicar a encriptação da chave antes de guardar
-            val apiKeyEncrypted = "por fazer"
+            val apiKeyEncrypted = encryptionService.encrypt(apiKey)
 
             val updated = credential.copy(apiKeyEncrypted = apiKeyEncrypted)
             repoLLmCredentials.save(updated)

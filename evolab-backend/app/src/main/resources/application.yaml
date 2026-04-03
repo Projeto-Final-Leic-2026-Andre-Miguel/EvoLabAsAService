@@ -11,3 +11,5 @@ spring:
               - profile
               - email
 
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}
