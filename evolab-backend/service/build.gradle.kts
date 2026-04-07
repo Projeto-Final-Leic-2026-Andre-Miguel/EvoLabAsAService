@@ -21,7 +21,10 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
 
+    implementation("com.github.docker-java:docker-java:3.3.6")
+    implementation("com.github.docker-java:docker-java-transport-httpclient5:3.3.6")
 
+    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     testImplementation(kotlin("test"))
@@ -35,4 +38,3 @@ kotlin {
 tasks.test {
     useJUnitPlatform()
 }
-
