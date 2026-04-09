@@ -1,141 +1,208 @@
 @baseUrl = http://localhost:8080
-@token = kaxjRitvVELOjT6HQsSo8odtQAT0tZVyMb2_z8ud3oA=
-@userIdToDelete = 8
-@localEmail = Teste3@evolab.dev
-@localPassword = 12345
-@nome = Teste
-@emailTeste = pedrofdd@gmail.com
-@openAIKey = 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
-@geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
-//TODO: Ver tratamento de erros quando já existe, no caso ver o pq do erro 409
-### Criar utilizador local
+@localUserName = request-http-user
+@localUserEmail = request-http-user@evolab.dev
+@localUserPassword = 12345
+@oauthUserName = request-http-oauth
+@oauthUserEmail = request-http-oauth@evolab.dev
+@oauthProvider = GOOGLE
+@oauthProviderId = google-sub-request-http
+@projectName = EvoLab HTTP Demo
+@projectDescription = Projeto criado pelo Requests.http
+@updatedProjectName = EvoLab HTTP Demo Updated
+@updatedProjectDescription = Projeto atualizado pelo Requests.http
+@initialProgram = def solve
+@updatedInitialProgram = def solv
+@evaluatorCode = def evaluate
+@updatedEvaluatorCode = def evaluate
+@projectStatus = QUEUED
+@llmProvider = OPENAI
+@llmApiKey = sk-your-real-openai-key
+@updatedLlmApiKey = sk-your-real-openai-key-updated
+@modelName = gpt-4o-mini
+@updatedModelName = gpt-4.1-mini
+@maxIter = 20
+@updatedMaxIter = 30
+@checkpointInterval = 5
+@updatedCheckpointInterval = 10
+@jobId = 1
+
+
+### UserController - Create local user
 POST {{baseUrl}}/api/users/local
 Content-Type: application/json
 
 {
-  "name": "teste",
-  "email": "{{emailTeste}}",
-  "password": "{{localPassword}}"
+  "name": "{{localUserName}}",
+  "email": "{{localUserEmail}}",
+  "password": "{{localUserPassword}}"
 }
 
-### http://localhost:8080/oauth2/authorization/google
-// Este é o endpoint para autenticação via google, quando concluido, redireciona automaticamete para o endpoint /me
+### UserController - Create OAuth user
+POST {{baseUrl}}/api/users/oauth
+Content-Type: application/json
 
+{
+  "name": "{{oauthUserName}}",
+  "email": "{{oauthUserEmail}}",
+  "provider": "{{oauthProvider}}",
+  "providerId": "{{oauthProviderId}}"
+}
 
-### Obter token (login local)
+### UserController - Create token
 POST {{baseUrl}}/api/users/token
 Content-Type: application/json
 
 {
-  "email": "{{emailTeste}}",
-  "password": "{{localPassword}}"
+  "email": "{{localUserEmail}}",
+  "password": "{{localUserPassword}}"
 }
 
-###
-//TODO: Ver o tratamento de erros, não pode rebentar com 500 acho eu?
-### Obter utilizador autenticado
+### UserController - Get authenticated user
 GET {{baseUrl}}/api/me
 Authorization: Bearer {{token}}
 
-### Logout
+### UserController - Get all users
+GET {{baseUrl}}/api/users
+
+### ProjectController - Create project
+POST {{baseUrl}}/api/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "{{projectName}}",
+  "description": "{{projectDescription}}",
+  "initialProgram": "{{initialProgram}}",
+  "evaluatorCode": "{{evaluatorCode}}"
+}
+
+### ProjectController - Get authenticated user's projects
+GET {{baseUrl}}/api/projects/me
+Authorization: Bearer {{token}}
+
+### ProjectController - Get all projects
+GET {{baseUrl}}/api/projects
+
+### ProjectController - Get project by id
+GET {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{token}}
+
+### LLMCredentialsController - Create LLM credential
+POST {{baseUrl}}/api/llm-credentials
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "llm": "{{llmProvider}}",
+  "apiKey": "{{llmApiKey}}"
+}
+
+### LLMCredentialsController - Get LLM credential by id
+GET {{baseUrl}}/api/llm-credentials/{{llmCredentialId}}
+Authorization: Bearer {{token}}
+
+### ConfigController - Create config
+POST {{baseUrl}}/api/configs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": {{projectId}},
+  "llmCredentialsId": {{llmCredentialId}},
+  "modelName": "{{modelName}}",
+  "maxIter": {{maxIter}},
+  "checkPointInterval": {{checkpointInterval}},
+  "additionalParams": {
+    "llm.api_key": "${OPENAI_API_KEY}",
+    "database.feature_dimensions": "complexity,diversity",
+    "prompt.num_top_programs": "3"
+  }
+}
+
+### ConfigController - Get config by id
+GET {{baseUrl}}/api/configs/{{configId}}
+Authorization: Bearer {{token}}
+
+### ConfigController - Get authenticated user's configs
+GET {{baseUrl}}/api/configs/me
+Authorization: Bearer {{token}}
+
+### ConfigController - Generate temporary config file
+POST {{baseUrl}}/api/configs/{{configId}}/temporary-file
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": {{projectId}},
+  "jobId": {{jobId}}
+}
+
+### ConfigController - Update config
+PUT {{baseUrl}}/api/configs/{{configId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "modelName": "{{updatedModelName}}",
+  "maxIter": {{updatedMaxIter}},
+  "checkPointInterval": {{updatedCheckpointInterval}},
+  "additionalParams": {
+    "llm.api_key": "${OPENAI_API_KEY}",
+    "database.feature_dimensions": "complexity,diversity",
+    "prompt.num_top_programs": "4",
+    "evaluator.parallel_evaluations": "2"
+  }
+}
+
+### ProjectController - Update project details
+PUT {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "{{updatedProjectName}}",
+  "description": "{{updatedProjectDescription}}",
+  "configId": {{configId}},
+  "initialProgram": "{{updatedInitialProgram}}",
+  "evaluatorCode": "{{updatedEvaluatorCode}}"
+}
+
+### ProjectController - Update project status
+PUT {{baseUrl}}/api/projects/{{projectId}}/status
+Content-Type: application/json
+
+{
+  "status": "{{projectStatus}}"
+}
+
+### LLMCredentialsController - Update LLM credential
+PUT {{baseUrl}}/api/llm-credentials/{{llmCredentialId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "llm": "{{llmProvider}}",
+  "apiKey": "{{updatedLlmApiKey}}"
+}
+
+### ConfigController - Delete config
+DELETE {{baseUrl}}/api/configs/{{configId}}
+Authorization: Bearer {{token}}
+
+### LLMCredentialsController - Delete LLM credential
+DELETE {{baseUrl}}/api/llm-credentials/{{llmCredentialId}}
+Authorization: Bearer {{token}}
+
+### ProjectController - Delete project
+DELETE {{baseUrl}}/api/projects/{{projectId}}
+Authorization: Bearer {{token}}
+
+### UserController - Logout
 POST {{baseUrl}}/api/logout
 Authorization: Bearer {{token}}
 
-### Listar todos os users
-GET http://localhost:8080/api/users
+### UserController - Delete local user by id
+DELETE {{baseUrl}}/api/users/{{createdUserId}}
 
-### Apagar user por id
-DELETE {{baseUrl}}/api/users/{{userIdToDelete}}
-Authorization: Bearer {{token}}
-
-### -------------------- LLM CREDENTIALS TESTS --------------------
-
-### [SUCESSO] Criar OPENAI credencial
-# NOTA: Para dar sucesso precisas de usar uma API Key real do OpenAI,
-# caso contrário a validação HTTP falhará com erro 400 (Invalid API key)
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "OPENAI",
-  "apiKey": "{{openAIKey}}"
-}
-
-### [ERRO] Tentar criar OPENAI novamente com o mesmo user
-# NOTA: Depois de criares a credencial acima com sucesso, correr este pedido
-# deve dar erro 409 (Conflict) pois já tens uma credencial OPENAI
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "OPENAI",
-  "apiKey": "sk-ColocaAquiATuaChaveRealDaOpenAI"
-}
-
-### [ERRO] Criar OPENAI com formato de chave inválido (Sem 'sk-')
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "OPENAI",
-  "apiKey": "1234567890abcdef"
-}
-
-### [ERRO] Criar OPENAI com chave falsa (formato correto 'sk-', falha na API da OpenAI)
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "OPENAI",
-  "apiKey": "sk-1234fakekeyNaoVaiFuncionar"
-}
-
-### [SUCESSO] Criar GEMINI credencial
-# NOTA: Usa uma chave real da Google Gemini (que comece por AIza) para ter sucesso.
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "GEMINI",
-  "apiKey": "{{geminiKey}}"
-}
-
-### [ERRO] Criar GEMINI com formato inválido
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "GEMINI",
-  "apiKey": "gemini-key-invalida"
-}
-
-### [ERRO] Criar Credencial para LLM Não Suportado (ex: ANTHROPIC)
-# NOTA: O Spring Boot / Kotlin irá falhar a ler o JSON (400 Bad Request)
-# porque "ANTHROPIC" não existe no Enum LLM.
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "llm": "ANTHROPIC",
-  "apiKey": "sk-ant-1234"
-}
-
-### Ler as minhas Credenciais LLM (Verificar se criaram com sucesso)
-GET {{baseUrl}}/api/llm-credentials
-Authorization: Bearer {{token}}
-
-
-### Obter todas as credenciais LLM (Admin)
-GET {{baseUrl}}/api/llm-credentials/all
-
-
-### Apagar uma determinada credencial LLM por ID
-DELETE {{baseUrl}}/api/llm-credentials/7
-Authorization: Bearer {{token}}
+### UserController - Delete OAuth user by id
+DELETE {{baseUrl}}/api/users/{{createdOAuthUserId}}
