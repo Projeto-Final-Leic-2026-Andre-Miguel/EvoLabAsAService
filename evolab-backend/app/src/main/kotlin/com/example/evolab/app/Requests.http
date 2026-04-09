@@ -1,11 +1,12 @@
 @baseUrl = http://localhost:8080
-@token =v88DSl17Dafi6eGYIM3q6SgY2Dhv5zs01uDTc1ysBy8=
+@token = kaxjRitvVELOjT6HQsSo8odtQAT0tZVyMb2_z8ud3oA=
 @userIdToDelete = 8
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
 @nome = Teste
 @emailTeste = pedrofdd@gmail.com
-
+@openAIKey = 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
+@geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
 //TODO: Ver tratamento de erros quando já existe, no caso ver o pq do erro 409
 ### Criar utilizador local
 POST {{baseUrl}}/api/users/local
@@ -18,7 +19,7 @@ Content-Type: application/json
 }
 
 ### http://localhost:8080/oauth2/authorization/google
-// Este é o endpoint para autenticação via google, quando concluido, redireciona automaticamnete para o endpoint /me
+// Este é o endpoint para autenticação via google, quando concluido, redireciona automaticamete para o endpoint /me
 
 
 ### Obter token (login local)
@@ -26,7 +27,7 @@ POST {{baseUrl}}/api/users/token
 Content-Type: application/json
 
 {
-  "email": "{{localEmail}}",
+  "email": "{{emailTeste}}",
   "password": "{{localPassword}}"
 }
 
@@ -47,3 +48,94 @@ GET http://localhost:8080/api/users
 DELETE {{baseUrl}}/api/users/{{userIdToDelete}}
 Authorization: Bearer {{token}}
 
+### -------------------- LLM CREDENTIALS TESTS --------------------
+
+### [SUCESSO] Criar OPENAI credencial
+# NOTA: Para dar sucesso precisas de usar uma API Key real do OpenAI,
+# caso contrário a validação HTTP falhará com erro 400 (Invalid API key)
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "OPENAI",
+  "apiKey": "{{openAIKey}}"
+}
+
+### [ERRO] Tentar criar OPENAI novamente com o mesmo user
+# NOTA: Depois de criares a credencial acima com sucesso, correr este pedido
+# deve dar erro 409 (Conflict) pois já tens uma credencial OPENAI
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "OPENAI",
+  "apiKey": "sk-ColocaAquiATuaChaveRealDaOpenAI"
+}
+
+### [ERRO] Criar OPENAI com formato de chave inválido (Sem 'sk-')
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "OPENAI",
+  "apiKey": "1234567890abcdef"
+}
+
+### [ERRO] Criar OPENAI com chave falsa (formato correto 'sk-', falha na API da OpenAI)
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "OPENAI",
+  "apiKey": "sk-1234fakekeyNaoVaiFuncionar"
+}
+
+### [SUCESSO] Criar GEMINI credencial
+# NOTA: Usa uma chave real da Google Gemini (que comece por AIza) para ter sucesso.
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "GEMINI",
+  "apiKey": "{{geminiKey}}"
+}
+
+### [ERRO] Criar GEMINI com formato inválido
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "GEMINI",
+  "apiKey": "gemini-key-invalida"
+}
+
+### [ERRO] Criar Credencial para LLM Não Suportado (ex: ANTHROPIC)
+# NOTA: O Spring Boot / Kotlin irá falhar a ler o JSON (400 Bad Request)
+# porque "ANTHROPIC" não existe no Enum LLM.
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "ANTHROPIC",
+  "apiKey": "sk-ant-1234"
+}
+
+### Ler as minhas Credenciais LLM (Verificar se criaram com sucesso)
+GET {{baseUrl}}/api/llm-credentials
+Authorization: Bearer {{token}}
+
+
+### Obter todas as credenciais LLM (Admin)
+GET {{baseUrl}}/api/llm-credentials/all
+
+
+### Apagar uma determinada credencial LLM por ID
+DELETE {{baseUrl}}/api/llm-credentials/7
+Authorization: Bearer {{token}}

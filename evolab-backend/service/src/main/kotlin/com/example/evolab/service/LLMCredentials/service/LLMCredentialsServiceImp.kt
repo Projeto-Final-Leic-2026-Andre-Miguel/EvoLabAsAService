@@ -69,6 +69,11 @@ class LLMCredentialsServiceImp(
             success(getAllUserCredentialsById(userId))
         }
 
+    override fun getAllLLMCredentials(): Either<LLMCredentialsServiceErrors, List<LLMCredentials>> =
+        trxManager.run {
+            success(repoLLmCredentials.findAll())
+        }
+
     /**
      *
      * Aqui a unica coisa que se pode atualizar é a api_key

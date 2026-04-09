@@ -12,7 +12,6 @@ import io.ktor.client.request.header
 import io.ktor.http.HttpStatusCode
 import jakarta.inject.Named
 
-// api key = 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
 
 @Named
 class LLMCredentialValidatorImp(
@@ -22,7 +21,7 @@ class LLMCredentialValidatorImp(
 
     companion object {
 
-        private const val GEMINI_ENDPOINT = "https://gemini.googleapis.com/v1Beta/models"
+        private const val GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
         private const val OPENAI_ENDPOINT = "https://api.openai.com/v1/models"
 
 
@@ -72,7 +71,7 @@ class LLMCredentialValidatorImp(
               when(response.status) {
 
                   HttpStatusCode.OK -> success(true)
-                  HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> failure(LLMValidatorErrors.InvalidAPIKey("Invalid Gemini API key"))
+                  HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden, HttpStatusCode.BadRequest -> failure(LLMValidatorErrors.InvalidAPIKey("Invalid Gemini API key"))
                     else -> failure(LLMValidatorErrors.InvalidLLM("InvalidLLM specified for validation"))
                 }
 

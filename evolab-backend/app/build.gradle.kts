@@ -29,6 +29,9 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.postgresql:postgresql:42.7.4")
 
+    implementation("org.reactivestreams:reactive-streams:1.0.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.8.1")
+
     implementation("io.ktor:ktor-client-core:3.1.2")
     implementation("io.ktor:ktor-client-cio:3.1.2")
     implementation("io.ktor:ktor-client-content-negotiation:3.1.2")

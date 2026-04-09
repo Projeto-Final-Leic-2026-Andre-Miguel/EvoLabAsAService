@@ -41,12 +41,8 @@ class LLMCredentialsController(
 
         return when (result) {
             is Success -> {
-                ResponseEntity.status(HttpStatus.SEE_OTHER)
-                    .header(
-                        "Location",
-                        "/api/llm-credentials/${result.value.id}"
-                    )  // redirecioona para o endpoint de obter a credencial criada
-                    .build<Unit>()
+                ResponseEntity.status(HttpStatus.CREATED)
+                    .body(result.value)
             }
 
             is Failure -> {
@@ -114,6 +110,36 @@ class LLMCredentialsController(
 
 
     }
+
+
+    @GetMapping()
+    fun getAllLLMCredentialsForUser(
+        authenticatedUser: AuthenticatedUser
+    ): ResponseEntity<*> {
+
+        val result: Either<LLMCredentialsServiceErrors, List<LLMCredentials>> =
+            llmCredentialsService.getLLMCredentialsByUserId(authenticatedUser.user.id)
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
+
+    @GetMapping("/all")
+    fun getAllLLMCredentials(): ResponseEntity<*> {
+
+        val result: Either<LLMCredentialsServiceErrors, List<LLMCredentials>> =
+            llmCredentialsService.getAllLLMCredentials()
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
+
     /**
      * Mapeia os erros do serviço para respostas HTTP apropriadas.
      */
