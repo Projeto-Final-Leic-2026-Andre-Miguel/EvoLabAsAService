@@ -10,6 +10,7 @@ interface ProjectService {
         userId: Int,
         name: String,
         description: String?,
+        configId: Int?,
         initialProgram: String?,
         evaluatorCode: String?
     ): Either<ProjectServiceErrors, Project>

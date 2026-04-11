@@ -20,6 +20,7 @@ object ProjectSql {
             user_id,
             name,
             description,
+            config_id,
             initial_program,
             evaluator_code,
             status
@@ -28,6 +29,7 @@ object ProjectSql {
             :userId,
             :name,
             :description,
+            :configId,
             :initialProgram,
             :evaluatorCode,
             CAST(:status AS job_status)

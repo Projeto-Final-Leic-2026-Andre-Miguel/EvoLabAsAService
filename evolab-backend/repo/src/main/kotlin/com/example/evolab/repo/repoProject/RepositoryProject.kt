@@ -9,6 +9,7 @@ interface RepositoryProject : Repository<Project> {
         userId: Int,
         name: String,
         description: String?,
+        configId: Int?,
         initialProgram: String?,
         evaluatorCode: String?,
         status: EvolutionStatus = EvolutionStatus.CREATED,

@@ -1,8 +1,8 @@
 package com.example.evolab.http.controllers
 
-import com.example.evolab.domain.LLMCredentials.DTOs.CreateLLMCredentialRequest
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
 import com.example.evolab.domain.user.AuthenticatedUser
+import com.example.evolab.http.model.llmCredentials.CreateLLMCredentialRequest
 import com.example.evolab.http.model.problem.Problem
 import com.example.evolab.service.LLMCredentials.service.LLMCredentialsService
 import com.example.evolab.service.LLMCredentials.service.LLMCredentialsServiceErrors

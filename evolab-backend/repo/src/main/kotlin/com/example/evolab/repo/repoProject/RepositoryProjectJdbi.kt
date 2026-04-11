@@ -13,6 +13,7 @@ class RepositoryProjectJdbi(
         userId: Int,
         name: String,
         description: String?,
+        configId: Int?,
         initialProgram: String?,
         evaluatorCode: String?,
         status: EvolutionStatus,
@@ -23,6 +24,7 @@ class RepositoryProjectJdbi(
                 .bind("userId", userId)
                 .bind("name", name)
                 .bind("description", description)
+                .bind("configId", configId)
                 .bind("initialProgram", initialProgram)
                 .bind("evaluatorCode", evaluatorCode)
                 .bind("status", status.name)

@@ -7,7 +7,9 @@
 @emailTeste = pedrofdd@gmail.com
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
-//TODO: Ver tratamento de erros quando já existe, no caso ver o pq do erro 409
+
+### -------------------- USER AUTHENTICATION TESTS --------------------
+
 ### Criar utilizador local
 POST {{baseUrl}}/api/users/local
 Content-Type: application/json
@@ -31,8 +33,7 @@ Content-Type: application/json
   "password": "{{localPassword}}"
 }
 
-###
-//TODO: Ver o tratamento de erros, não pode rebentar com 500 acho eu?
+
 ### Obter utilizador autenticado
 GET {{baseUrl}}/api/me
 Authorization: Bearer {{token}}
@@ -50,9 +51,7 @@ Authorization: Bearer {{token}}
 
 ### -------------------- LLM CREDENTIALS TESTS --------------------
 
-### [SUCESSO] Criar OPENAI credencial
-# NOTA: Para dar sucesso precisas de usar uma API Key real do OpenAI,
-# caso contrário a validação HTTP falhará com erro 400 (Invalid API key)
+### Criar OPENAI credencial
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -62,19 +61,8 @@ Authorization: Bearer {{token}}
   "apiKey": "{{openAIKey}}"
 }
 
-### [ERRO] Tentar criar OPENAI novamente com o mesmo user
-# NOTA: Depois de criares a credencial acima com sucesso, correr este pedido
-# deve dar erro 409 (Conflict) pois já tens uma credencial OPENAI
-POST {{baseUrl}}/api/llm-credentials
-Content-Type: application/json
-Authorization: Bearer {{token}}
 
-{
-  "llm": "OPENAI",
-  "apiKey": "sk-ColocaAquiATuaChaveRealDaOpenAI"
-}
-
-### [ERRO] Criar OPENAI com formato de chave inválido (Sem 'sk-')
+### Criar OPENAI com formato de chave inválido (Sem 'sk-')
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -94,8 +82,7 @@ Authorization: Bearer {{token}}
   "apiKey": "sk-1234fakekeyNaoVaiFuncionar"
 }
 
-### [SUCESSO] Criar GEMINI credencial
-# NOTA: Usa uma chave real da Google Gemini (que comece por AIza) para ter sucesso.
+### Criar GEMINI credencial
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -105,7 +92,7 @@ Authorization: Bearer {{token}}
   "apiKey": "{{geminiKey}}"
 }
 
-### [ERRO] Criar GEMINI com formato inválido
+### Criar GEMINI com formato inválido
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -115,9 +102,7 @@ Authorization: Bearer {{token}}
   "apiKey": "gemini-key-invalida"
 }
 
-### [ERRO] Criar Credencial para LLM Não Suportado (ex: ANTHROPIC)
-# NOTA: O Spring Boot / Kotlin irá falhar a ler o JSON (400 Bad Request)
-# porque "ANTHROPIC" não existe no Enum LLM.
+### Criar Credencial para LLM Não Suportado (ex: ANTHROPIC)
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -139,3 +124,70 @@ GET {{baseUrl}}/api/llm-credentials/all
 ### Apagar uma determinada credencial LLM por ID
 DELETE {{baseUrl}}/api/llm-credentials/7
 Authorization: Bearer {{token}}
+
+### -------------------- PROJECT TESTS --------------------
+
+### Criar Project sem configId,initial Program e evaluatorCode (deve aceitar null e criar projeto com valores default)
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Meu Primeiro Projeto",
+  "description": "Um projeto de teste EvoLab",
+  "configId": null,
+  "initialProgram": null,
+  "evaluatorCode": null
+}
+
+### Criar Project sem configId
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Meu Primeiro Projeto",
+  "description": "Um projeto de teste EvoLab",
+  "configId": null,
+  "initialProgram": "def hello():\n    print('hello world')",
+  "evaluatorCode": "def evaluate():\n    return True"
+}
+
+
+### Ler todos os meus Projetos
+GET {{baseUrl}}/api/projects/me
+Authorization: Bearer {{token}}
+
+### Ler todos os Projetos globais
+GET {{baseUrl}}/api/projects
+Authorization: Bearer {{token}}
+
+### Ler Projeto por ID
+GET {{baseUrl}}/api/projects/1
+Authorization: Bearer {{token}}
+
+### Update Project Details (Substituir parâmetros)
+PUT {{baseUrl}}/api/projects/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Projeto Atualizado",
+  "description": "Nova descrição para o projeto",
+  "initialProgram": "def hello():\n    print('hello mundo update')",
+  "evaluatorCode": "def evaluate():\n    return False",
+  "configId": null
+}
+
+### Apagar um Projeto
+DELETE {{baseUrl}}/api/projects/1
+Authorization: Bearer {{token}}
+
+### Atualizar Status do Projeto (Usado pelo Worker - normalmente sem Auth ou regras definidas)
+PUT {{baseUrl}}/api/projects/1/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "RUNNING"
+}

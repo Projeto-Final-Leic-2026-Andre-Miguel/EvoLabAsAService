@@ -18,11 +18,16 @@ class ProjectServiceImp(
         userId: Int,
         name: String,
         description: String?,
+        configId: Int?,
         initialProgram: String?,
         evaluatorCode: String?,
     ): Either<ProjectServiceErrors, Project> =
         trxManager.run {
             validateName(name)?.let { return@run it }
+
+            if(configId != null && !findConfigById(configId)) {
+                return@run failure(ProjectServiceErrors.ConfigNotFound("Config with id '$configId' was not found"))
+            }
 
             if (findProjectByName(userId, name)) {
                 return@run failure(
@@ -37,6 +42,7 @@ class ProjectServiceImp(
                     userId = userId,
                     name = name,
                     description = description,
+                    configId = configId,
                     initialProgram = initialProgram,
                     evaluatorCode = evaluatorCode,
                 ),
@@ -213,4 +219,8 @@ class ProjectServiceImp(
 
     private fun Transaction.findProjectByName(userId: Int, name: String): Boolean =
         repoProjects.findAllByUserId(userId).any { it.name == name }
+
+    private fun Transaction.findConfigById(configId: Int) : Boolean =
+        repoConfigs.findById(configId) != null
+
 }

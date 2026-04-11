@@ -38,6 +38,7 @@ class ProjectController(
                     userId = authenticatedUser.user.id,
                     name = input.name,
                     description = input.description,
+                    configId = input.configId,
                     initialProgram = input.initialProgram,
                     evaluatorCode = input.evaluatorCode,
                 )
@@ -118,23 +119,6 @@ class ProjectController(
             Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
 
-    // Worker lifecycle updates should not depend on project ownership from the API caller.
-    @PutMapping("/{id}/status")
-    fun updateProjectStatus(
-        @PathVariable id: Int,
-        @RequestBody input: UpdateProjectStatusInput,
-    ): ResponseEntity<*> {
-        val result: Either<ProjectServiceErrors, Project> =
-            projectService.updateProjectStatus(
-                projectId = id,
-                newStatus = input.status,
-            )
-
-        return when (result) {
-            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-            is Failure -> mapServiceErrors(result.value)
-        }
-    }
 
     @DeleteMapping("/{id}")
     fun deleteProject(

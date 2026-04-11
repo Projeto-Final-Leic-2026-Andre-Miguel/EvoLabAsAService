@@ -1,4 +1,4 @@
-package com.example.evolab.domain.LLMCredentials.DTOs
+package com.example.evolab.http.model.llmCredentials
 
 import com.example.evolab.domain.LLMCredentials.LLM
 

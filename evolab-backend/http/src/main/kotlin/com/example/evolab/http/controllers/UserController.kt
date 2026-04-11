@@ -53,39 +53,6 @@ class UserController(
 		}
 	}
 
-	@PostMapping("/api/users/oauth")
-	fun createOAuthUser(
-		@RequestBody input: CreateOAuthUserInput,
-	): ResponseEntity<*> {
-		return when (
-			val result = userService.createOAuthUser(
-				input.name,
-				input.email,
-				input.provider,
-				input.providerId,
-			)
-		) {
-			is Either.Right -> {
-				val user = result.value
-				ResponseEntity
-					.status(HttpStatus.CREATED)
-					.body(
-						mapOf(
-							"id" to user.id,
-							"name" to user.name,
-							"email" to user.email,
-							"provider" to user.authProvider.name,
-						),
-					)
-			}
-
-			is Either.Left ->
-				when (result.value) {
-					UserError.AlreadyUsedEmailAddress -> ResponseEntity.status(HttpStatus.CONFLICT).build<Unit>()
-					else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()
-				}
-		}
-	}
 
 
 	@PostMapping("/api/users/token")
@@ -93,13 +60,13 @@ class UserController(
         @RequestBody input: CreateTokenInput,
 	): ResponseEntity<*> {
 		return when (val tokenInfo = tokenService.createToken(input.email, input.password)) {
-			is Either.Right -> {
+			is Success -> {
 				ResponseEntity
 					.status(HttpStatus.OK)
 					.body(mapOf("tokenValue" to tokenInfo.value.tokenValue))
 			}
 
-			is Either.Left -> {
+			is Failure -> {
 				when (tokenInfo.value) {
 					TokenError.InvalidCredentials -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<Unit>()
 					else -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()
@@ -108,11 +75,27 @@ class UserController(
 		}
 	}
 
+	@PostMapping("/api/users/token/generate")
+	fun generateTokenForAuthenticatedUser(
+		authenticatedUser: AuthenticatedUser
+	): ResponseEntity<*> {
+		return when (val tokenInfo = tokenService.createTokenForUser(authenticatedUser.user)) {
+			is Success -> {
+				ResponseEntity
+					.status(HttpStatus.OK)
+					.body(mapOf("tokenValue" to tokenInfo.value.tokenValue))
+			}
+			is Failure -> {
+				ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()
+			}
+		}
+	}
+
 	@PostMapping("/api/logout")
 	fun logout(user: AuthenticatedUser): ResponseEntity<*> {
 		return when (tokenService.revokeToken(user.token)) {
-			is Either.Right -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
-			is Either.Left -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<Unit>()
+			is Success -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
+			is Failure -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<Unit>()
 		}
 	}
 
@@ -121,8 +104,8 @@ class UserController(
 		@PathVariable id: Int,
 	): ResponseEntity<*> {
 		return when (val result = userService.deleteUser(id)) {
-			is Either.Right -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
-			is Either.Left ->
+			is Success -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
+			is Failure ->
 				when (result.value) {
 					UserError.UserNotFound -> ResponseEntity.status(HttpStatus.NOT_FOUND).build<Unit>()
 					UserError.ErrorDeletingUser -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()
