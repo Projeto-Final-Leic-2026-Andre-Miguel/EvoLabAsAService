@@ -52,3 +52,70 @@
 .signInBtn:hover {
   background-color: #0056b3; /* Fica um azul mais escuro ao passar o rato */
 }
+/* -- PERFIL E LOGOUT DROPDOWN -- */
+.userProfileContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.welcomeText {
+  color: #333333;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+
+.welcomeText:hover {
+  color: #007bff;
+}
+
+.dropdownMenu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: white;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.userProfileContainer:hover .dropdownMenu {
+  display: block;
+}
+
+.logoutBtn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #d9534f;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logoutBtn:hover {
+  background-color: #fcebeb;
+}
+
+.profileBtn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #333333;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.profileBtn:hover {
+  background-color: #f8f9fa;
+  color: #007bff;
+}

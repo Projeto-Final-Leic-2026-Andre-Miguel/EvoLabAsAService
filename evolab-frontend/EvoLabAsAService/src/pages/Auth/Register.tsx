@@ -1,6 +1,6 @@
 import React, {useReducer} from "react";
 import { useNavigate } from "react-router-dom";
-import { onResult } from "../../api/api";
+import { onResult } from "../../api/api.ts";
 import {apiUsers} from "./data/apiUsers.ts";
 import styles from "./Register.module.css";
 

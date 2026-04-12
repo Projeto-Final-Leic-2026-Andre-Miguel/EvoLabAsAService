@@ -32,11 +32,10 @@ export const apiUsers = {
         });
     },
 
-    logout(token: string): Promise<RequestResult<void>> {
+    logout(): Promise<RequestResult<void>> {
         return request<void>(`${API_BASE_URL}/logout`, {
             method: "POST",
             headers: { 
-                "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
             }
         });

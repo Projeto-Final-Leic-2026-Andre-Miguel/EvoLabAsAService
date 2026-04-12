@@ -55,13 +55,13 @@ class UserAuthService(
         provider: AuthProvider,
         providerId: String,
     ): Either<UserError, User> {
-        if (repoUsers.findByEmail(email) != null) {
-            return failure(UserError.AlreadyUsedEmailAddress)
-        }
-
         val existingOAuth = repoUsers.findByProvider(provider, providerId)
         if (existingOAuth != null) {
             return success(existingOAuth)
+        }
+
+        if (repoUsers.findByEmail(email) != null) {
+            return failure(UserError.AlreadyUsedEmailAddress)
         }
 
         return try {

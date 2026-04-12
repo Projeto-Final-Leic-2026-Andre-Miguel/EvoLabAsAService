@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { onResult } from "../../api/api";
 import { apiUsers } from "./data/apiUsers";
 import styles from "./Login.module.css";
+import { useAuth } from "../../contexts/AuthContext";
 
 type Stage = "editing" | "posting" | "success" | "failed";
 
@@ -42,6 +43,7 @@ const initialState: State = {
 export function Login() {
     const [state, dispatch] = useReducer(reducer, initialState);
     const navigate = useNavigate();
+    const { reload } = useAuth(); // Importa o reload do authContext
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,9 +52,8 @@ export function Login() {
             await apiUsers.login({ email: state.email, password: state.password }),
             (success) => {
                 dispatch({ type: "success" });
-                // Aqui normalmente gravariamos o success.data.tokenValue no localStorage ou Context
-                // localStorage.setItem("token", success.data.tokenValue);
-                navigate("/me"); // Ajusta para a página principal pretendida
+                reload(); // Atualiza o estado global para reconhecer o cookie recém-adquirido
+                navigate("/"); 
             },
             (failure) => {
                 const errorType = failure.error?.message;
