@@ -8,3 +8,4 @@ data class CreateOAuthUserInput(
     val provider: AuthProvider,
     val providerId: String,
 )
+

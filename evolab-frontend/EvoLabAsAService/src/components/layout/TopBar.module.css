@@ -1,0 +1,54 @@
+/* 1. O Contentor Principal */
+.topBarContainer {
+  display: flex; /* Transforma o contentor num layout flexível */
+  justify-content: space-between; /* Encosta o Logo à esquerda e os Links à direita */
+  align-items: center; /* Centra ambos verticalmente */
+  padding: 1rem 2rem; /* Espaço interno: 1rem em cima/baixo, 2rem na esquerda/direita */
+  background-color: #ffffff; /* Fundo branco (podes alterar depois para o teu tema) */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Dá uma ligeira sombra para destacar a barra */
+}
+
+/* 2. O Logo */
+.logo a {
+  font-size: 1.5rem; /* Tamanho da letra grande */
+  font-weight: bold; /* Letra em negrito */
+  text-decoration: none; /* Remove o sublinhado padrão dos links */
+  color: #333333; /* Cor cinza escuro */
+}
+
+/* 3. A Área dos Links no lado direito */
+.navLinks {
+  display: flex; /* Coloca os links lado a lado */
+  align-items: center; /* Centra os links com o botão verticalmente */
+  gap: 2rem; /* Espaço entre cada link e o botão */
+}
+
+/* 4. Estilo de cada Link (Home, Projects, etc) */
+.navLinks a {
+  text-decoration: none; /* Remove o sublinhado */
+  color: #666666; /* Cor ligeiramente mais clara que o logo */
+  font-weight: 500;
+  transition: color 0.2s ease-in-out; /* Faz a mudança de cor ao passar o rato ser suave */
+}
+
+/* Efeito Hover: quando o rato passa por cima de um link */
+.navLinks a:hover {
+  color: #007bff; /* Fica azul */
+}
+
+/* 5. Estilo do Botão Sign In */
+.signInBtn {
+  background-color: #007bff; /* Fundo azul */
+  color: white; /* Texto branco */
+  border: none; /* Remove margens padrão dos botões */
+  padding: 0.5rem 1.2rem; /* Espaço dentro do botão */
+  border-radius: 6px; /* Arredonda as pontas do botão */
+  font-weight: bold;
+  cursor: pointer; /* Muda o ícone do rato para uma "mão" ao passar por cima */
+  transition: background-color 0.2s ease; /* Transição suave */
+}
+
+/* Efeito Hover no botão */
+.signInBtn:hover {
+  background-color: #0056b3; /* Fica um azul mais escuro ao passar o rato */
+}

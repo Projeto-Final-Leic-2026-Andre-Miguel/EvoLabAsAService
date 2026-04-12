@@ -1,0 +1,140 @@
+.authContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f4f7f6;
+    padding: 20px;
+}
+
+.authCard {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.authCard h2 {
+    margin-top: 0;
+    margin-bottom: 24px;
+    color: #333;
+}
+
+.inputLabel {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    margin-bottom: 16px;
+    font-weight: 500;
+    color: #555;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.inputLabel input {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.inputLabel input:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.errorMsg {
+    color: #d93025;
+    font-size: 14px;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.submitBtn {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 20px;
+}
+
+.submitBtn:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.submitBtn:disabled {
+    background-color: #a0c4ff;
+    cursor: not-allowed;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    color: #888;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #ddd;
+}
+
+.divider span {
+    padding: 0 10px;
+    font-size: 14px;
+}
+
+.googleBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    background-color: white;
+    color: #555;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 20px;
+}
+
+.googleBtn:hover {
+    background-color: #f8f9fa;
+}
+
+.loginPrompt {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    margin-top: 10px;
+}
+
+.link {
+    color: #007bff;
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.link:hover {
+    color: #0056b3;
+}

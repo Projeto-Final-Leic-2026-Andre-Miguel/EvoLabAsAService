@@ -62,7 +62,8 @@ class OAuth2LoginSuccessHandler(
                 .build()
 
         response.addHeader("Set-Cookie", cookie.toString())
-        response.sendRedirect("/api/me")
+        // Redirecionamento explícito sempre de volta para o cliente Frontend no hostname correto
+        // Caso faças deploy em Produção, deverás parametrizar a App URL, ex: enviroment variable FRONTEND_URL
+        response.sendRedirect("http://localhost:5173/")
     }
 }
-
