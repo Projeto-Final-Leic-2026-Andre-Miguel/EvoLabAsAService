@@ -1,0 +1,91 @@
+package com.example.evolab.service.configService
+
+import com.example.evolab.domain.LLMCredentials.LLM
+import com.example.evolab.domain.config.Config
+
+object OpenEvolvePayloadBuilder {
+    fun build(
+        config: Config,
+        apiKeyValue: String? = config.additionalParams["llm.api_key"],
+    ): Map<String, Any> {
+        val p = config.additionalParams
+
+        val featureDimensions =
+            p["database.feature_dimensions"]
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() }
+                ?: listOf("complexity", "diversity")
+
+        val declaredCustomMetrics =
+            featureDimensions
+                .filter { it !in setOf("complexity", "diversity") }
+
+        return mapOf(
+            "max_iterations" to config.maxIter,
+            "checkpoint_interval" to config.checkPointInterval,
+            "diff_based_evolution" to p["diff_based_evolution"].toBooleanStrictOrNullOrDefault(true),
+            "llm" to
+                mapOf(
+                    "models" to listOf(mapOf("name" to config.modelName, "weight" to 1.0)),
+                    "api_base" to p["llm.api_base"],
+                    "api_key" to apiKeyValue,
+                    "temperature" to p["llm.temperature"].toDoubleOrNullOrDefault(0.7),
+                    "top_p" to p["llm.top_p"].toDoubleOrNullOrDefault(0.95),
+                    "max_tokens" to p["llm.max_tokens"].toIntOrNullOrDefault(4096),
+                    "timeout" to p["llm.timeout"].toIntOrNullOrDefault(60),
+                    "retries" to p["llm.retries"].toIntOrNullOrDefault(3),
+                ),
+            "prompt" to
+                mapOf(
+                    "system_message" to
+                        (p["prompt.system_message"]
+                            ?: "You are an OpenEvolve assistant. Propose iterative improvements while preserving correctness."),
+                    "num_top_programs" to p["prompt.num_top_programs"].toIntOrNullOrDefault(3),
+                    "num_diverse_programs" to p["prompt.num_diverse_programs"].toIntOrNullOrDefault(2),
+                    "include_artifacts" to p["prompt.include_artifacts"].toBooleanStrictOrNullOrDefault(true),
+                ),
+            "database" to
+                mapOf(
+                    "population_size" to p["database.population_size"].toIntOrNullOrDefault(100),
+                    "archive_size" to p["database.archive_size"].toIntOrNullOrDefault(50),
+                    "num_islands" to p["database.num_islands"].toIntOrNullOrDefault(4),
+                    "migration_interval" to p["database.migration_interval"].toIntOrNullOrDefault(10),
+                    "migration_rate" to p["database.migration_rate"].toDoubleOrNullOrDefault(0.1),
+                    "elite_selection_ratio" to p["database.elite_selection_ratio"].toDoubleOrNullOrDefault(0.1),
+                    "exploration_ratio" to p["database.exploration_ratio"].toDoubleOrNullOrDefault(0.2),
+                    "exploitation_ratio" to p["database.exploitation_ratio"].toDoubleOrNullOrDefault(0.7),
+                    "feature_dimensions" to featureDimensions,
+                    "feature_bins" to p["database.feature_bins"].toIntOrNullOrDefault(10),
+                ),
+            "evaluator" to
+                mapOf(
+                    "timeout" to p["evaluator.timeout"].toIntOrNullOrDefault(300),
+                    "max_retries" to p["evaluator.max_retries"].toIntOrNullOrDefault(3),
+                    "parallel_evaluations" to p["evaluator.parallel_evaluations"].toIntOrNullOrDefault(4),
+                    "cascade_evaluation" to p["evaluator.cascade_evaluation"].toBooleanStrictOrNullOrDefault(true),
+                    "cascade_thresholds" to
+                        listOf(
+                            p["evaluator.cascade_threshold_1"].toDoubleOrNullOrDefault(0.5),
+                            p["evaluator.cascade_threshold_2"].toDoubleOrNullOrDefault(0.75),
+                            p["evaluator.cascade_threshold_3"].toDoubleOrNullOrDefault(0.9),
+                        ),
+                    "declared_custom_metrics" to declaredCustomMetrics,
+                ),
+        )
+    }
+
+    fun apiKeyEnvironmentVariableName(llm: LLM): String = "${llm.name}_API_KEY"
+
+    fun apiKeyEnvironmentPlaceholder(llm: LLM): String =
+        apiKeyEnvironmentPlaceholder(apiKeyEnvironmentVariableName(llm))
+
+    fun apiKeyEnvironmentPlaceholder(variableName: String): String = "${'$'}{$variableName}"
+
+    private fun String?.toIntOrNullOrDefault(default: Int): Int = this?.toIntOrNull() ?: default
+
+    private fun String?.toDoubleOrNullOrDefault(default: Double): Double = this?.toDoubleOrNull() ?: default
+
+    private fun String?.toBooleanStrictOrNullOrDefault(default: Boolean): Boolean =
+        this?.toBooleanStrictOrNull() ?: default
+}

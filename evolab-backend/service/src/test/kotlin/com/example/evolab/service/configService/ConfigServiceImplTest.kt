@@ -175,6 +175,42 @@ class ConfigServiceImplTest {
     }
 
     @Test
+    fun generateTemporaryConfigFileWorksWithPayloadBuiltFromConfigAndEnvironmentPlaceholder() {
+        val service = createService()
+        val config =
+            Config(
+                id = 1,
+                userId = 7,
+                llmCredentialsId = 10,
+                modelName = "gpt-4.1-mini",
+                maxIter = 20,
+                checkPointInterval = 5,
+                additionalParams =
+                    mapOf(
+                        "llm.temperature" to "0.6",
+                        "database.population_size" to "150",
+                    ),
+                createdAt = Instant.now(),
+            )
+
+        val payload =
+            OpenEvolvePayloadBuilder.build(
+                config = config,
+                apiKeyValue = OpenEvolvePayloadBuilder.apiKeyEnvironmentPlaceholder("OPENAI_API_KEY"),
+            )
+        val llmPayload = payload["llm"] as Map<*, *>
+
+        assertEquals("\${OPENAI_API_KEY}", llmPayload["api_key"])
+
+        val fileResult = service.generateTemporaryConfigFile(payload)
+        val path = assertRight(fileResult)
+
+        assertTrue(Files.exists(path))
+        assertTrue(Files.readString(path).contains("\${OPENAI_API_KEY}"))
+        assertRight(service.cleanupTemporaryConfigFile(path))
+    }
+
+    @Test
     fun generateTemporaryConfigFileReturnsErrorWhenPayloadIsInvalid() {
         val service = createService()
         val invalidPayload = mapOf("max_iterations" to 100)

@@ -23,6 +23,8 @@ class UserAuthService(
     // TODO it could be better
     fun isSafePassword(password: String) = password.length > 4
 
+    //TODO Criar uma Interface para isto
+
     /**
      *
      */

@@ -23,6 +23,8 @@ import com.example.evolab.repo.repoUser.RepositoryUser
 import com.example.evolab.repo.transactions.Transaction
 import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.auxiliary.Either
+import com.example.evolab.service.jobExecution.JobQueue
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -190,6 +192,128 @@ class ProjectServiceImpTest {
     }
 
     @Test
+    fun startExperimentationRejectsNonOwner() {
+        val projectRepo = FakeRepositoryProject()
+        val project = projectRepo.seed(userId = 1, configId = 10)
+        val service = createService(projectRepo = projectRepo)
+
+        val result = service.startExperimentation(project.id, 2)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.NotProjectOwner("User with id '2' is not the owner of project with id '${project.id}'"),
+        )
+    }
+
+    @Test
+    fun startExperimentationRejectsProjectThatIsNotReady() {
+        val projectRepo = FakeRepositoryProject()
+        val project = projectRepo.seed(userId = 1, configId = null, evaluatorCode = null)
+        val service = createService(projectRepo = projectRepo)
+
+        val result = service.startExperimentation(project.id, 1)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.InvalidProjectStatus(
+                "Project with id '${project.id}' cannot move to 'QUEUED' without configId, initialProgram and evaluatorCode",
+            ),
+        )
+    }
+
+    @Test
+    fun startExperimentationRejectsUnknownConfig() {
+        val projectRepo = FakeRepositoryProject()
+        val project = projectRepo.seed(userId = 1, configId = 999)
+        val service = createService(projectRepo = projectRepo)
+
+        val result = service.startExperimentation(project.id, 1)
+
+        assertLeftEquals(result, ProjectServiceErrors.ConfigNotFound("Config with id '999' was not found"))
+    }
+
+    @Test
+    fun startExperimentationRejectsConfigFromAnotherUser() {
+        val projectRepo = FakeRepositoryProject()
+        val configRepo = FakeRepositoryConfig()
+        val foreignConfig = configRepo.seed(userId = 2)
+        val project = projectRepo.seed(userId = 1, configId = foreignConfig.id)
+        val service = createService(projectRepo = projectRepo, configRepo = configRepo)
+
+        val result = service.startExperimentation(project.id, 1)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.ConfigAccessDenied("User with id '1' cannot use config with id '${foreignConfig.id}'"),
+        )
+    }
+
+    @Test
+    fun startExperimentationRejectsProjectWithNonCreatedStatus() {
+        val projectRepo = FakeRepositoryProject()
+        val configRepo = FakeRepositoryConfig()
+        val config = configRepo.seed(userId = 1)
+        val project = projectRepo.seed(userId = 1, configId = config.id, status = EvolutionStatus.RUNNING)
+        val service = createService(projectRepo = projectRepo, configRepo = configRepo)
+
+        val result = service.startExperimentation(project.id, 1)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.InvalidProjectStatus(
+                "Project with id '${project.id}' is in status 'RUNNING' and cannot be queued for experimentation",
+            ),
+        )
+    }
+
+    @Test
+    fun startExperimentationQueuesProjectAndPersistsQueuedStatus() =
+        runBlocking {
+            val projectRepo = FakeRepositoryProject()
+            val configRepo = FakeRepositoryConfig()
+            val jobQueue = JobQueue()
+            val config = configRepo.seed(userId = 1)
+            val project = projectRepo.seed(userId = 1, configId = config.id)
+            val service = createService(projectRepo = projectRepo, configRepo = configRepo, jobQueue = jobQueue)
+
+            val result = service.startExperimentation(project.id, 1)
+
+            val queuedProject = assertRight(result)
+            assertEquals(EvolutionStatus.QUEUED, queuedProject.status)
+            assertEquals(EvolutionStatus.QUEUED, projectRepo.findById(project.id)?.status)
+            assertEquals(queuedProject, jobQueue.dequeue())
+        }
+
+    @Test
+    fun startExperimentationReturnsQueueUnavailableWhenQueueIsFull() {
+        val projectRepo = FakeRepositoryProject()
+        val configRepo = FakeRepositoryConfig()
+        val jobQueue = JobQueue()
+        repeat(100) { index ->
+            jobQueue.enqueue(
+                projectRepo.seed(
+                    userId = index + 100,
+                    name = "Projeto $index",
+                    configId = index + 1,
+                ),
+            )
+        }
+        val config = configRepo.seed(userId = 1)
+        val project = projectRepo.seed(userId = 1, configId = config.id, name = "Projeto Principal")
+        val service = createService(projectRepo = projectRepo, configRepo = configRepo, jobQueue = jobQueue)
+
+        val result = service.startExperimentation(project.id, 1)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.ExecutionQueueUnavailable(
+                "A fila esta cheia. O sistema esta sobrecarregado. Project ID: ${project.id}",
+            ),
+        )
+        assertEquals(EvolutionStatus.CREATED, projectRepo.findById(project.id)?.status)
+    }
+
+    @Test
     fun deleteProjectRemovesOwnedProject() {
         val repo = FakeRepositoryProject()
         val project = repo.seed(userId = 1)
@@ -205,7 +329,8 @@ class ProjectServiceImpTest {
     private fun createService(
         projectRepo: FakeRepositoryProject = FakeRepositoryProject(),
         configRepo: FakeRepositoryConfig = FakeRepositoryConfig(),
-    ) = ProjectServiceImp(FakeTransactionManager(projectRepo, configRepo))
+        jobQueue: JobQueue = JobQueue(),
+    ) = ProjectServiceImp(FakeTransactionManager(projectRepo, configRepo), jobQueue)
 
     private fun <L, R> assertRight(result: Either<L, R>): R {
         assertTrue(result is Either.Right)

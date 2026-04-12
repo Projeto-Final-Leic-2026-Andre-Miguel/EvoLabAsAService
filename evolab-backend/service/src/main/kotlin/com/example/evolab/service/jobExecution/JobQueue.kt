@@ -12,15 +12,15 @@ private const val CAPACITY = 100
 @Named
 class JobQueue {
 
-    private val queue = Channel<Project>(100)
+    private val queue = Channel<Project>(CAPACITY)
 
     fun enqueue(project: Project): Either<String, Unit> {
         val result = queue.trySend(project)
-        
+
         return if (result.isSuccess) {
             success(Unit)
         } else {
-            failure("A fila está cheia. O sistema está sobrecarregado. Project ID: \${project.id}")
+            failure("A fila esta cheia. O sistema esta sobrecarregado. Project ID: ${project.id}")
         }
     }
 

@@ -15,9 +15,9 @@ VALUES
 -- Seed LLM credentials (one per provider per user)
 INSERT INTO llm_credentials (id, user_id, provider, api_key_encrypted)
 VALUES
-	(1, 1, 'OPENAI', 'enc-openai-ana'),
-	(2, 1, 'GEMINI', 'enc-gemini-ana'),
-	(3, 2, 'LOCAL_MODEL', 'enc-localmodel-bruno');
+	(1, 1, 'OPENAI', 'encOpenaiAna'),
+	(2, 1, 'GEMINI', 'encGeminiAna'),
+	(3, 2, 'LOCAL_MODEL', 'encLocalmodelBruno');
 
 -- Seed evolution configs
 INSERT INTO evolution_configs (

@@ -5,13 +5,17 @@ import com.example.evolab.domain.project.Project
 import com.example.evolab.repo.transactions.Transaction
 import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.auxiliary.Either
+import com.example.evolab.service.auxiliary.Failure
+import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.auxiliary.failure
 import com.example.evolab.service.auxiliary.success
+import com.example.evolab.service.jobExecution.JobQueue
 import jakarta.inject.Named
 
 @Named
 class ProjectServiceImp(
     private val trxManager: TransactionManager,
+    private val jobQueue: JobQueue,
 ) : ProjectService {
 
     override fun createProject(
@@ -76,9 +80,8 @@ class ProjectServiceImp(
                 }
             }
 
-            // aqui definimos que, caso o valor recebido seja null, é porque o campo não deve ser atualizado. Assim, só atualizamos os campos que foram efetivamente enviados na requisição.
-            // para trocarmos de nome etc, os campos não pode vir a null.
-
+            // Se o valor recebido for null, o campo nao deve ser atualizado.
+            // So atualizamos os campos que foram efetivamente enviados na request.
             val updatedProject =
                 project.copy(
                     name = name ?: project.name,
@@ -91,6 +94,7 @@ class ProjectServiceImp(
             repoProjects.save(updatedProject)
             success(updatedProject)
         }
+
     override fun updateProjectStatus(
         projectId: Int,
         newStatus: EvolutionStatus,
@@ -103,6 +107,33 @@ class ProjectServiceImp(
             val updatedProject = project.copy(status = newStatus)
             repoProjects.save(updatedProject)
             success(updatedProject)
+        }
+
+    // StartExperimentation: adicionar o projeto ao request da nossa queue para, quando
+    // houver um worker disponivel, ele comecar a trabalhar.
+    // O pedido HTTP para isto devera ser um POST vazio no controller.
+    override fun startExperimentation(
+        projectId: Int,
+        userId: Int,
+    ): Either<ProjectServiceErrors, Project> =
+        trxManager.run {
+            val project = findRequiredProject(projectId) ?: return@run failureNotFound(projectId)
+
+            validateOwnership(project, userId)?.let { return@run it }
+            validateConfigAccess(project.configId, userId)?.let { return@run it }
+            validateExperimentationStart(project)?.let { return@run it }
+
+            val queuedProject = project.copy(status = EvolutionStatus.QUEUED)
+
+            when (val enqueueResult = jobQueue.enqueue(queuedProject)) {
+                is Success -> {
+                    repoProjects.save(queuedProject)
+                    success(queuedProject)
+                }
+
+                is Failure ->
+                    failure(ProjectServiceErrors.ExecutionQueueUnavailable(enqueueResult.value))
+            }
         }
 
     override fun getProject(
@@ -214,6 +245,18 @@ class ProjectServiceImp(
         return null
     }
 
+    private fun validateExperimentationStart(project: Project): Either<ProjectServiceErrors, Nothing>? {
+        if (project.status != EvolutionStatus.CREATED) {
+            return failure(
+                ProjectServiceErrors.InvalidProjectStatus(
+                    "Project with id '${project.id}' is in status '${project.status}' and cannot be queued for experimentation",
+                ),
+            )
+        }
+
+        return validateStatusTransition(project, EvolutionStatus.QUEUED)
+    }
+
     private fun Project.isReadyToStart(): Boolean =
         configId != null && !initialProgram.isNullOrBlank() && !evaluatorCode.isNullOrBlank()
 
@@ -223,4 +266,7 @@ class ProjectServiceImp(
     private fun Transaction.findConfigById(configId: Int) : Boolean =
         repoConfigs.findById(configId) != null
 
+
 }
+
+// Depois do LLM Credentials, testo tudo, user, llm, projects, etc etc

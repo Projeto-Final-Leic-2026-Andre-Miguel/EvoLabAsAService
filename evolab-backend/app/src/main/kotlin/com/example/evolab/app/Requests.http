@@ -1,13 +1,14 @@
 @baseUrl = http://localhost:8080
-@token = kaxjRitvVELOjT6HQsSo8odtQAT0tZVyMb2_z8ud3oA=
+@token = YcZlBZr8qJT92z7DCjDbFFSmDjfWA1-bcb2Tdb-4jUE=
 @userIdToDelete = 8
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
 @nome = Teste
 @emailTeste = pedrofdd@gmail.com
-// As chaves abaixo são as minhas, não usar em testes!
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
+@configId = 5
+@llmCredentialId = 4
 
 ### -------------------- USER AUTHENTICATION TESTS --------------------
 
@@ -126,6 +127,48 @@ GET {{baseUrl}}/api/llm-credentials/all
 DELETE {{baseUrl}}/api/llm-credentials/7
 Authorization: Bearer {{token}}
 
+### -------------------- CONFIG TESTS --------------------
+
+### Criar Config
+POST {{baseUrl}}/api/configs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": 5,
+  "llmCredentialsId": {{llmCredentialId}},
+  "modelName": "gpt-4.1-mini",
+  "maxIter": 20,
+  "checkPointInterval": 5,
+  "additionalParams": {
+    "llm.temperature": "0.7",
+    "database.population_size": "100"
+  }
+}
+
+### Ler Config por ID
+GET {{baseUrl}}/api/configs/{{configId}}
+Authorization: Bearer {{token}}
+
+### Ler todas as minhas Configs
+GET {{baseUrl}}/api/configs/me
+Authorization: Bearer {{token}}
+
+### Update Config
+PUT {{baseUrl}}/api/configs/{{configId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "modelName": "gpt-4.1",
+  "maxIter": 30,
+  "checkPointInterval": 10,
+  "additionalParams": {
+    "llm.temperature": "0.6",
+    "database.population_size": "150"
+  }
+}
+
 ### -------------------- PROJECT TESTS --------------------
 
 ### Criar Project sem configId,initial Program e evaluatorCode (deve aceitar null e criar projeto com valores default)
@@ -168,7 +211,7 @@ GET {{baseUrl}}/api/projects/1
 Authorization: Bearer {{token}}
 
 ### Update Project Details (Substituir parâmetros)
-PUT {{baseUrl}}/api/projects/1
+PUT {{baseUrl}}/api/projects/4
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -177,8 +220,12 @@ Authorization: Bearer {{token}}
   "description": "Nova descrição para o projeto",
   "initialProgram": "def hello():\n    print('hello mundo update')",
   "evaluatorCode": "def evaluate():\n    return False",
-  "configId": null
+  "configId": 1
 }
+
+### Iniciar Experimentacao de um Projeto
+POST {{baseUrl}}/api/projects/5/start
+Authorization: Bearer {{token}}
 
 ### Apagar um Projeto
 DELETE {{baseUrl}}/api/projects/1

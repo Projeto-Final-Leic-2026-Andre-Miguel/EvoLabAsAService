@@ -51,4 +51,6 @@ sealed class Problem(
     data object DuplicateProjectName : Problem(URI("$PROBLEM_URI_PATH/duplicate-project-name"))
 
     data object InvalidProjectStatus : Problem(URI("$PROBLEM_URI_PATH/invalid-project-status"))
+
+    data object ExecutionQueueUnavailable : Problem(URI("$PROBLEM_URI_PATH/execution-queue-unavailable"))
 }

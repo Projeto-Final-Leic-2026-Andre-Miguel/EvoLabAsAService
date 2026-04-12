@@ -30,6 +30,8 @@ interface ProjectService {
         newStatus: EvolutionStatus
     ): Either<ProjectServiceErrors, Project>
 
+    fun startExperimentation(projectId: Int, userId: Int): Either<ProjectServiceErrors, Project>
+
     fun getProject(projectId: Int, userId: Int): Either<ProjectServiceErrors, Project>
 
     fun getAllProjectsFromUser(userId: Int): Either<ProjectServiceErrors, List<Project>>

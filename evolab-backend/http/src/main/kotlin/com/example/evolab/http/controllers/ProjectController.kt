@@ -119,6 +119,40 @@ class ProjectController(
             Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
 
+    // Worker lifecycle updates should not depend on project ownership from the API caller.
+    @PutMapping("/{id}/status")
+    fun updateProjectStatus(
+        @PathVariable id: Int,
+        @RequestBody input: UpdateProjectStatusInput,
+    ): ResponseEntity<*> {
+        val result: Either<ProjectServiceErrors, Project> =
+            projectService.updateProjectStatus(
+                projectId = id,
+                newStatus = input.status,
+            )
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
+    @PostMapping("/{id}/start")
+    fun startExperimentation(
+        @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser,
+    ): ResponseEntity<*> {
+        val result: Either<ProjectServiceErrors, Project> =
+            projectService.startExperimentation(
+                projectId = id,
+                userId = authenticatedUser.user.id,
+            )
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.ACCEPTED).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
 
     @DeleteMapping("/{id}")
     fun deleteProject(
@@ -146,5 +180,7 @@ class ProjectController(
             is ProjectServiceErrors.ConfigAccessDenied -> Problem.ConfigAccessDenied.response(HttpStatus.FORBIDDEN)
             is ProjectServiceErrors.DuplicateProjectName -> Problem.DuplicateProjectName.response(HttpStatus.CONFLICT)
             is ProjectServiceErrors.InvalidProjectStatus -> Problem.InvalidProjectStatus.response(HttpStatus.CONFLICT)
+            is ProjectServiceErrors.ExecutionQueueUnavailable ->
+                Problem.ExecutionQueueUnavailable.response(HttpStatus.SERVICE_UNAVAILABLE)
         }
 }

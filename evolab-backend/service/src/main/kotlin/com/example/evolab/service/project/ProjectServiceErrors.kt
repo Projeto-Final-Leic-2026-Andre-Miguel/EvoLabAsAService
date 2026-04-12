@@ -16,5 +16,5 @@ sealed class ProjectServiceErrors {
 
     data class InvalidProjectStatus(val message: String) : ProjectServiceErrors()
 
-
+    data class ExecutionQueueUnavailable(val message: String) : ProjectServiceErrors()
 }

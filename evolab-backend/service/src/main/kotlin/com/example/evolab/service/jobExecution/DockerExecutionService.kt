@@ -2,16 +2,17 @@ package com.example.evolab.service.jobExecution
 
 import com.example.evolab.domain.project.Project
 import com.github.dockerjava.api.DockerClient
-import com.github.dockerjava.core.DefaultDockerClientConfig
-import com.github.dockerjava.core.DockerClientImpl
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
-import com.github.dockerjava.api.model.Bind
-import com.github.dockerjava.api.model.HostConfig
-import com.github.dockerjava.api.model.Volume
 import com.github.dockerjava.api.command.PullImageResultCallback
 import com.github.dockerjava.api.command.WaitContainerResultCallback
 import com.github.dockerjava.api.async.ResultCallback
+import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Frame
+import com.github.dockerjava.api.model.HostConfig
+import com.github.dockerjava.api.model.Volume
+import com.github.dockerjava.core.DefaultDockerClientConfig
+import com.github.dockerjava.core.DockerClientImpl
+import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
+//import com.github.dockerjava.zerodep.ZerodepDockerHttpClient
 import jakarta.annotation.PostConstruct
 import jakarta.inject.Named
 import kotlinx.coroutines.Dispatchers
@@ -47,18 +48,19 @@ class DockerExecutionService {
     suspend fun runOpenEvolveContainerForProject(
         project: Project,
         yamlConfigPath: Path?,
-        workerId: Int
+        workerId: Int,
+        environment: Map<String, String> = emptyMap(),
     ): DockerExecutionResult {
         return withContext(Dispatchers.IO) {
-            logger.info("Worker-$workerId: A iniciar contentor do OpenEvolve para o Project ID: \${project.id}...")
+            logger.info("Worker-$workerId: A iniciar contentor do OpenEvolve para o Project ID: ${project.id}...")
 
             try {
                 dockerClient.pullImageCmd(IMAGE_NAME).exec(PullImageResultCallback()).awaitCompletion()
             } catch (e: Exception) {
-                logger.warn("Worker-$workerId: Falha ao puxar a imagem $IMAGE_NAME ou ja estava atualizada. Erro: \${e.message}")
+                logger.warn("Worker-$workerId: Falha ao puxar a imagem $IMAGE_NAME ou ja estava atualizada. Erro: ${e.message}")
             }
 
-            val tempDir = Files.createTempDirectory("evolab_project_\${project.id}_").toFile()
+            val tempDir = Files.createTempDirectory("evolab_project_${project.id}_").toFile()
             
             try {
                 val initialProgramFile = File(tempDir, "initial_program.py")
@@ -87,6 +89,7 @@ class DockerExecutionService {
                 val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
                     .withHostConfig(hostConfig)
                     .withWorkingDir(containerPath)
+                    .withEnv(environment.map { (key, value) -> "$key=$value" })
                     .withCmd(cmdArgs)
                     .exec()
 
