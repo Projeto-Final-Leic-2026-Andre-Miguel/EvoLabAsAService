@@ -67,6 +67,31 @@ class ConfigServiceImplTest {
 
         assertEquals(7, config.userId)
         assertEquals("model", config.modelName)
+        assertEquals("https://api.openai.com/v1", config.additionalParams["llm.api_base"])
+    }
+
+    @Test
+    fun createConfigAutoFillsGeminiApiBaseFromCredentialProvider() {
+        val repo = FakeRepositoryConfig()
+        val llmRepo = FakeRepositoryLLMCredentials(defaultProvider = LLM.GEMINI)
+        val service = createService(configRepo = repo, llmRepo = llmRepo)
+
+        val result = service.createConfig(7, null, 10, "gemini-1.5-flash", 20, 5, mapOf("k" to "v"))
+        val config = assertRight(result)
+
+        assertEquals("https://generativelanguage.googleapis.com/v1beta/openai/", config.additionalParams["llm.api_base"])
+    }
+
+    @Test
+    fun createConfigRejectsProviderModelMismatch() {
+        val repo = FakeRepositoryConfig()
+        val llmRepo = FakeRepositoryLLMCredentials(defaultProvider = LLM.GEMINI)
+        val service = createService(configRepo = repo, llmRepo = llmRepo)
+
+        val result = service.createConfig(7, null, 10, "gpt-4.1-mini", 20, 5, emptyMap())
+
+        assertTrue(result is Either.Left)
+        assertTrue((result as Either.Left).value is ConfigError.InvalidOpenEvolveConfig)
     }
 
     @Test
@@ -248,7 +273,8 @@ class ConfigServiceImplTest {
     private fun createService(
         configRepo: FakeRepositoryConfig = FakeRepositoryConfig(),
         projectRepo: FakeRepositoryProject = FakeRepositoryProject(),
-    ) = ConfigServiceImpl(configRepo, FakeTransactionManager(configRepo, projectRepo))
+        llmRepo: FakeRepositoryLLMCredentials = FakeRepositoryLLMCredentials(),
+    ) = ConfigServiceImpl(configRepo, projectRepo, llmRepo)
 }
 
 private fun validRuntimePayload(): Map<String, Any> =
@@ -393,6 +419,7 @@ private class FakeRepositoryProject : RepositoryProject {
         userId: Int,
         name: String,
         description: String?,
+        configId: Int?,
         initialProgram: String?,
         evaluatorCode: String?,
         status: EvolutionStatus,
@@ -419,6 +446,28 @@ private class FakeRepositoryProject : RepositoryProject {
     override fun clear() {
         projects.clear()
     }
+}
+
+private class FakeRepositoryLLMCredentials(
+    private val defaultProvider: LLM = LLM.OPENAI,
+) : RepositoryLLMCredentials {
+    override fun createLLMCredential(userId: Int, provider: LLM, apiKeyEncrypted: String): LLMCredentials =
+        LLMCredentials(id = 1, userId = userId, llm = provider, apiKeyEncrypted = apiKeyEncrypted, createdAt = Instant.now())
+
+    override fun findAllByUserId(userId: Int): List<LLMCredentials> = emptyList()
+
+    override fun findAllByProvider(provider: LLM): List<LLMCredentials> = emptyList()
+
+    override fun findById(id: Int): LLMCredentials? =
+        LLMCredentials(id = id, userId = 1, llm = defaultProvider, apiKeyEncrypted = "enc", createdAt = Instant.now())
+
+    override fun findAll(): List<LLMCredentials> = emptyList()
+
+    override fun save(entity: LLMCredentials) = Unit
+
+    override fun deleteById(id: Int): Boolean = true
+
+    override fun clear() = Unit
 }
 
 private class FakeTransactionManager(

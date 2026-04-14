@@ -3,8 +3,8 @@ package com.example.evolab.service.configService
 import com.example.evolab.domain.config.Config
 import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.repo.repoConfig.RepositoryConfig
+import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
 import com.example.evolab.repo.repoProject.RepositoryProject
-import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.failure
 import com.example.evolab.service.auxiliary.success
@@ -15,7 +15,8 @@ import java.nio.file.Path
 @Named
 class ConfigServiceImpl(
     private val repoConfig: RepositoryConfig,
-    private val repoProject: RepositoryProject
+    private val repoProject: RepositoryProject,
+    private val repoLLMCredentials: RepositoryLLMCredentials,
 ) : ConfigService {
     override fun createConfig(
         userId: Int,
@@ -36,6 +37,13 @@ class ConfigServiceImpl(
                     current
                 }
 
+            val normalizedParams =
+                try {
+                    normalizeAdditionalParams(llmCredentialsId, modelName, additionalParams)
+                } catch (e: IllegalStateException) {
+                    return failure(ConfigError.InvalidOpenEvolveConfig(e.message ?: "Invalid LLM configuration"))
+                }
+
             val id =
                 repoConfig.createConfig(
                     userId = userId,
@@ -43,7 +51,7 @@ class ConfigServiceImpl(
                     modelName = modelName,
                     maxIter = maxIter,
                     checkPointInterval = checkPointInterval,
-                    additionalParams = additionalParams,
+                    additionalParams = normalizedParams,
                 )
 
             val created = repoConfig.findById(id) ?: return failure(ConfigError.ConfigNotFound)
@@ -77,11 +85,18 @@ class ConfigServiceImpl(
         val current = repoConfig.findById(configId) ?: return failure(ConfigError.ConfigNotFound)
         if (current.userId != userId) return failure(ConfigError.AccessDenied)
 
+        val normalizedParams =
+            try {
+                normalizeAdditionalParams(current.llmCredentialsId, modelName, additionalParams)
+            } catch (e: IllegalStateException) {
+                return failure(ConfigError.InvalidOpenEvolveConfig(e.message ?: "Invalid LLM configuration"))
+            }
+
         val updated = current.copy(
             modelName = modelName,
             maxIter = maxIter,
             checkPointInterval = checkPointInterval,
-            additionalParams = additionalParams,
+            additionalParams = normalizedParams,
         )
 
         repoConfig.save(updated)
@@ -145,5 +160,24 @@ class ConfigServiceImpl(
         if (maxIter <= 0) return ConfigError.InvalidMaxIterations
         if (checkPointInterval <= 0 || checkPointInterval > maxIter) return ConfigError.InvalidCheckpointInterval
         return null
+    }
+
+    private fun normalizeAdditionalParams(
+        llmCredentialsId: Int,
+        modelName: String,
+        additionalParams: Map<String, String>,
+    ): Map<String, String> {
+        val credential =
+            repoLLMCredentials.findById(llmCredentialsId)
+                ?: throw IllegalStateException("LLM credential '$llmCredentialsId' was not found")
+
+        val resolvedApiBase =
+            OpenEvolvePayloadBuilder.resolveApiBase(
+                llm = credential.llm,
+                modelName = modelName,
+                configuredApiBase = additionalParams["llm.api_base"],
+            )
+
+        return additionalParams + mapOf("llm.api_base" to resolvedApiBase)
     }
 }

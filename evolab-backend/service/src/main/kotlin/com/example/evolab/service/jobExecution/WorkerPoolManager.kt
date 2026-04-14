@@ -113,8 +113,12 @@ class WorkerPoolManager(
                             environment = containerEnvironment,
                         )
 
-                    val isSuccess = result.exitCode == 0
-                    val finalStatus = if (isSuccess) EvolutionStatus.COMPLETED else EvolutionStatus.FAILED
+                    val failureReason = OpenEvolveExecutionOutcomeDecider.failureReason(result.exitCode, result.logs)
+                    val finalStatus = if (failureReason == null) EvolutionStatus.COMPLETED else EvolutionStatus.FAILED
+
+                    if (failureReason != null) {
+                        logger.warn("Worker-$workerId: Job $jobId marcado como FAILED. Motivo: $failureReason")
+                    }
 
                     trxManager.run {
                         val job = repoJobs.findById(jobId)

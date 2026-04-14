@@ -4,6 +4,9 @@ import com.example.evolab.domain.LLMCredentials.LLM
 import com.example.evolab.domain.config.Config
 
 object OpenEvolvePayloadBuilder {
+    private const val OPENAI_API_BASE = "https://api.openai.com/v1"
+    private const val GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
     fun build(
         config: Config,
         apiKeyValue: String? = config.additionalParams["llm.api_key"],
@@ -81,6 +84,44 @@ object OpenEvolvePayloadBuilder {
         apiKeyEnvironmentPlaceholder(apiKeyEnvironmentVariableName(llm))
 
     fun apiKeyEnvironmentPlaceholder(variableName: String): String = "${'$'}{$variableName}"
+
+    fun resolveApiBase(
+        llm: LLM,
+        modelName: String,
+        configuredApiBase: String?,
+    ): String {
+        validateProviderModelConsistency(llm, modelName)
+
+        val configured = configuredApiBase?.trim().orEmpty()
+        if (configured.isNotBlank()) return configured
+
+        return when (llm) {
+            LLM.OPENAI -> OPENAI_API_BASE
+            LLM.GEMINI -> GEMINI_API_BASE
+            LLM.LOCAL_MODEL -> throw IllegalStateException("llm.api_base is required when provider is LOCAL_MODEL")
+        }
+    }
+
+    fun validateProviderModelConsistency(
+        llm: LLM,
+        modelName: String,
+    ) {
+        val normalizedModel = modelName.trim().lowercase()
+        val modelLooksGemini = normalizedModel.startsWith("gemini")
+        val modelLooksOpenAi =
+            normalizedModel.startsWith("gpt") ||
+                normalizedModel.startsWith("o1") ||
+                normalizedModel.startsWith("o3") ||
+                normalizedModel.startsWith("o4")
+
+        if (llm == LLM.GEMINI && modelLooksOpenAi) {
+            throw IllegalStateException("Config model '$modelName' is OpenAI-like but credential provider is GEMINI")
+        }
+
+        if (llm == LLM.OPENAI && modelLooksGemini) {
+            throw IllegalStateException("Config model '$modelName' is Gemini-like but credential provider is OPENAI")
+        }
+    }
 
     private fun String?.toIntOrNullOrDefault(default: Int): Int = this?.toIntOrNull() ?: default
 

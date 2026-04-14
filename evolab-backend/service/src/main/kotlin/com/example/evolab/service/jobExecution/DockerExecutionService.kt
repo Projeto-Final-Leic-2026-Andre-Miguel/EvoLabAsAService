@@ -69,7 +69,8 @@ class DockerExecutionService {
                 val evaluatorFile = File(tempDir, "evaluator.py")
                 evaluatorFile.writeText(project.evaluatorCode!!)
 
-                val cmdArgs = mutableListOf("python", "-m", "openevolve", "initial_program.py", "evaluator.py")
+                // The image ENTRYPOINT already runs /app/openevolve-run.py; pass only script arguments here.
+                val cmdArgs = mutableListOf("initial_program.py", "evaluator.py")
 
                 // Mover o yaml gerado pelo ConfigService para o tempDir
                 if (yamlConfigPath != null) {
@@ -80,7 +81,8 @@ class DockerExecutionService {
                 }
 
                 val hostPath = tempDir.absolutePath
-                val containerPath = "/app"
+                // Do not mount over /app because the image keeps openevolve-run.py there.
+                val containerPath = "/workspace"
 
                 // 2. Criar configuração do contentor
                 val hostConfig = HostConfig.newHostConfig()
