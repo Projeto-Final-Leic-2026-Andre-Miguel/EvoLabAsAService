@@ -27,6 +27,8 @@ interface LLMCredentialsService {
 
     fun getAllLLMCredentials(): Either<LLMCredentialsServiceErrors, List<LLMCredentials>>
 
+    suspend fun validateCredential(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, Boolean>
+
     suspend fun updateLLMCredential(
         id: Int,
         userId: Int,

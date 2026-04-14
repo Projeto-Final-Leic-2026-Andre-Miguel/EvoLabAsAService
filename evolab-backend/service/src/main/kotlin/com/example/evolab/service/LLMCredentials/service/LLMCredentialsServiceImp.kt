@@ -136,6 +136,25 @@ class LLMCredentialsServiceImp(
             success(id) // sendo id o id da credencial eliminada
         }
 
+    override suspend fun validateCredential(
+        userId: Int,
+        id: Int
+    ): Either<LLMCredentialsServiceErrors, Boolean> {
+        val credential = trxManager.run {
+            findUserCredentialById(userId, id)
+        } ?: return failure(
+            LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' was not found for user with id '$userId'"),
+        )
+
+        val apiKey = credential.apiKeyEncrypted?.let { encryptionService.decrypt(it) }
+            ?: return failure(LLMCredentialsServiceErrors.InvalidApiKey("Failed to decrypt API key or key is missing"))
+
+        return when (val result = llmValidator.validateApiKeyForLLM(credential.llm, apiKey)) {
+            is Failure -> failure(mapValidatorError(result.value))
+            is Success -> success(true)
+        }
+    }
+
     /**
      * Valida se o utilizador tem ou não alguma credencial com o provider especificado
      *

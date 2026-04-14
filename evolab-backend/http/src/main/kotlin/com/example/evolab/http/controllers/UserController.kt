@@ -11,6 +11,8 @@ import com.example.evolab.service.tokenService.TokenError
 import com.example.evolab.service.tokenService.TokenService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.ResponseCookie
+import org.springframework.http.HttpHeaders
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -61,8 +63,17 @@ class UserController(
 	): ResponseEntity<*> {
 		return when (val tokenInfo = tokenService.createToken(input.email, input.password)) {
 			is Success -> {
+				val cookie = ResponseCookie.from(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_NAME, tokenInfo.value.tokenValue)
+					.httpOnly(true)
+					.secure(true) // Should be true if using HTTPS, otherwise consider false for local dev depending on setup. SameSite relies on secure if None.
+					.path("/")
+					.maxAge(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_MAX_AGE.toLong())
+					.sameSite("Strict")
+					.build()
+
 				ResponseEntity
 					.status(HttpStatus.OK)
+					.header(HttpHeaders.SET_COOKIE, cookie.toString())
 					.body(mapOf("tokenValue" to tokenInfo.value.tokenValue))
 			}
 
@@ -85,7 +96,7 @@ class UserController(
 					.status(HttpStatus.OK)
 					.body(mapOf("tokenValue" to tokenInfo.value.tokenValue))
 			}
-			is Failure -> {
+		 is Failure -> {
 				ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()
 			}
 		}
@@ -94,8 +105,20 @@ class UserController(
 	@PostMapping("/api/logout")
 	fun logout(user: AuthenticatedUser): ResponseEntity<*> {
 		return when (tokenService.revokeToken(user.token)) {
-			is Success -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
-			is Failure -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<Unit>()
+			is Success -> {
+				val clearCookie = ResponseCookie.from(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_NAME, "")
+					.httpOnly(true)
+					.secure(true)
+					.path("/")
+					.maxAge(0) // immediately expire
+					.build()
+
+				ResponseEntity
+					.status(HttpStatus.OK)
+					.header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+					.build<Unit>()
+			}
+		 is Failure -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<Unit>()
 		}
 	}
 
@@ -105,7 +128,7 @@ class UserController(
 	): ResponseEntity<*> {
 		return when (val result = userService.deleteUser(id)) {
 			is Success -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
-			is Failure ->
+		 is Failure ->
 				when (result.value) {
 					UserError.UserNotFound -> ResponseEntity.status(HttpStatus.NOT_FOUND).build<Unit>()
 					UserError.ErrorDeletingUser -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()

@@ -15,6 +15,15 @@ export function Profile() {
 
     const initial = user.name ? user.name.charAt(0).toUpperCase() : "?";
 
+    const renderCreatedAt = (createdAt?: any) => {
+        if (!createdAt) return "Unknown date";
+        if (typeof createdAt === 'object' && createdAt.epochSecond) {
+            return new Date(createdAt.epochSecond * 1000).toLocaleDateString();
+        }
+        const n = Number(createdAt);
+        return !isNaN(n) ? new Date(n * 1000).toLocaleDateString() : new Date(createdAt).toLocaleDateString();
+    };
+
     return (
         <div className={styles.profileContainer}>
             <motion.div
@@ -40,7 +49,7 @@ export function Profile() {
                     <div className={styles.infoRow}>
                         <span className={styles.infoLabel}>Member Since:</span>
                         <span className={styles.infoValue}>
-                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Unknown"}
+                            {renderCreatedAt(user.createdAt)}
                         </span>
                     </div>
 

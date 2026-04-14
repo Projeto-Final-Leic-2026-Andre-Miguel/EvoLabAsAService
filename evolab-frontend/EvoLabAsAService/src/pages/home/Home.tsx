@@ -15,12 +15,12 @@ export function Home() {
       >
         <h1 className={styles.title}>Welcome to EvoLab</h1>
         <p className={styles.subtitle}>
-          A web application where you can improve your algorithms by experimentation.
+          A web application where you can improve your algorithms through experimentation.
         </p>
         
         <button 
           className={styles.startBtn}
-          onClick={() => navigate('/credentials')} 
+          onClick={() => navigate('/projects')}
         >
           Start Experimenting
         </button>

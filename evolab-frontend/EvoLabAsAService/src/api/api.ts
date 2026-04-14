@@ -21,7 +21,10 @@ class ApiError extends Error {
 
 export async function request<T>(url: string, options?: RequestInit): Promise<RequestResult<T>> {
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, {
+            credentials: "include",
+            ...options
+        });
         if (!response.ok) {
             const errorBody = await response.json().catch(() => ({}));
             const errorMessage = errorBody.title || errorBody.detail || response.statusText;
@@ -39,6 +42,7 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
             return {type: "Success", data: null as T, error: null };
         }
         const data = await response.json();
+
         return {type: "Success", data, error: null };
     } catch (e) {
         const message = e instanceof Error ? e.message : "A network error occurred.";

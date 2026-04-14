@@ -139,11 +139,22 @@ class LLMCredentialsController(
         }
     }
 
+    @PostMapping("/{id}/validate")
+    suspend fun validateLLMCredential(
+        @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser
+    ): ResponseEntity<*> {
+        val result: Either<LLMCredentialsServiceErrors, Boolean> =
+            llmCredentialsService.validateCredential(authenticatedUser.user.id, id)
 
-    /**
-     * Mapeia os erros do serviço para respostas HTTP apropriadas.
-     */
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(mapOf("isValid" to result.value))
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
 }
+
     private fun mapServiceErrors(error: LLMCredentialsServiceErrors): ResponseEntity<*> {
         return when (error) {
             is LLMCredentialsServiceErrors.InvalidLLMProvider -> Problem.InvalidLLMProvider.response(HttpStatus.BAD_REQUEST)
