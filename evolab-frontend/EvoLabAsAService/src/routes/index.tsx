@@ -12,7 +12,9 @@ import {AuthProvider} from "../contexts/AuthContext";
 import {Profile} from "../pages/profile/Profile";
 import { ProtectedRoute } from './ProtectRoute.tsx'
 import { Credentials } from '../pages/credentials/Credentials'
-import {ValidCredentialsProvider} from "../contexts/ValidCredentialsContext.tsx";
+import Projects from '../pages/projects/Projects'
+import Configs from '../pages/configs/Configs'
+import {ValidCredentialsProvider} from "../contexts/ValidCredentialsContext.tsx"
 
 const router = createBrowserRouter([
   {
@@ -20,10 +22,10 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
         { index: true, element: <Home /> },
-     //   { path: "projects", element: <ProtectedRoute><Projects /></ProtectedRoute> }, 
-          { path: "credentials", element: <ProtectedRoute><Credentials /></ProtectedRoute> }, 
+        { path: "projects", element: <ProtectedRoute><Projects /></ProtectedRoute> },
+        { path: "credentials", element: <ProtectedRoute><Credentials /></ProtectedRoute> },
      //   { path: "contact", element: <Contact /> }, 
-     //   {path : "config", element: <ProtectedRoute><Config /></ProtectedRoute>},
+        { path: "config", element: <ProtectedRoute><Configs /></ProtectedRoute> },
         { path : "register", element: <Register />,},
         { path : "login", element: <Login />},
         { path : "profile", element: <ProtectedRoute> <Profile /></ProtectedRoute>},

@@ -15,11 +15,8 @@ export function Profile() {
 
     const initial = user.name ? user.name.charAt(0).toUpperCase() : "?";
 
-    const renderCreatedAt = (createdAt?: any) => {
+    const renderCreatedAt = (createdAt?: string) => {
         if (!createdAt) return "Unknown date";
-        if (typeof createdAt === 'object' && createdAt.epochSecond) {
-            return new Date(createdAt.epochSecond * 1000).toLocaleDateString();
-        }
         const n = Number(createdAt);
         return !isNaN(n) ? new Date(n * 1000).toLocaleDateString() : new Date(createdAt).toLocaleDateString();
     };
