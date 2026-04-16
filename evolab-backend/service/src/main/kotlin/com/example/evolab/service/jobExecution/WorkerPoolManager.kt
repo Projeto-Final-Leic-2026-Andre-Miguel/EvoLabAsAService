@@ -55,7 +55,6 @@ class WorkerPoolManager(
         while (currentCoroutineContext().isActive) {
             var currentProjectId: Int? = null
             try {
-                // Project is pulled from the queue. If it is empty, execution is suspended.
                 val projectFromQueue = jobQueue.dequeue()
                 currentProjectId = projectFromQueue.id
 

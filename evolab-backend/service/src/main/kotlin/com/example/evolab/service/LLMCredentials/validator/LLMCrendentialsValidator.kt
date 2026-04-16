@@ -13,5 +13,4 @@ interface LLMCrendentialsValidator {
 
     suspend fun validateApiKeyForLLM(llm: LLM, apiKey: String?): Either<LLMValidatorErrors, Boolean>
 
-
 }

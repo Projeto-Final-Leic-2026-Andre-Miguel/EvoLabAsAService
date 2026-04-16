@@ -5,6 +5,7 @@ import com.example.evolab.domain.LLMCredentials.LLMCredentials
 import com.example.evolab.repo.Repository
 
 interface RepositoryLLMCredentials : Repository<LLMCredentials> {
+	// TODO(local-model): if LOCAL_MODEL stops storing secrets, make apiKeyEncrypted nullable instead of adding a separate repo flow.
 	fun createLLMCredential(
 		userId: Int,
 		provider: LLM,

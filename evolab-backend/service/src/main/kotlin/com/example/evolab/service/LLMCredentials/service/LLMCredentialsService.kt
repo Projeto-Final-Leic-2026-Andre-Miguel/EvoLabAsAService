@@ -17,7 +17,9 @@ interface LLMCredentialsService {
    suspend fun createLLMCredential(
         userId: Int,
         llm: LLM,
-        apiKey: String
+        apiKey: String?,
+        apiBase: String? = null,
+        modelName: String? = null,
 
     ): Either<LLMCredentialsServiceErrors, LLMCredentials>
 
@@ -27,12 +29,19 @@ interface LLMCredentialsService {
 
     fun getAllLLMCredentials(): Either<LLMCredentialsServiceErrors, List<LLMCredentials>>
 
-    suspend fun validateCredential(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, Boolean>
+    suspend fun validateCredential(
+        userId: Int,
+        id: Int,
+        apiBase: String? = null,
+        modelName: String? = null,
+    ): Either<LLMCredentialsServiceErrors, Boolean>
 
     suspend fun updateLLMCredential(
         id: Int,
         userId: Int,
-        apiKey: String
+        apiKey: String?,
+        apiBase: String? = null,
+        modelName: String? = null,
     ): Either<LLMCredentialsServiceErrors, LLMCredentials>
 
     fun deleteLLMCredential(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, Int>

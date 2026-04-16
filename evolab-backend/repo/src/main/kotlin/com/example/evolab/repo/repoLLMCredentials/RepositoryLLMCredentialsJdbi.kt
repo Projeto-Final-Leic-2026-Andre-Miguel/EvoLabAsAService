@@ -9,6 +9,7 @@ class RepositoryLLMCredentialsJdbi(
 	private val handle: Handle,
 ) : RepositoryLLMCredentials {
 
+	// TODO(local-model): when api_key_encrypted becomes nullable in the schema, bind null here for LOCAL_MODEL instead of forcing a separate insert method.
 	override fun createLLMCredential(
 		userId: Int,
 		provider: LLM,

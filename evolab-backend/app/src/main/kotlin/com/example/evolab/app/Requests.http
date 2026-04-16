@@ -1,5 +1,5 @@
-@baseUrl = http://localhost:8080
-@token = fFl49cYBT8P2d4xhVusV7V1pQ46kuWchkFafSgnCVws=
+﻿@baseUrl = http://localhost:8080
+@token = urSKxtr4GOsiKyouV8KnfoXSDG7oD23YOoXabXia7M4=
 @userIdToDelete = 8
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
@@ -7,11 +7,13 @@
 @emailTeste = pedrofdd@gmail.com
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
-@configId = 5
+@configId = 4
 @llmCredentialId = 4
+@ollamaHostBase = http://localhost:11434/v1
+@ollamaDockerBase = http://host.docker.internal:11434/v1
+
 
 ### -------------------- USER AUTHENTICATION TESTS --------------------
-
 ### Criar utilizador local
 POST {{baseUrl}}/api/users/local
 Content-Type: application/json
@@ -23,7 +25,7 @@ Content-Type: application/json
 }
 
 ### http://localhost:8080/oauth2/authorization/google
-// Este é o endpoint para autenticação via google, quando concluido, redireciona automaticamete para o endpoint /me
+// Este Ã© o endpoint para autenticaÃ§Ã£o via google, quando concluido, redireciona automaticamete para o endpoint /me
 
 
 ### Obter token (login local)
@@ -64,7 +66,7 @@ Authorization: Bearer {{token}}
 }
 
 
-### Criar OPENAI com formato de chave inválido (Sem 'sk-')
+### Criar OPENAI com formato de chave invÃ¡lido (Sem 'sk-')
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -94,7 +96,7 @@ Authorization: Bearer {{token}}
   "apiKey": "{{geminiKey}}"
 }
 
-### Criar GEMINI com formato inválido
+### Criar GEMINI com formato invÃ¡lido
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -104,7 +106,19 @@ Authorization: Bearer {{token}}
   "apiKey": "gemini-key-invalida"
 }
 
-### Criar Credencial para LLM Não Suportado (ex: ANTHROPIC)
+### Criar credencial LOCAL_MODEL (Ollama)
+POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "LOCAL_MODEL",
+  "apiKey": null,
+  "apiBase": "{{ollamaHostBase}}",
+  "modelName": "qwen2.5-coder:14b"
+}
+
+### Criar Credencial para LLM NÃ£o Suportado (ex: ANTHROPIC)
 POST {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -117,6 +131,23 @@ Authorization: Bearer {{token}}
 ### Ler as minhas Credenciais LLM (Verificar se criaram com sucesso)
 GET {{baseUrl}}/api/llm-credentials
 Authorization: Bearer {{token}}
+
+### Validar credencial LOCAL_MODEL (enviar apiBase + modelName no body)
+POST {{baseUrl}}/api/llm-credentials/{{llmCredentialId}}/validate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "apiBase": "{{ollamaHostBase}}",
+  "modelName": "qwen2.5-coder:14b"
+}
+
+### Validar credencial cloud (body vazio)
+POST {{baseUrl}}/api/llm-credentials/{{llmCredentialId}}/validate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{}
 
 
 ### Obter todas as credenciais LLM (Admin)
@@ -135,14 +166,23 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "projectId": 5,
+  "projectId": 4,
   "llmCredentialsId": {{llmCredentialId}},
-  "modelName": "gpt-4.1-mini",
-  "maxIter": 20,
-  "checkPointInterval": 5,
+  "modelName": "phi3:latest",
+  "maxIter": 6,
+  "checkPointInterval": 3,
   "additionalParams": {
+    "llm.api_base": "{{ollamaDockerBase}}",
     "llm.temperature": "0.7",
-    "database.population_size": "100"
+    "database.population_size": "20",
+    "database.num_islands": "1",
+    "evaluator.parallel_evaluations": "1",
+    "llm.timeout": "180",
+    "llm.retries": "1",
+    "llm.max_tokens": "256",
+    "prompt.num_top_programs": "1",
+    "prompt.num_diverse_programs": "1",
+    "evaluator.cascade_evaluation": "false"
   }
 }
 
@@ -160,12 +200,45 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "modelName": "gpt-4.1",
+  "modelName": "qwen2.5-coder:14b",
   "maxIter": 30,
-  "checkPointInterval": 10,
+  "checkPointInterval": 15,
   "additionalParams": {
-    "llm.temperature": "0.6",
-    "database.population_size": "150"
+    "llm.api_base": "{{ollamaDockerBase}}",
+    "llm.temperature": "0.7",
+    "database.population_size": "20",
+    "database.num_islands": "1",
+    "evaluator.parallel_evaluations": "1",
+    "llm.timeout": "180",
+    "llm.retries": "1",
+    "llm.max_tokens": "256",
+    "prompt.num_top_programs": "1",
+    "prompt.num_diverse_programs": "1",
+    "evaluator.cascade_evaluation": "false"
+  }
+}
+
+### Criar Config LOCAL_MODEL recomendada para OpenEvolve
+POST {{baseUrl}}/api/configs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "modelName": "qwen2.5-coder:14b",
+  "maxIter": 30,
+  "checkPointInterval": 15,
+  "additionalParams": {
+    "llm.api_base": "{{ollamaDockerBase}}",
+    "llm.temperature": "0.7",
+    "database.population_size": "20",
+    "database.num_islands": "1",
+    "evaluator.parallel_evaluations": "1",
+    "llm.timeout": "180",
+    "llm.retries": "1",
+    "llm.max_tokens": "256",
+    "prompt.num_top_programs": "1",
+    "prompt.num_diverse_programs": "1",
+    "evaluator.cascade_evaluation": "false"
   }
 }
 
@@ -193,8 +266,21 @@ Authorization: Bearer {{token}}
   "name": "Meu Primeiro Projeto",
   "description": "Um projeto de teste EvoLab",
   "configId": null,
-  "initialProgram": "def hello():\n    print('hello world')",
-  "evaluatorCode": "def evaluate():\n    return True"
+  "initialProgram": "def solve(arr):\n    a = arr[:]\n    n = len(a)\n    for i in range(1, n):\n        x = a[i]\n        j = i - 1\n        while j >= 0 and a[j] > x:\n            a[j + 1] = a[j]\n            j -= 1\n        a[j + 1] = x\n    return a",
+  "evaluatorCode": "import random\nimport time\nimport statistics\n\ndef _baseline(arr):\n    a = arr[:]\n    n = len(a)\n    for i in range(n):\n        swapped = False\n        for j in range(0, n - i - 1):\n            if a[j] > a[j + 1]:\n                a[j], a[j + 1] = a[j + 1], a[j]\n                swapped = True\n        if not swapped:\n            break\n    return a\n\ndef evaluate(candidate_code):\n    try:\n        ns = {}\n        exec(candidate_code, ns)\n        solve = ns.get(\"solve\")\n        if not callable(solve):\n            return {\"combined_score\": 0.0, \"correctness\": 0.0, \"speed\": 0.0}\n\n        rng = random.Random(42)\n        tests = [[], [1], [2, 1], [3, 1, 2], [5, 5, 1, 3], list(range(20, 0, -1)), [0, -1, 5, -3, 2, -1, 0]]\n        for _ in range(10):\n            n = rng.randint(8, 70)\n            tests.append([rng.randint(-500, 500) for _ in range(n)])\n\n        passed = 0\n        for t in tests:\n            out = solve(t[:])\n            if out == sorted(t):\n                passed += 1\n        correctness = passed / len(tests)\n\n        if correctness < 0.85:\n            return {\"combined_score\": float(0.95 * correctness), \"correctness\": float(correctness), \"speed\": 0.0}\n\n        bench_input = [rng.randint(-2000, 2000) for _ in range(220)]\n\n        def bench(fn, rounds=3):\n            samples = []\n            for _ in range(rounds):\n                t0 = time.perf_counter()\n                fn(bench_input[:])\n                samples.append(time.perf_counter() - t0)\n            return statistics.median(samples)\n\n        t_candidate = bench(solve)\n        t_baseline = bench(_baseline)\n        speed = max(0.0, min(1.0, t_baseline / max(t_candidate * 2.0, 1e-9)))\n\n        combined = 0.90 * correctness + 0.10 * speed\n        return {\"combined_score\": float(combined), \"correctness\": float(correctness), \"speed\": float(speed)}\n    except Exception:\n        return {\"combined_score\": 0.0, \"correctness\": 0.0, \"speed\": 0.0}"
+}
+
+### Criar Project mais adequado ao OpenEvolve
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Sorting Optimization Demo",
+  "description": "Exemplo para o OpenEvolve melhorar um algoritmo de ordenacao com espaco real para evolucao",
+  "configId": null,
+  "initialProgram": "# Initial Program (Random Search)\ndef minimize_function(func, bounds, max_evals=1000):\n    best_x, best_val = None, float('inf')\n    for _ in range(max_evals):\n        x = random_point_in_bounds(bounds)\n        val = func(x)\n        if val < best_val:\n            best_x, best_val = x, val\n    return best_x, best_val",
+  "evaluatorCode": "# Evolved Program (Simulated Annealing + Adaptive Cooling)\ndef minimize_function(func, bounds, max_evals=1000):\n    x = random_point_in_bounds(bounds)\n    temp = adaptive_initial_temperature(func, bounds)\n    \n    for i in range(max_evals):\n        neighbor = generate_neighbor(x, temp, bounds)\n        delta = func(neighbor) - func(x)\n        \n        if delta < 0 or random.random() < exp(-delta/temp):\n            x = neighbor\n            \n        temp *= adaptive_cooling_rate(i, max_evals)  # Dynamic cooling\n    \n    return x, func(x)"
 }
 
 
@@ -210,21 +296,20 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/api/projects/1
 Authorization: Bearer {{token}}
 
-### Update Project Details (Substituir parâmetros)
+### Update Project Details (Substituir parÃ¢metros)
 PUT {{baseUrl}}/api/projects/4
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "name": "Projeto Atualizado",
-  "description": "Nova descrição para o projeto",
-  "initialProgram": "def hello():\n    print('hello mundo update')",
-  "evaluatorCode": "def evaluate():\n    return False",
-  "configId": 1
+  "description": "Nova descriÃ§Ã£o para o projeto",
+  "initialProgram": "def solve(arr):\n    a = arr[:]\n    n = len(a)\n    for i in range(1, n):\n        x = a[i]\n        j = i - 1\n        while j >= 0 and a[j] > x:\n            a[j + 1] = a[j]\n            j -= 1\n        a[j + 1] = x\n    return a",
+  "evaluatorCode": "import random\nimport time\nimport statistics\n\ndef _baseline(arr):\n    a = arr[:]\n    n = len(a)\n    for i in range(n):\n        swapped = False\n        for j in range(0, n - i - 1):\n            if a[j] > a[j + 1]:\n                a[j], a[j + 1] = a[j + 1], a[j]\n                swapped = True\n        if not swapped:\n            break\n    return a\n\ndef evaluate(candidate_code):\n    try:\n        ns = {}\n        exec(candidate_code, ns)\n        solve = ns.get(\"solve\")\n        if not callable(solve):\n            return {\"combined_score\": 0.0, \"correctness\": 0.0, \"speed\": 0.0}\n\n        rng = random.Random(42)\n        tests = [[], [1], [2, 1], [3, 1, 2], [5, 5, 1, 3], list(range(20, 0, -1)), [0, -1, 5, -3, 2, -1, 0]]\n        for _ in range(10):\n            n = rng.randint(8, 70)\n            tests.append([rng.randint(-500, 500) for _ in range(n)])\n\n        passed = 0\n        for t in tests:\n            out = solve(t[:])\n            if out == sorted(t):\n                passed += 1\n        correctness = passed / len(tests)\n\n        if correctness < 0.85:\n            return {\"combined_score\": float(0.95 * correctness), \"correctness\": float(correctness), \"speed\": 0.0}\n\n        bench_input = [rng.randint(-2000, 2000) for _ in range(220)]\n\n        def bench(fn, rounds=3):\n            samples = []\n            for _ in range(rounds):\n                t0 = time.perf_counter()\n                fn(bench_input[:])\n                samples.append(time.perf_counter() - t0)\n            return statistics.median(samples)\n\n        t_candidate = bench(solve)\n        t_baseline = bench(_baseline)\n        speed = max(0.0, min(1.0, t_baseline / max(t_candidate * 2.0, 1e-9)))\n\n        combined = 0.90 * correctness + 0.10 * speed\n        return {\"combined_score\": float(combined), \"correctness\": float(correctness), \"speed\": float(speed)}\n    except Exception:\n        return {\"combined_score\": 0.0, \"correctness\": 0.0, \"speed\": 0.0}"
 }
 
 ### Iniciar Experimentacao de um Projeto
-POST {{baseUrl}}/api/projects/5/start
+POST {{baseUrl}}/api/projects/4/start
 Authorization: Bearer {{token}}
 
 ### Apagar um Projeto
@@ -232,10 +317,11 @@ DELETE {{baseUrl}}/api/projects/1
 Authorization: Bearer {{token}}
 
 ### Atualizar Status do Projeto (Usado pelo Worker - normalmente sem Auth ou regras definidas)
-PUT {{baseUrl}}/api/projects/1/status
+PUT {{baseUrl}}/api/projects/4/status
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "status": "RUNNING"
+  "status": "CREATED"
 }
+

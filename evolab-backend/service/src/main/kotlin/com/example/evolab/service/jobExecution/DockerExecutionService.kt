@@ -32,7 +32,6 @@ class DockerExecutionService {
 
     @PostConstruct
     fun init() {
-        // O docker-java tem por base: unix:///var/run/docker.sock no macOS/Linux
         val config = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
         val httpClient = ApacheDockerHttpClient.Builder()
             .dockerHost(config.dockerHost)
@@ -68,10 +67,8 @@ class DockerExecutionService {
                 val evaluatorFile = File(tempDir, "evaluator.py")
                 evaluatorFile.writeText(project.evaluatorCode!!)
 
-                // The image ENTRYPOINT already runs /app/openevolve-run.py; pass only script arguments here.
                 val cmdArgs = mutableListOf("initial_program.py", "evaluator.py")
 
-                // Mover o yaml gerado pelo ConfigService para o tempDir
                 if (yamlConfigPath != null) {
                     val configFileInTemp = File(tempDir, "config.yaml")
                     Files.copy(yamlConfigPath, configFileInTemp.toPath())
@@ -80,10 +77,8 @@ class DockerExecutionService {
                 }
 
                 val hostPath = tempDir.absolutePath
-                // Do not mount over /app because the image keeps openevolve-run.py there.
                 val containerPath = "/workspace"
 
-                // 2. Criar configuração do contentor
                 val hostConfig = HostConfig.newHostConfig()
                     .withBinds(Bind(hostPath, Volume(containerPath)))
 
@@ -97,13 +92,10 @@ class DockerExecutionService {
                 val containerId = createCmdResponse.id
                 logger.info("Worker-$workerId: Contentor criado com ID $containerId")
 
-                // 3. Iniciar contentor
                 dockerClient.startContainerCmd(containerId).exec()
 
-                // Buffer para capturar os logs stdOut e stdErr
                 val logsBuilder = StringBuilder()
 
-                // 4. Capturar logs (assincrono)
                 dockerClient.logContainerCmd(containerId)
                     .withStdOut(true)
                     .withStdErr(true)
@@ -116,7 +108,6 @@ class DockerExecutionService {
                         }
                     })
 
-                // 5. Esperar que o processo evolutivo termine
                 val exitCode = dockerClient.waitContainerCmd(containerId)
                     .exec(WaitContainerResultCallback())
                     .awaitStatusCode()
@@ -126,9 +117,6 @@ class DockerExecutionService {
                 // 6. Limpar o docker
                 dockerClient.removeContainerCmd(containerId).withForce(true).exec()
 
-                // A ler uma eventual output "best_solution.py" (se openEvolve a gerar)
-                // Isto depende de como a biblioteca guarda o ficheiro resolvido. 
-                // Assumindo que escreve um best_solution.py no dir atual:
                 val bestSolutionFile = File(tempDir, "best_solution.py")
                 val bestSolutionCode = if (bestSolutionFile.exists()) bestSolutionFile.readText() else null
 

@@ -3,6 +3,7 @@ package com.example.evolab.http.controllers
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
 import com.example.evolab.domain.user.AuthenticatedUser
 import com.example.evolab.http.model.llmCredentials.CreateLLMCredentialRequest
+import com.example.evolab.http.model.llmCredentials.ValidateLLMCredentialRequest
 import com.example.evolab.http.model.problem.Problem
 import com.example.evolab.service.LLMCredentials.service.LLMCredentialsService
 import com.example.evolab.service.LLMCredentials.service.LLMCredentialsServiceErrors
@@ -36,7 +37,9 @@ class LLMCredentialsController(
         val result: Either<LLMCredentialsServiceErrors, LLMCredentials> = llmCredentialsService.createLLMCredential(
             userId = authenticatedUser.user.id,
             llm = input.llm,
-            apiKey = input.apiKey
+            apiKey = input.apiKey,
+            apiBase = input.apiBase,
+            modelName = input.modelName,
         )
 
         return when (result) {
@@ -96,11 +99,12 @@ class LLMCredentialsController(
         @RequestBody input: CreateLLMCredentialRequest,
         authenticatedUser: AuthenticatedUser
     ): ResponseEntity<*> {
-
         val result: Either<LLMCredentialsServiceErrors, LLMCredentials> = llmCredentialsService.updateLLMCredential(
             id = id,
             userId = authenticatedUser.user.id,
-            apiKey = input.apiKey
+            apiKey = input.apiKey,
+            apiBase = input.apiBase,
+            modelName = input.modelName,
         )
 
         return when (result) {
@@ -142,10 +146,16 @@ class LLMCredentialsController(
     @PostMapping("/{id}/validate")
     suspend fun validateLLMCredential(
         @PathVariable id: Int,
+        @RequestBody input: ValidateLLMCredentialRequest,
         authenticatedUser: AuthenticatedUser
     ): ResponseEntity<*> {
         val result: Either<LLMCredentialsServiceErrors, Boolean> =
-            llmCredentialsService.validateCredential(authenticatedUser.user.id, id)
+            llmCredentialsService.validateCredential(
+                userId = authenticatedUser.user.id,
+                id = id,
+                apiBase = input.apiBase,
+                modelName = input.modelName,
+            )
 
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.OK).body(mapOf("isValid" to result.value))
