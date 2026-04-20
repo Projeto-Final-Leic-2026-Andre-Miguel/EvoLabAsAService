@@ -10,6 +10,7 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.configService.ConfigService
 import com.example.evolab.service.configService.OpenEvolvePayloadBuilder
+import com.example.evolab.service.jobsService.JobService
 import com.example.evolab.service.security.EncryptionService
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
@@ -32,6 +33,7 @@ class WorkerPoolManager(
     private val trxManager: TransactionManager,
     private val configService: ConfigService,
     private val encryptionService: EncryptionService,
+    private val jobService: JobService,
     private val poolSize: Int = 3,
 ) {
     private val logger = LoggerFactory.getLogger(WorkerPoolManager::class.java)
@@ -62,6 +64,14 @@ class WorkerPoolManager(
 
                 var yamlConfigPath: Path? = null
 
+                val newJobId = when (val result = jobService.createJob(
+                    projectId = projectFromQueue.id,
+                    status = EvolutionStatus.RUNNING,
+                )) {
+                    is Success -> result.value
+                    is Failure -> throw IllegalStateException("Failed to create job for project '${projectFromQueue.id}'")
+                }
+
                 val setupData =
                     trxManager.run {
                         val configId =
@@ -76,12 +86,6 @@ class WorkerPoolManager(
 
                         repoProjects.save(projectFromQueue.copy(status = EvolutionStatus.RUNNING))
 
-                        val newJobId =
-                            repoJobs.createJob(
-                                projectId = projectFromQueue.id,
-                                status = EvolutionStatus.RUNNING,
-                            )
-
                         val decryptedKey =
                             credentials.apiKeyEncrypted?.let { encryptionService.decrypt(it) }
                                 ?: throw IllegalStateException("Encrypted API key is missing for credential id '${credentials.id}'")
@@ -93,10 +97,10 @@ class WorkerPoolManager(
                                 apiKeyValue = OpenEvolvePayloadBuilder.apiKeyEnvironmentPlaceholder(apiKeyVariableName),
                             )
 
-                        Triple(newJobId, runtimePayload, mapOf(apiKeyVariableName to decryptedKey))
+                        Pair(runtimePayload, mapOf(apiKeyVariableName to decryptedKey))
                     }
 
-                val (jobId, runtimePayload, containerEnvironment) = setupData
+                val (runtimePayload, containerEnvironment) = setupData
 
                 try {
                     when (val configResult = configService.generateTemporaryConfigFile(runtimePayload)) {
@@ -116,25 +120,26 @@ class WorkerPoolManager(
                     val finalStatus = if (failureReason == null) EvolutionStatus.COMPLETED else EvolutionStatus.FAILED
 
                     if (failureReason != null) {
-                        logger.warn("Worker-$workerId: Job $jobId marcado como FAILED. Motivo: $failureReason")
+                        logger.warn("Worker-$workerId: Job $newJobId marcado como FAILED. Motivo: $failureReason")
+                    }
+
+                    when (val jobResult = jobService.getJobById(newJobId)) {
+                        is Success -> {
+                            val updatedJob = jobResult.value.copy(
+                                status = finalStatus,
+                                bestSolution = result.bestSolution,
+                                executionLogs = result.logs,
+                            )
+                            jobService.saveJob(updatedJob)
+                        }
+                        is Failure -> logger.warn("Worker-$workerId: Job $newJobId not found for final update")
                     }
 
                     trxManager.run {
-                        val job = repoJobs.findById(jobId)
-                        if (job != null) {
-                            val updatedJob =
-                                job.copy(
-                                    status = finalStatus,
-                                    bestSolution = result.bestSolution,
-                                    executionLogs = result.logs,
-                                )
-                            repoJobs.save(updatedJob)
-                        }
-
                         repoProjects.save(projectFromQueue.copy(status = finalStatus))
                     }
 
-                    logger.info("Worker-$workerId terminou o Job $jobId do Projeto ${projectFromQueue.id} -> $finalStatus")
+                    logger.info("Worker-$workerId terminou o Job $newJobId do Projeto ${projectFromQueue.id} -> $finalStatus")
                 } finally {
                     yamlConfigPath?.let { configService.cleanupTemporaryConfigFile(it) }
                 }

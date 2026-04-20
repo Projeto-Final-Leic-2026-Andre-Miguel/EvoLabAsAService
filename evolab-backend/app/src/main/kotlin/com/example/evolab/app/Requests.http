@@ -1,5 +1,5 @@
-﻿@baseUrl = http://localhost:8080
-@token = urSKxtr4GOsiKyouV8KnfoXSDG7oD23YOoXabXia7M4=
+@baseUrl = http://localhost:8080
+@token = T7BxBfW95kLoF_jw-qfCCs1Zc3dWZRApAt9XIqvJg7U=
 @userIdToDelete = 8
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
@@ -11,6 +11,11 @@
 @llmCredentialId = 4
 @ollamaHostBase = http://localhost:11434/v1
 @ollamaDockerBase = http://host.docker.internal:11434/v1
+@jobId = 7
+@metricId = 4
+@checkpointId = 1
+@metricIteration = 1
+@checkpointIteration = 1
 
 
 ### -------------------- USER AUTHENTICATION TESTS --------------------
@@ -148,7 +153,6 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {}
-
 
 ### Obter todas as credenciais LLM (Admin)
 GET {{baseUrl}}/api/llm-credentials/all
@@ -325,3 +329,253 @@ Authorization: Bearer {{token}}
   "status": "CREATED"
 }
 
+### -------------------- JOBS TESTS --------------------
+
+### Criar Job para um Projeto
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": 4,
+  "status": "CREATED"
+}
+
+### Criar Job com status RUNNING
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": 4,
+  "status": "RUNNING"
+}
+
+### [ERRO] Criar Job para Projeto inexistente (deve retornar 500 / erro de persistencia)
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "projectId": 99999,
+  "status": "CREATED"
+}
+
+### Ler Job por ID
+GET {{baseUrl}}/api/jobs/{{jobId}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Job com ID inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/jobs/99999
+Authorization: Bearer {{token}}
+
+### Ler todos os Jobs de um Projeto
+GET {{baseUrl}}/api/projects/4/jobs
+Authorization: Bearer {{token}}
+
+### Ler todos os Jobs (Admin)
+GET {{baseUrl}}/api/jobs
+Authorization: Bearer {{token}}
+
+### Ler Jobs filtrados por Status (Admin)
+GET {{baseUrl}}/api/jobs?status=CREATED
+Authorization: Bearer {{token}}
+
+### Ler Jobs com status RUNNING (Admin)
+GET {{baseUrl}}/api/jobs?status=RUNNING
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Jobs com status invalido (deve retornar 400 Bad Request)
+GET {{baseUrl}}/api/jobs?status=INVALIDO
+Authorization: Bearer {{token}}
+
+### Apagar Job por ID
+DELETE {{baseUrl}}/api/jobs/{{jobId}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Apagar Job inexistente (deve retornar 404 Not Found)
+DELETE {{baseUrl}}/api/jobs/99999
+Authorization: Bearer {{token}}
+
+### -------------------- METRICS TESTS --------------------
+
+### Criar Metric para um Job
+POST {{baseUrl}}/api/jobs/{{jobId}}/metrics
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "iteration": 1,
+  "fitnessScore": 0.91,
+  "executionTime": 1.24
+}
+
+### [ERRO] Criar Metric com input invalido (fitnessScore negativo)
+POST {{baseUrl}}/api/jobs/{{jobId}}/metrics
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "iteration": 1,
+  "fitnessScore": -0.5,
+  "executionTime": 1.24
+}
+
+### [ERRO] Criar Metric com iteracao duplicada (deve retornar 409 Conflict)
+POST {{baseUrl}}/api/jobs/{{jobId}}/metrics
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "iteration": 1,
+  "fitnessScore": 0.75,
+  "executionTime": 2.00
+}
+
+### [ERRO] Criar Metric para Job inexistente (deve retornar 404 Not Found)
+POST {{baseUrl}}/api/jobs/99999/metrics
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "iteration": 1,
+  "fitnessScore": 0.80,
+  "executionTime": 0.50
+}
+
+### Ler Metrics por Job ID
+GET {{baseUrl}}/api/jobs/{{jobId}}/metrics
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Metrics de Job inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/jobs/99999/metrics
+Authorization: Bearer {{token}}
+
+### Ler Metric por Job ID e Iteration
+GET {{baseUrl}}/api/jobs/{{jobId}}/metrics/{{metricIteration}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Metric com iteracao inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/jobs/{{jobId}}/metrics/99999
+Authorization: Bearer {{token}}
+
+### Ler Metric por ID
+GET {{baseUrl}}/api/metrics/{{metricId}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Metric com ID inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/metrics/99999
+Authorization: Bearer {{token}}
+
+### Ler todas as Metrics (Admin)
+GET {{baseUrl}}/api/metrics
+Authorization: Bearer {{token}}
+
+### Apagar Metric por ID (Admin)
+DELETE {{baseUrl}}/api/metrics/{{metricId}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Apagar Metric inexistente (deve retornar 404 Not Found)
+DELETE {{baseUrl}}/api/metrics/99999
+Authorization: Bearer {{token}}
+
+### -------------------- CHECKPOINTS TESTS --------------------
+
+### Criar Checkpoint para um Job
+POST {{baseUrl}}/api/jobs/{{jobId}}/checkpoints
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metricsId": {{metricId}},
+  "iteration": 1,
+  "solution": "def solve(arr):\n    return sorted(arr)"
+}
+
+### [ERRO] Criar Checkpoint com input invalido (solution vazia)
+POST {{baseUrl}}/api/jobs/{{jobId}}/checkpoints
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metricsId": {{metricId}},
+  "iteration": 2,
+  "solution": ""
+}
+
+### [ERRO] Criar Checkpoint com iteracao duplicada (deve retornar 409 Conflict)
+POST {{baseUrl}}/api/jobs/{{jobId}}/checkpoints
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metricsId": {{metricId}},
+  "iteration": 1,
+  "solution": "def solve(arr):\n    return sorted(arr)"
+}
+
+### [ERRO] Criar Checkpoint com Metric que nao pertence ao Job (deve retornar 409 Conflict)
+POST {{baseUrl}}/api/jobs/{{jobId}}/checkpoints
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metricsId": 99999,
+  "iteration": 3,
+  "solution": "def solve(arr):\n    return arr[::-1]"
+}
+
+### [ERRO] Criar Checkpoint para Job inexistente (deve retornar 404 Not Found)
+POST {{baseUrl}}/api/jobs/99999/checkpoints
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metricsId": {{metricId}},
+  "iteration": 1,
+  "solution": "def solve(arr):\n    return sorted(arr)"
+}
+
+### Ler Checkpoints por Job ID
+GET {{baseUrl}}/api/jobs/{{jobId}}/checkpoints
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Checkpoints de Job inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/jobs/99999/checkpoints
+Authorization: Bearer {{token}}
+
+### Ler Checkpoint por Job ID e Iteration
+GET {{baseUrl}}/api/jobs/{{jobId}}/checkpoints/{{checkpointIteration}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Checkpoint com iteracao inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/jobs/{{jobId}}/checkpoints/99999
+Authorization: Bearer {{token}}
+
+### Ler Checkpoints por Metrics ID
+GET {{baseUrl}}/api/metrics/{{metricId}}/checkpoints
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Checkpoints de Metric inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/metrics/99999/checkpoints
+Authorization: Bearer {{token}}
+
+### Ler Checkpoint por ID
+GET {{baseUrl}}/api/checkpoints/{{checkpointId}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Ler Checkpoint com ID inexistente (deve retornar 404 Not Found)
+GET {{baseUrl}}/api/checkpoints/99999
+Authorization: Bearer {{token}}
+
+### Ler todos os Checkpoints (Admin)
+GET {{baseUrl}}/api/checkpoints
+Authorization: Bearer {{token}}
+
+### Apagar Checkpoint por ID (Admin)
+DELETE {{baseUrl}}/api/checkpoints/{{checkpointId}}
+Authorization: Bearer {{token}}
+
+### [ERRO] Apagar Checkpoint inexistente (deve retornar 404 Not Found)
+DELETE {{baseUrl}}/api/checkpoints/99999
+Authorization: Bearer {{token}}

@@ -53,4 +53,26 @@ sealed class Problem(
     data object InvalidProjectStatus : Problem(URI("$PROBLEM_URI_PATH/invalid-project-status"))
 
     data object ExecutionQueueUnavailable : Problem(URI("$PROBLEM_URI_PATH/execution-queue-unavailable"))
+
+    data object MetricNotFound : Problem(URI("$PROBLEM_URI_PATH/metric-not-found"))
+
+    data object JobNotFound : Problem(URI("$PROBLEM_URI_PATH/job-not-found"))
+
+    data object InvalidJobInput : Problem(URI("$PROBLEM_URI_PATH/invalid-job-input"))
+
+    data object MetricAccessDenied : Problem(URI("$PROBLEM_URI_PATH/metric-access-denied"))
+
+    data object InvalidMetricInput : Problem(URI("$PROBLEM_URI_PATH/invalid-metric-input"))
+
+    data object DuplicateMetricForIteration : Problem(URI("$PROBLEM_URI_PATH/duplicate-metric-for-iteration"))
+
+    data object CheckpointNotFound : Problem(URI("$PROBLEM_URI_PATH/checkpoint-not-found"))
+
+    data object CheckpointAccessDenied : Problem(URI("$PROBLEM_URI_PATH/checkpoint-access-denied"))
+
+    data object InvalidCheckpointInput : Problem(URI("$PROBLEM_URI_PATH/invalid-checkpoint-input"))
+
+    data object DuplicateCheckpointForIteration : Problem(URI("$PROBLEM_URI_PATH/duplicate-checkpoint-for-iteration"))
+
+    data object MetricDoesNotBelongToJob : Problem(URI("$PROBLEM_URI_PATH/metric-does-not-belong-to-job"))
 }

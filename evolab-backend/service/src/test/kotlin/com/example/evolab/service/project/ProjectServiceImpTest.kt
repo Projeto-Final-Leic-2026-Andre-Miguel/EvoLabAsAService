@@ -36,7 +36,7 @@ class ProjectServiceImpTest {
     fun createProjectRejectsBlankName() {
         val service = createService()
 
-        val result = service.createProject(1, " ", null, null, null)
+        val result = service.createProject(1, " ", null, null, null, null)
 
         assertLeftEquals(result, ProjectServiceErrors.InvalidProjectInput("Project name cannot be blank"))
     }
@@ -47,7 +47,7 @@ class ProjectServiceImpTest {
         repo.seed(userId = 1, name = "Projeto Demo")
         val service = createService(projectRepo = repo)
 
-        val result = service.createProject(1, "Projeto Demo", null, null, null)
+        val result = service.createProject(1, "Projeto Demo", null, null, null, null)
 
         assertLeftEquals(
             result,
@@ -65,6 +65,7 @@ class ProjectServiceImpTest {
                 userId = 7,
                 name = "Projeto Demo",
                 description = "descricao",
+                configId = null,
                 initialProgram = "def solve(x): return x",
                 evaluatorCode = "def evaluate(candidate): return 1.0",
             )
@@ -376,6 +377,7 @@ private class FakeRepositoryProject : RepositoryProject {
         userId: Int,
         name: String,
         description: String?,
+        configId: Int?,
         initialProgram: String?,
         evaluatorCode: String?,
         status: EvolutionStatus,
@@ -384,7 +386,7 @@ private class FakeRepositoryProject : RepositoryProject {
             userId = userId,
             name = name,
             description = description,
-            configId = null,
+            configId = configId,
             initialProgram = initialProgram,
             evaluatorCode = evaluatorCode,
             status = status,
