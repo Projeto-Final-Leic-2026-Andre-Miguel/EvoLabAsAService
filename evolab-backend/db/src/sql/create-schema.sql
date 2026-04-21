@@ -38,6 +38,12 @@ CREATE TABLE llm_credentials (
                                  UNIQUE (user_id, provider)          -- um utilizador, uma key por provider, permitindo que não tenha de fornecer novamente informações para puder utilizar um modelo que já tinha registado antes
 );                                                                   -- mas se por ventura, quiser atualizar a key, ou trocar o modelo, fazemos uma atualização.
 
+CREATE TABLE local_model_credentials (
+                                 credential_id       INTEGER         PRIMARY KEY REFERENCES llm_credentials(id) ON DELETE CASCADE,
+                                 port                INTEGER         NOT NULL,
+                                 model_name          VARCHAR(255)    NOT NULL
+);
+
 CREATE TABLE evolution_configs (
                                    id                      SERIAL          PRIMARY KEY,
                                    user_id                 INTEGER         NOT NULL REFERENCES users(id) ON DELETE CASCADE,

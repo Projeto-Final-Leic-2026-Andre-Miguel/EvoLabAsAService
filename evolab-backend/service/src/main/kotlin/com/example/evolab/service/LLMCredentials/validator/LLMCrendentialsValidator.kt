@@ -13,4 +13,6 @@ interface LLMCrendentialsValidator {
 
     suspend fun validateApiKeyForLLM(llm: LLM, apiKey: String?): Either<LLMValidatorErrors, Boolean>
 
+    suspend fun validateLocalModelApiKey(port: Int, apiKey: String, modelName: String?): Either<LLMValidatorErrors, Boolean>
+
 }

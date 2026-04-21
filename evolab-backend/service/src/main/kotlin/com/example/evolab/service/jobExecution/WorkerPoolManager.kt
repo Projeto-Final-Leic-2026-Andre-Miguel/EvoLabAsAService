@@ -114,6 +114,18 @@ class WorkerPoolManager(
                             yamlConfigPath = yamlConfigPath,
                             workerId = workerId,
                             environment = containerEnvironment,
+                            onContainerStarted = { containerId, startedAt ->
+                                when (val startedJobResult = jobService.getJobById(newJobId)) {
+                                    is Success -> {
+                                        val startedJob = startedJobResult.value.copy(
+                                            containerId = containerId,
+                                            startedAt = startedAt
+                                        )
+                                        jobService.saveJob(startedJob)
+                                    }
+                                    is Failure -> logger.warn("Worker-$workerId: Job $newJobId not found to update container info")
+                                }
+                            }
                         )
 
                     val failureReason = OpenEvolveExecutionOutcomeDecider.failureReason(result.exitCode, result.logs)
@@ -127,6 +139,7 @@ class WorkerPoolManager(
                         is Success -> {
                             val updatedJob = jobResult.value.copy(
                                 status = finalStatus,
+                                finishedAt = result.finishedAt,
                                 bestSolution = result.bestSolution,
                                 executionLogs = result.logs,
                             )

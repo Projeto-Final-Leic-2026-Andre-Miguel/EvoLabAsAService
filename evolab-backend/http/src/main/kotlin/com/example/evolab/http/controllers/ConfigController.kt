@@ -37,6 +37,9 @@ class ConfigController(
         authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> =
         try {
+
+
+
             val result =
                 configService.createConfig(
                     userId = authenticatedUser.user.id,

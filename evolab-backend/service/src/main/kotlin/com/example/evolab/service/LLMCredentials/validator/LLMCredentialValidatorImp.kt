@@ -21,8 +21,6 @@ class LLMCredentialValidatorImp(
 
 
     companion object {
-        private const val LOCAL_MODEL_VALIDATION_PREFIX = "LOCAL_MODEL::"
-        private const val LOCAL_MODEL_VALIDATION_SEPARATOR = "::MODEL::"
         private const val GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
         private const val OPENAI_ENDPOINT = "https://api.openai.com/v1/models"
 
@@ -86,57 +84,35 @@ class LLMCredentialValidatorImp(
 
 
 
-    private suspend fun localModelsKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
-        val localConfig = parseLocalModelValidationPayload(apiKey)
-        if (localConfig == null) {
-            // Keep this fallback permissive for flows that still validate a stored LOCAL_MODEL secret directly.
-            return success(apiKey.isNotBlank())
-        }
 
-        val modelsEndpoint = "${localConfig.apiBase}/models"
 
+    override suspend fun validateLocalModelApiKey(port: Int, apiKey: String, modelName: String?): Either<LLMValidatorErrors, Boolean> {
+        val url = "http://localhost:$port/v1/models"
+        
         return try {
-            val response = client.get(modelsEndpoint)
+            val response = client.get(url) {
+                if (apiKey.isNotBlank() && apiKey != "dummy") {
+                    header("Authorization", "Bearer $apiKey")
+                }
+            }
 
             when (response.status) {
                 HttpStatusCode.OK -> {
-                    val responseBody = response.bodyAsText()
-                    val modelIdPattern = Regex(""""id"\s*:\s*"${Regex.escape(localConfig.modelName)}"""")
-
-                    if (modelIdPattern.containsMatchIn(responseBody)) {
-                        success(true)
-                    } else {
-                        failure(
-                            LLMValidatorErrors.InvalidLLM(
-                                "Model '${localConfig.modelName}' was not found at LOCAL_MODEL endpoint '${localConfig.apiBase}'",
-                            ),
-                        )
+                    if (modelName != null && modelName.isNotBlank()) {
+                        val body = response.bodyAsText()
+                        if (!body.contains(modelName)) {
+                            return failure(LLMValidatorErrors.InvalidLLM("Model '$modelName' not found on local instance."))
+                        }
                     }
+                    success(true)
                 }
-
-                HttpStatusCode.NotFound ->
-                    failure(
-                        LLMValidatorErrors.InvalidLLM(
-                            "LOCAL_MODEL apiBase '${localConfig.apiBase}' is not exposing an OpenAI-compatible /models endpoint",
-                        ),
-                    )
-
-                else ->
-                    failure(
-                        LLMValidatorErrors.InvalidLLM(
-                            "LOCAL_MODEL endpoint '${localConfig.apiBase}' responded with status ${response.status.value}",
-                        ),
-                    )
+                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> failure(LLMValidatorErrors.InvalidAPIKey("Invalid local model API key specified"))
+                else -> failure(LLMValidatorErrors.InvalidLLM("Local model check failed with status: ${response.status}"))
             }
         } catch (e: Exception) {
-            failure(
-                LLMValidatorErrors.InvalidLLM(
-                    "Could not reach LOCAL_MODEL endpoint '${localConfig.apiBase}': ${e.message}",
-                ),
-            )
+            failure(LLMValidatorErrors.UnknownError("Could not reach local model endpoint on port $port. Please ensure the port is correct and the service is running."))
         }
     }
-
 
     override suspend fun validateApiKeyForLLM(
         llm: LLM,
@@ -150,36 +126,13 @@ class LLMCredentialValidatorImp(
             when (llm) {
                 LLM.OPENAI -> openAiKeyValidator(normalizedApiKey)
                 LLM.GEMINI -> geminiKeyValidator(normalizedApiKey)
-                LLM.LOCAL_MODEL -> localModelsKeyValidator(normalizedApiKey)
+                LLM.LOCAL_MODEL -> failure(LLMValidatorErrors.InvalidLLM("Local models must be validated using validateLocalModelApiKey"))
             }
 
         return when (validationResult) {
             is Failure -> failure(validationResult.value)
             is Success -> success(true)
         }
-    }
-
-    private fun parseLocalModelValidationPayload(apiKey: String): LocalModelValidationPayload? {
-        if (!apiKey.startsWith(LOCAL_MODEL_VALIDATION_PREFIX)) return null
-
-        val payload = apiKey.removePrefix(LOCAL_MODEL_VALIDATION_PREFIX)
-        val separatorIndex = payload.indexOf(LOCAL_MODEL_VALIDATION_SEPARATOR)
-        if (separatorIndex < 0) return null
-
-        val apiBase =
-            payload.substring(0, separatorIndex)
-                .trim()
-                .trimEnd('/')
-                .takeIf { it.isNotBlank() }
-                ?: return null
-
-        val modelName =
-            payload.substring(separatorIndex + LOCAL_MODEL_VALIDATION_SEPARATOR.length)
-                .trim()
-                .takeIf { it.isNotBlank() }
-                ?: return null
-
-        return LocalModelValidationPayload(apiBase = apiBase, modelName = modelName)
     }
 
 
@@ -196,11 +149,4 @@ class LLMCredentialValidatorImp(
             ?.trim()
             ?.takeIf { it.isNotBlank() && it.none(Char::isWhitespace) }
 
-
-
 }
-
-private data class LocalModelValidationPayload(
-    val apiBase: String,
-    val modelName: String,
-)

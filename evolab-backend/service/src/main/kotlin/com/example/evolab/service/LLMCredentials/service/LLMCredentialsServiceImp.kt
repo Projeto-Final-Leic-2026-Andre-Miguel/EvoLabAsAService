@@ -2,6 +2,7 @@ package com.example.evolab.service.LLMCredentials.service
 
 import com.example.evolab.domain.LLMCredentials.LLM
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
+import com.example.evolab.domain.LLMCredentials.LocalModelCredentials
 import com.example.evolab.repo.transactions.Transaction
 import com.example.evolab.repo.transactions.TransactionManager
 import com.example.evolab.service.LLMCredentials.validator.LLMCrendentialsValidator
@@ -21,58 +22,16 @@ class LLMCredentialsServiceImp(
     private val trxManager: TransactionManager,
     private val encryptionService: EncryptionService
 ) : LLMCredentialsService {
-    companion object {
-        private const val LOCAL_MODEL_SECRET_PLACEHOLDER = "__LOCAL_MODEL_NO_SECRET__"
-        private const val LOCAL_MODEL_VALIDATION_PREFIX = "LOCAL_MODEL::"
-        private const val LOCAL_MODEL_VALIDATION_SEPARATOR = "::MODEL::"
-    }
 
     override suspend fun createLLMCredential(
         userId: Int,
         llm: LLM,
-        apiKey: String?,
-        apiBase: String?,
-        modelName: String?,
+        apiKey: String,
     ): Either<LLMCredentialsServiceErrors, LLMCredentials> {
-        val normalizedApiKey = apiKey?.trim()?.takeIf { it.isNotBlank() }
-        val normalizedApiBase = apiBase?.trim()?.takeIf { it.isNotBlank() }
-        val normalizedModelName = modelName?.trim()?.takeIf { it.isNotBlank() }
 
-        when (llm) {
-            LLM.LOCAL_MODEL -> {
-                if (normalizedApiBase == null || normalizedModelName == null) {
-                    return failure(
-                        LLMCredentialsServiceErrors.InvalidLLMProvider(
-                            "LOCAL_MODEL credentials require both apiBase and modelName in the create request",
-                        ),
-                    )
-                }
-            }
-
-            else -> {
-                if (normalizedApiBase != null || normalizedModelName != null) {
-                    return failure(
-                        LLMCredentialsServiceErrors.InvalidLLMProvider(
-                            "apiBase and modelName are only accepted when provider is LOCAL_MODEL",
-                        ),
-                    )
-                }
-            }
-        }
-
-        val validatorInput =
-            when (llm) {
-                LLM.LOCAL_MODEL ->
-                    "${LOCAL_MODEL_VALIDATION_PREFIX}${normalizedApiBase}${LOCAL_MODEL_VALIDATION_SEPARATOR}${normalizedModelName}"
-
-                else -> normalizedApiKey
-            }
-
-        if (validatorInput != null) {
-            when (val validation = llmValidator.validateApiKeyForLLM(llm, validatorInput)) {
-                is Failure -> return failure(mapValidatorError(validation.value))
-                is Success -> {  }
-            }
+        when (val validation = llmValidator.validateApiKeyForLLM(llm, apiKey)) {
+            is Failure -> return failure(mapValidatorError(validation.value))
+            is Success -> {  }
         }
 
         return trxManager.run {
@@ -84,20 +43,32 @@ class LLMCredentialsServiceImp(
                 )
             }
 
-            val secretToPersist =
-                when (llm) {
-                    LLM.LOCAL_MODEL -> normalizedApiKey ?: LOCAL_MODEL_SECRET_PLACEHOLDER
-                    else ->
-                        normalizedApiKey
-                            ?: return@run failure(
-                                LLMCredentialsServiceErrors.InvalidApiKey("API key cannot be null or blank"),
-                            )
-                }
-
-            // Keep the current persistence contract until the schema allows LOCAL_MODEL credentials with no stored secret.
-            val apiKeyEncrypted = encryptionService.encrypt(secretToPersist)
+            val apiKeyEncrypted = encryptionService.encrypt(apiKey)
 
             val created = repoLLmCredentials.createLLMCredential(userId, llm, apiKeyEncrypted)
+            success(created)
+        }
+    }
+
+    override suspend fun createLocalModelCredential(
+        userId: Int,
+        apiKey: String,
+        port: Int,
+        modelName: String?
+    ): Either<LLMCredentialsServiceErrors, LocalModelCredentials> {
+        val validation = llmValidator.validateLocalModelApiKey(port, apiKey.ifBlank { "dummy" }, modelName)
+        if (validation is Failure) return failure(mapValidatorError(validation.value))
+
+        return trxManager.run {
+            if (!canCreateLLMCredential(userId, LLM.LOCAL_MODEL)) {
+                return@run failure(
+                    LLMCredentialsServiceErrors.CredentialWithProviderAlreadyInUse(
+                        "User already has credentials for provider ${LLM.LOCAL_MODEL}"
+                    )
+                )
+            }
+            val apiKeyEncrypted = if (apiKey.isNotBlank()) encryptionService.encrypt(apiKey) else ""
+            val created = repoLLmCredentials.createLocalModelCredential(userId, apiKeyEncrypted, port, modelName ?: "unknown")
             success(created)
         }
     }
@@ -128,16 +99,17 @@ class LLMCredentialsServiceImp(
         }
 
     /**
-     * Atualiza a credencial existente respeitando o tipo de provider.
-     * Para LOCAL_MODEL validamos apiBase + modelName; para providers cloud mantemos validação por apiKey.
+     *
+     * Aqui a unica coisa que se pode atualizar é a api_key
+     * A validação da chave é feita antes de entrar na transação, para evitar fazer uma transação de escrita desnecessária caso a chave seja inválida
+     * Portanto começamos por verificar se a credencial pertence ou não ao utilizador, depois validamos a chave, e só depois entramos na transação para atualizar a chave na BD
+     * O bloco {} em is Sucess, é intencionalmente deixado vazio, porque se a validação for bem sucedida, não é necessário fazer nada nesse momento, apenas avançar para a atualização na BD
      */
 
     override suspend fun updateLLMCredential(
         id: Int,
         userId: Int,
-        apiKey: String?,
-        apiBase: String?,
-        modelName: String?,
+        apiKey: String,
     ): Either<LLMCredentialsServiceErrors, LLMCredentials> {
 
         val credential = trxManager.run {
@@ -150,58 +122,14 @@ class LLMCredentialsServiceImp(
             )
         }
 
-        val normalizedApiKey = apiKey?.trim()?.takeIf { it.isNotBlank() }
-        val normalizedApiBase = apiBase?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() }
-        val normalizedModelName = modelName?.trim()?.takeIf { it.isNotBlank() }
 
-        when (credential.llm) {
-            LLM.LOCAL_MODEL -> {
-                if (normalizedApiBase == null || normalizedModelName == null) {
-                    return failure(
-                        LLMCredentialsServiceErrors.InvalidLLMProvider(
-                            "LOCAL_MODEL credentials require both apiBase and modelName in the update request",
-                        ),
-                    )
-                }
-            }
-
-            else -> {
-                if (normalizedApiBase != null || normalizedModelName != null) {
-                    return failure(
-                        LLMCredentialsServiceErrors.InvalidLLMProvider(
-                            "apiBase and modelName are only accepted when provider is LOCAL_MODEL",
-                        ),
-                    )
-                }
-            }
-        }
-
-        val validatorInput =
-            when (credential.llm) {
-                LLM.LOCAL_MODEL ->
-                    "${LOCAL_MODEL_VALIDATION_PREFIX}${normalizedApiBase}${LOCAL_MODEL_VALIDATION_SEPARATOR}${normalizedModelName}"
-
-                else ->
-                    normalizedApiKey
-                        ?: return failure(
-                            LLMCredentialsServiceErrors.InvalidApiKey("API key cannot be null or blank"),
-                        )
-            }
-
-        when (val validation = llmValidator.validateApiKeyForLLM(credential.llm, validatorInput)) {
+        when (val validation = llmValidator.validateApiKeyForLLM(credential.llm, apiKey)) {
             is Failure -> return failure(mapValidatorError(validation.value))
             is Success -> {  } // é validado com sucesso, não é necessário fazer nada aqui, avançar para a atualização na BD
         }
 
         return trxManager.run {
-            val secretToPersist =
-                when (credential.llm) {
-                    LLM.LOCAL_MODEL -> normalizedApiKey ?: LOCAL_MODEL_SECRET_PLACEHOLDER
-                    else -> normalizedApiKey!!
-                }
-
-            // Keep the current persistence contract until the schema allows LOCAL_MODEL credentials with no stored secret.
-            val apiKeyEncrypted = encryptionService.encrypt(secretToPersist)
+            val apiKeyEncrypted = encryptionService.encrypt(apiKey)
 
             val updated = credential.copy(apiKeyEncrypted = apiKeyEncrypted)
             repoLLmCredentials.save(updated)
@@ -234,9 +162,7 @@ class LLMCredentialsServiceImp(
 
     override suspend fun validateCredential(
         userId: Int,
-        id: Int,
-        apiBase: String?,
-        modelName: String?,
+        id: Int
     ): Either<LLMCredentialsServiceErrors, Boolean> {
         val credential = trxManager.run {
             findUserCredentialById(userId, id)
@@ -244,39 +170,10 @@ class LLMCredentialsServiceImp(
             LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' was not found for user with id '$userId'"),
         )
 
-        val normalizedApiBase = apiBase?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() }
-        val normalizedModelName = modelName?.trim()?.takeIf { it.isNotBlank() }
+        val apiKey = credential.apiKeyEncrypted?.let { encryptionService.decrypt(it) }
+            ?: return failure(LLMCredentialsServiceErrors.InvalidApiKey("Failed to decrypt API key or key is missing"))
 
-        val validatorInput =
-            when (credential.llm) {
-                LLM.LOCAL_MODEL -> {
-                    if (normalizedApiBase == null || normalizedModelName == null) {
-                        return failure(
-                            LLMCredentialsServiceErrors.InvalidLLMProvider(
-                                "LOCAL_MODEL credentials require both apiBase and modelName in the validation request",
-                            ),
-                        )
-                    }
-                    "${LOCAL_MODEL_VALIDATION_PREFIX}${normalizedApiBase}${LOCAL_MODEL_VALIDATION_SEPARATOR}${normalizedModelName}"
-                }
-
-                else -> {
-                    if (normalizedApiBase != null || normalizedModelName != null) {
-                        return failure(
-                            LLMCredentialsServiceErrors.InvalidLLMProvider(
-                                "apiBase and modelName are only accepted when provider is LOCAL_MODEL",
-                            ),
-                        )
-                    }
-
-                    credential.apiKeyEncrypted?.let { encryptionService.decrypt(it) }
-                        ?: return failure(
-                            LLMCredentialsServiceErrors.InvalidApiKey("Failed to decrypt API key or key is missing"),
-                        )
-                }
-            }
-
-        return when (val result = llmValidator.validateApiKeyForLLM(credential.llm, validatorInput)) {
+        return when (val result = llmValidator.validateApiKeyForLLM(credential.llm, apiKey)) {
             is Failure -> failure(mapValidatorError(result.value))
             is Success -> success(true)
         }

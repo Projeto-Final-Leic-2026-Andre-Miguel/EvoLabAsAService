@@ -1,14 +1,14 @@
 @baseUrl = http://localhost:8080
-@token = T7BxBfW95kLoF_jw-qfCCs1Zc3dWZRApAt9XIqvJg7U=
+@token = Io71IqL7aPyclx-JOu0XwvSfLICwqzWP_lsnL7uH3p0=
 @userIdToDelete = 8
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
 @nome = Teste
-@emailTeste = pedrofdd@gmail.com
+@emailTeste = local@gmail.com
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
 @configId = 4
-@llmCredentialId = 4
+@llmCredentialId = 7
 @ollamaHostBase = http://localhost:11434/v1
 @ollamaDockerBase = http://host.docker.internal:11434/v1
 @jobId = 7
@@ -112,15 +112,15 @@ Authorization: Bearer {{token}}
 }
 
 ### Criar credencial LOCAL_MODEL (Ollama)
-POST {{baseUrl}}/api/llm-credentials
+POST {{baseUrl}}/api/llm-credentials/localModel
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "llm": "LOCAL_MODEL",
-  "apiKey": null,
-  "apiBase": "{{ollamaHostBase}}",
-  "modelName": "qwen2.5-coder:14b"
+  "apiKey": "",
+  "modelName": "llama3",
+  "port": 11434
 }
 
 ### Criar Credencial para LLM NÃ£o Suportado (ex: ANTHROPIC)
@@ -159,7 +159,7 @@ GET {{baseUrl}}/api/llm-credentials/all
 
 
 ### Apagar uma determinada credencial LLM por ID
-DELETE {{baseUrl}}/api/llm-credentials/7
+DELETE {{baseUrl}}/api/llm-credentials/6
 Authorization: Bearer {{token}}
 
 ### -------------------- CONFIG TESTS --------------------
@@ -246,6 +246,23 @@ Authorization: Bearer {{token}}
   }
 }
 
+### Criar Config LOCAL_MODEL Super Simples (Teste Rápido)
+POST {{baseUrl}}/api/configs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llmCredentialsId": {{llmCredentialId}},
+  "modelName": "dummy",
+  "maxIter": 8,
+  "checkPointInterval": 1,
+  "additionalParams": {
+    "llm.temperature": "0.7",
+    "database.population_size": "2",
+    "database.num_islands": "1"
+  }
+}
+
 ### -------------------- PROJECT TESTS --------------------
 
 ### Criar Project sem configId,initial Program e evaluatorCode (deve aceitar null e criar projeto com valores default)
@@ -269,7 +286,7 @@ Authorization: Bearer {{token}}
 {
   "name": "Meu Primeiro Projeto",
   "description": "Um projeto de teste EvoLab",
-  "configId": null,
+  "configId": 4,
   "initialProgram": "def solve(arr):\n    a = arr[:]\n    n = len(a)\n    for i in range(1, n):\n        x = a[i]\n        j = i - 1\n        while j >= 0 and a[j] > x:\n            a[j + 1] = a[j]\n            j -= 1\n        a[j + 1] = x\n    return a",
   "evaluatorCode": "import random\nimport time\nimport statistics\n\ndef _baseline(arr):\n    a = arr[:]\n    n = len(a)\n    for i in range(n):\n        swapped = False\n        for j in range(0, n - i - 1):\n            if a[j] > a[j + 1]:\n                a[j], a[j + 1] = a[j + 1], a[j]\n                swapped = True\n        if not swapped:\n            break\n    return a\n\ndef evaluate(candidate_code):\n    try:\n        ns = {}\n        exec(candidate_code, ns)\n        solve = ns.get(\"solve\")\n        if not callable(solve):\n            return {\"combined_score\": 0.0, \"correctness\": 0.0, \"speed\": 0.0}\n\n        rng = random.Random(42)\n        tests = [[], [1], [2, 1], [3, 1, 2], [5, 5, 1, 3], list(range(20, 0, -1)), [0, -1, 5, -3, 2, -1, 0]]\n        for _ in range(10):\n            n = rng.randint(8, 70)\n            tests.append([rng.randint(-500, 500) for _ in range(n)])\n\n        passed = 0\n        for t in tests:\n            out = solve(t[:])\n            if out == sorted(t):\n                passed += 1\n        correctness = passed / len(tests)\n\n        if correctness < 0.85:\n            return {\"combined_score\": float(0.95 * correctness), \"correctness\": float(correctness), \"speed\": 0.0}\n\n        bench_input = [rng.randint(-2000, 2000) for _ in range(220)]\n\n        def bench(fn, rounds=3):\n            samples = []\n            for _ in range(rounds):\n                t0 = time.perf_counter()\n                fn(bench_input[:])\n                samples.append(time.perf_counter() - t0)\n            return statistics.median(samples)\n\n        t_candidate = bench(solve)\n        t_baseline = bench(_baseline)\n        speed = max(0.0, min(1.0, t_baseline / max(t_candidate * 2.0, 1e-9)))\n\n        combined = 0.90 * correctness + 0.10 * speed\n        return {\"combined_score\": float(combined), \"correctness\": float(correctness), \"speed\": float(speed)}\n    except Exception:\n        return {\"combined_score\": 0.0, \"correctness\": 0.0, \"speed\": 0.0}"
 }
@@ -280,11 +297,11 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "Sorting Optimization Demo",
+  "name": "Sorting Optimization Demo v3",
   "description": "Exemplo para o OpenEvolve melhorar um algoritmo de ordenacao com espaco real para evolucao",
-  "configId": null,
+  "configId": 4,
   "initialProgram": "# Initial Program (Random Search)\ndef minimize_function(func, bounds, max_evals=1000):\n    best_x, best_val = None, float('inf')\n    for _ in range(max_evals):\n        x = random_point_in_bounds(bounds)\n        val = func(x)\n        if val < best_val:\n            best_x, best_val = x, val\n    return best_x, best_val",
-  "evaluatorCode": "# Evolved Program (Simulated Annealing + Adaptive Cooling)\ndef minimize_function(func, bounds, max_evals=1000):\n    x = random_point_in_bounds(bounds)\n    temp = adaptive_initial_temperature(func, bounds)\n    \n    for i in range(max_evals):\n        neighbor = generate_neighbor(x, temp, bounds)\n        delta = func(neighbor) - func(x)\n        \n        if delta < 0 or random.random() < exp(-delta/temp):\n            x = neighbor\n            \n        temp *= adaptive_cooling_rate(i, max_evals)  # Dynamic cooling\n    \n    return x, func(x)"
+  "evaluatorCode": "import math\nimport random\n\ndef evaluate(candidate_code):\n    try:\n        ns = {}\n        exec(candidate_code, ns)\n        minimize_function = ns.get('minimize_function')\n        if not callable(minimize_function):\n            return {'combined_score': 0.0}\n        \n        # Dummy evaluation for testing\n        return {'combined_score': 0.85}\n    except Exception:\n        return {'combined_score': 0.0}"
 }
 
 
@@ -297,7 +314,7 @@ GET {{baseUrl}}/api/projects
 Authorization: Bearer {{token}}
 
 ### Ler Projeto por ID
-GET {{baseUrl}}/api/projects/1
+GET {{baseUrl}}/api/projects/4
 Authorization: Bearer {{token}}
 
 ### Update Project Details (Substituir parÃ¢metros)
@@ -313,11 +330,11 @@ Authorization: Bearer {{token}}
 }
 
 ### Iniciar Experimentacao de um Projeto
-POST {{baseUrl}}/api/projects/4/start
+POST {{baseUrl}}/api/projects/12/start
 Authorization: Bearer {{token}}
 
 ### Apagar um Projeto
-DELETE {{baseUrl}}/api/projects/1
+DELETE {{baseUrl}}/api/projects/10
 Authorization: Bearer {{token}}
 
 ### Atualizar Status do Projeto (Usado pelo Worker - normalmente sem Auth ou regras definidas)
@@ -362,7 +379,7 @@ Authorization: Bearer {{token}}
 }
 
 ### Ler Job por ID
-GET {{baseUrl}}/api/jobs/{{jobId}}
+GET {{baseUrl}}/api/jobs/12
 Authorization: Bearer {{token}}
 
 ### [ERRO] Ler Job com ID inexistente (deve retornar 404 Not Found)
@@ -444,7 +461,7 @@ Authorization: Bearer {{token}}
 }
 
 ### Ler Metrics por Job ID
-GET {{baseUrl}}/api/jobs/{{jobId}}/metrics
+GET {{baseUrl}}/api/jobs/12/metrics
 Authorization: Bearer {{token}}
 
 ### [ERRO] Ler Metrics de Job inexistente (deve retornar 404 Not Found)

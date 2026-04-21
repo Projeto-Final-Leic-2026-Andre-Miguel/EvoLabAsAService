@@ -309,7 +309,7 @@ const Configs: React.FC = () => {
               {!editingConfig && (
                 <>
                   <div className={styles.warningAlert}>
-                    <span>ℹ️</span>
+                    <span></span>
                     <span>Credentials and Project Links are irreversible once created. To change them, you must create a new Configuration.</span>
                   </div>
 

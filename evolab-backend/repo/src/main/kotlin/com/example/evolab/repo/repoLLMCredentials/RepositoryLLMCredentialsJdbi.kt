@@ -9,19 +9,34 @@ class RepositoryLLMCredentialsJdbi(
 	private val handle: Handle,
 ) : RepositoryLLMCredentials {
 
-	// TODO(local-model): when api_key_encrypted becomes nullable in the schema, bind null here for LOCAL_MODEL instead of forcing a separate insert method.
-	override fun createLLMCredential(
-		userId: Int,
-		provider: LLM,
-		apiKeyEncrypted: String,
-	): LLMCredentials =
-		handle
-			.createQuery(LLMSql.CREATE_CREDENTIAL)
-			.bind("userId", userId)
-			.bind("provider", provider.name)
-			.bind("apiKeyEncrypted", apiKeyEncrypted)
-			.mapTo<LLMCredentials>()
-			.one()
+        override fun createLLMCredential(
+                userId: Int,
+                provider: LLM,
+                apiKeyEncrypted: String,
+        ): LLMCredentials =
+                handle
+                        .createQuery(LLMSql.CREATE_CREDENTIAL)
+                        .bind("userId", userId)
+                        .bind("provider", provider.name)
+                        .bind("apiKeyEncrypted", apiKeyEncrypted)
+                        .mapTo<LLMCredentials>()
+                        .one()
+
+        override fun createLocalModelCredential(
+                userId: Int,
+                apiKeyEncrypted: String,
+                port: Int,
+                modelName: String,
+        ): com.example.evolab.domain.LLMCredentials.LocalModelCredentials =
+                handle
+                        .createQuery(LLMSql.CREATE_LOCAL_CREDENTIAL)
+                        .bind("userId", userId)
+                        .bind("provider", LLM.LOCAL_MODEL.name)
+                        .bind("apiKeyEncrypted", apiKeyEncrypted)
+                        .bind("port", port)
+                        .bind("modelName", modelName)
+                        .mapTo<com.example.evolab.domain.LLMCredentials.LocalModelCredentials>()
+                        .one()
 
 	override fun findAllByUserId(userId: Int): List<LLMCredentials> =
 		handle
@@ -37,13 +52,21 @@ class RepositoryLLMCredentialsJdbi(
 			.mapTo<LLMCredentials>()
 			.list()
 
-	override fun findById(id: Int): LLMCredentials? =
-		handle
-			.createQuery(LLMSql.FIND_BY_ID)
-			.bind("id", id)
-			.mapTo<LLMCredentials>()
-			.findOne()
-			.orElse(null)
+        override fun findById(id: Int): LLMCredentials? =
+                handle
+                        .createQuery(LLMSql.FIND_BY_ID)
+                        .bind("id", id)
+                        .mapTo<LLMCredentials>()
+                        .findOne()
+                        .orElse(null)
+
+        override fun findLocalModelCredentialById(id: Int): com.example.evolab.domain.LLMCredentials.LocalModelCredentials? =
+                handle
+                        .createQuery(LLMSql.FIND_LOCAL_BY_ID)
+                        .bind("id", id)
+                        .mapTo<com.example.evolab.domain.LLMCredentials.LocalModelCredentials>()
+                        .findOne()
+                        .orElse(null)
 
 	override fun findAll(): List<LLMCredentials> =
 		handle

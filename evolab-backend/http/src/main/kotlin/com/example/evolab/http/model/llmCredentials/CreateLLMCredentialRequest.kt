@@ -4,7 +4,5 @@ import com.example.evolab.domain.LLMCredentials.LLM
 
 data class CreateLLMCredentialRequest(
      val llm : LLM,
-     val apiKey: String? = null,
-     val apiBase: String? = null,
-     val modelName: String? = null,
+     val apiKey: String
 )

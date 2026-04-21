@@ -1,5 +1,6 @@
 package com.example.evolab.service.configService
 
+import com.example.evolab.domain.LLMCredentials.LLM
 import com.example.evolab.domain.config.Config
 import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.repo.repoConfig.RepositoryConfig
@@ -27,7 +28,26 @@ class ConfigServiceImpl(
         checkPointInterval: Int,
         additionalParams: Map<String, String>,
     ): Either<ConfigError, Config> {
-        validateInput(modelName, maxIter, checkPointInterval)?.let { return failure(it) }
+
+        val credential =
+            repoLLMCredentials.findById(llmCredentialsId)
+                ?: return failure(ConfigError.InvalidOpenEvolveConfig("LLM credential '$llmCredentialsId' was not found"))
+
+        val (finalModelName, finalParams) = if (credential.llm == LLM.LOCAL_MODEL) {
+            val localCred = repoLLMCredentials.findLocalModelCredentialById(llmCredentialsId)
+                ?: return failure(ConfigError.InvalidOpenEvolveConfig("Local model credential '$llmCredentialsId' was not found"))
+            
+            // Force the model name and append the docker host base url if not provided
+            val updatedParams = additionalParams.toMutableMap()
+            if (updatedParams["llm.api_base"].isNullOrBlank()) {
+                updatedParams["llm.api_base"] = "http://host.docker.internal:${localCred.port}/v1"
+            }
+            Pair(localCred.modelName, updatedParams)
+        } else {
+            Pair(modelName, additionalParams)
+        }
+
+        validateInput(finalModelName, maxIter, checkPointInterval)?.let { return failure(it) }
 
             val project =
                 projectId?.let { projectId ->
@@ -39,7 +59,7 @@ class ConfigServiceImpl(
 
             val normalizedParams =
                 try {
-                    normalizeAdditionalParams(llmCredentialsId, modelName, additionalParams)
+                    normalizeAdditionalParams(credential, finalModelName, finalParams)
                 } catch (e: IllegalStateException) {
                     return failure(ConfigError.InvalidOpenEvolveConfig(e.message ?: "Invalid LLM configuration"))
                 }
@@ -48,7 +68,7 @@ class ConfigServiceImpl(
                 repoConfig.createConfig(
                     userId = userId,
                     llmCredentialsId = llmCredentialsId,
-                    modelName = modelName,
+                    modelName = finalModelName,
                     maxIter = maxIter,
                     checkPointInterval = checkPointInterval,
                     additionalParams = normalizedParams,
@@ -80,20 +100,37 @@ class ConfigServiceImpl(
         checkPointInterval: Int,
         additionalParams: Map<String, String>,
     ): Either<ConfigError, Config> {
-        validateInput(modelName, maxIter, checkPointInterval)?.let { return failure(it) }
-
         val current = repoConfig.findById(configId) ?: return failure(ConfigError.ConfigNotFound)
         if (current.userId != userId) return failure(ConfigError.AccessDenied)
 
+        val credential =
+            repoLLMCredentials.findById(current.llmCredentialsId)
+                ?: return failure(ConfigError.InvalidOpenEvolveConfig("LLM credential '${current.llmCredentialsId}' was not found"))
+
+        val (finalModelName, finalParams) = if (credential.llm == com.example.evolab.domain.LLMCredentials.LLM.LOCAL_MODEL) {
+            val localCred = repoLLMCredentials.findLocalModelCredentialById(current.llmCredentialsId)
+                ?: return failure(ConfigError.InvalidOpenEvolveConfig("Local model credential '${current.llmCredentialsId}' was not found"))
+            
+            val updatedParams = additionalParams.toMutableMap()
+            if (updatedParams["llm.api_base"].isNullOrBlank()) {
+                updatedParams["llm.api_base"] = "http://host.docker.internal:${localCred.port}/v1"
+            }
+            Pair(localCred.modelName, updatedParams)
+        } else {
+            Pair(modelName, additionalParams)
+        }
+
+        validateInput(finalModelName, maxIter, checkPointInterval)?.let { return failure(it) }
+
         val normalizedParams =
             try {
-                normalizeAdditionalParams(current.llmCredentialsId, modelName, additionalParams)
+                normalizeAdditionalParams(credential, finalModelName, finalParams)
             } catch (e: IllegalStateException) {
                 return failure(ConfigError.InvalidOpenEvolveConfig(e.message ?: "Invalid LLM configuration"))
             }
 
         val updated = current.copy(
-            modelName = modelName,
+            modelName = finalModelName,
             maxIter = maxIter,
             checkPointInterval = checkPointInterval,
             additionalParams = normalizedParams,
@@ -163,14 +200,10 @@ class ConfigServiceImpl(
     }
 
     private fun normalizeAdditionalParams(
-        llmCredentialsId: Int,
+        credential: com.example.evolab.domain.LLMCredentials.LLMCredentials,
         modelName: String,
         additionalParams: Map<String, String>,
     ): Map<String, String> {
-        val credential =
-            repoLLMCredentials.findById(llmCredentialsId)
-                ?: throw IllegalStateException("LLM credential '$llmCredentialsId' was not found")
-
         val resolvedApiBase =
             OpenEvolvePayloadBuilder.resolveApiBase(
                 llm = credential.llm,

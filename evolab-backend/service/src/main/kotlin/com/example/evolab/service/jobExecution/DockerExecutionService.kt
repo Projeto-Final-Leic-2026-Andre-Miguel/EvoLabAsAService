@@ -11,7 +11,7 @@ import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Volume
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientImpl
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient
 import jakarta.annotation.PostConstruct
 import jakarta.inject.Named
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Instant
 
 
 private const val IMAGE_NAME = "ghcr.io/algorithmicsuperintelligence/openevolve:latest"
@@ -32,12 +33,39 @@ class DockerExecutionService {
 
     @PostConstruct
     fun init() {
-        val config = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
-        val httpClient = ApacheDockerHttpClient.Builder()
-            .dockerHost(config.dockerHost)
-            .build()
+        val dockerHostEnv = System.getenv("DOCKER_HOST")
+
+        val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
+        if (!dockerHostEnv.isNullOrBlank()) {
+            configBuilder.withDockerHost(dockerHostEnv)
+            logger.info("Initializing Docker client with env DOCKER_HOST: $dockerHostEnv")
+        } else {
+            val os = System.getProperty("os.name").lowercase()
+            val socketPath = if (os.contains("mac")) {
+                val home = System.getProperty("user.home")
+                val desktopSocket = File("$home/.docker/run/docker.sock")
+                if (desktopSocket.exists()) {
+                    "unix://${desktopSocket.absolutePath}"
+                } else {
+                    "unix:///var/run/docker.sock"
+                }
+            } else {
+                "unix:///var/run/docker.sock"
+            }
+            logger.info("Initializing Docker client with forced socket: $socketPath")
+            configBuilder.withDockerHost(socketPath)
+        }
+
+        val config = configBuilder.build()
         
+        val httpClient = ZerodepDockerHttpClient.Builder()
+            .dockerHost(config.dockerHost)
+            .sslConfig(config.sslConfig)
+            .build()
+            
         dockerClient = DockerClientImpl.getInstance(config, httpClient)
+        
+        logger.info("Docker client built successfully")
     }
 
     /**
@@ -48,7 +76,9 @@ class DockerExecutionService {
         yamlConfigPath: Path?,
         workerId: Int,
         environment: Map<String, String> = emptyMap(),
+        onContainerStarted: suspend (String, Instant) -> Unit = { _, _ -> }
     ): DockerExecutionResult {
+
         return withContext(Dispatchers.IO) {
             logger.info("Worker-$workerId: A iniciar contentor do OpenEvolve para o Project ID: ${project.id}...")
 
@@ -59,7 +89,7 @@ class DockerExecutionService {
             }
 
             val tempDir = Files.createTempDirectory("evolab_project_${project.id}_").toFile()
-            
+
             try {
                 val initialProgramFile = File(tempDir, "initial_program.py")
                 initialProgramFile.writeText(project.initialProgram!!)
@@ -81,6 +111,7 @@ class DockerExecutionService {
 
                 val hostConfig = HostConfig.newHostConfig()
                     .withBinds(Bind(hostPath, Volume(containerPath)))
+                    .withNetworkMode("host")
 
                 val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
                     .withHostConfig(hostConfig)
@@ -91,6 +122,9 @@ class DockerExecutionService {
 
                 val containerId = createCmdResponse.id
                 logger.info("Worker-$workerId: Contentor criado com ID $containerId")
+
+                val startedAt = Instant.now()
+                onContainerStarted(containerId, startedAt)
 
                 dockerClient.startContainerCmd(containerId).exec()
 
@@ -112,21 +146,43 @@ class DockerExecutionService {
                     .exec(WaitContainerResultCallback())
                     .awaitStatusCode()
 
+                val finishedAt = Instant.now()
+
                 logger.info("Worker-$workerId: Processo evolutivo terminou com código de saída $exitCode")
 
-                // 6. Limpar o docker
                 dockerClient.removeContainerCmd(containerId).withForce(true).exec()
 
-                val bestSolutionFile = File(tempDir, "best_solution.py")
+                val openevolveOutputDir = File(tempDir, "openevolve_output")
+
+                val logsDir = File(openevolveOutputDir, "logs")
+
+                val logFile = logsDir.listFiles()?.firstOrNull { it.extension == "log" }
+
+                val actualLogs = logFile?.readText() ?: logsBuilder.toString()
+
+                val bestDir = File(openevolveOutputDir, "best")
+
+                val bestSolutionFile = File(bestDir, "best_program.py")
+
                 val bestSolutionCode = if (bestSolutionFile.exists()) bestSolutionFile.readText() else null
+
+                // Guardar o output gerado permanentemente numa pasta local do projeto
+                val persistentOutputDir = File("evolab_runs/project_${project.id}_${System.currentTimeMillis()}")
+                persistentOutputDir.parentFile.mkdirs()
+                if (openevolveOutputDir.exists()) {
+                    openevolveOutputDir.copyRecursively(persistentOutputDir, overwrite = true)
+                    logger.info("Worker-$workerId: Output do OpenEvolve guardado com sucesso em ${persistentOutputDir.absolutePath}")
+                }
 
                 return@withContext DockerExecutionResult(
                     exitCode = exitCode,
-                    logs = logsBuilder.toString(),
-                    bestSolution = bestSolutionCode
+                    logs = actualLogs,
+                    bestSolution = bestSolutionCode,
+                    containerId = containerId,
+                    startedAt = startedAt,
+                    finishedAt = finishedAt
                 )
             } finally {
-                // 7. Cleanup: Apagar ficheiros temporários host
                 tempDir.deleteRecursively()
             }
         }
@@ -136,5 +192,8 @@ class DockerExecutionService {
 data class DockerExecutionResult(
     val exitCode: Int,
     val logs: String,
-    val bestSolution: String?
+    val bestSolution: String?,
+    val containerId: String?,
+    val startedAt: Instant?,
+    val finishedAt: Instant?
 )
