@@ -78,101 +78,34 @@ class DockerExecutionService {
         environment: Map<String, String> = emptyMap(),
         onContainerStarted: suspend (String, Instant) -> Unit = { _, _ -> }
     ): DockerExecutionResult {
-
         return withContext(Dispatchers.IO) {
             logger.info("Worker-$workerId: A iniciar contentor do OpenEvolve para o Project ID: ${project.id}...")
 
-            try {
-                dockerClient.pullImageCmd(IMAGE_NAME).exec(PullImageResultCallback()).awaitCompletion()
-            } catch (e: Exception) {
-                logger.warn("Worker-$workerId: Falha ao puxar a imagem $IMAGE_NAME ou ja estava atualizada. Erro: ${e.message}")
-            }
+            pullDockerImage(workerId)
 
             val tempDir = Files.createTempDirectory("evolab_project_${project.id}_").toFile()
 
             try {
-                val initialProgramFile = File(tempDir, "initial_program.py")
-                initialProgramFile.writeText(project.initialProgram!!)
-
-                val evaluatorFile = File(tempDir, "evaluator.py")
-                evaluatorFile.writeText(project.evaluatorCode!!)
-
-                val cmdArgs = mutableListOf("initial_program.py", "evaluator.py")
-
-                if (yamlConfigPath != null) {
-                    val configFileInTemp = File(tempDir, "config.yaml")
-                    Files.copy(yamlConfigPath, configFileInTemp.toPath())
-                    cmdArgs.add("--config")
-                    cmdArgs.add("config.yaml")
-                }
-
-                val hostPath = tempDir.absolutePath
+                val cmdArgs = setupWorkspaceFiles(tempDir, project, yamlConfigPath)
                 val containerPath = "/workspace"
 
-                val hostConfig = HostConfig.newHostConfig()
-                    .withBinds(Bind(hostPath, Volume(containerPath)))
-                    .withNetworkMode("host")
-
-                val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
-                    .withHostConfig(hostConfig)
-                    .withWorkingDir(containerPath)
-                    .withEnv(environment.map { (key, value) -> "$key=$value" })
-                    .withCmd(cmdArgs)
-                    .exec()
-
-                val containerId = createCmdResponse.id
+                val containerId = createContainer(tempDir.absolutePath, containerPath, environment, cmdArgs)
                 logger.info("Worker-$workerId: Contentor criado com ID $containerId")
 
                 val startedAt = Instant.now()
                 onContainerStarted(containerId, startedAt)
-
                 dockerClient.startContainerCmd(containerId).exec()
 
                 val logsBuilder = StringBuilder()
+                collectContainerLogs(containerId, logsBuilder)
 
-                dockerClient.logContainerCmd(containerId)
-                    .withStdOut(true)
-                    .withStdErr(true)
-                    .withFollowStream(true)
-                    .exec(object : ResultCallback.Adapter<Frame>() {
-                        override fun onNext(frame: Frame) {
-                            val msg = String(frame.payload, Charsets.UTF_8)
-                            logsBuilder.append(msg)
-                            // logger.debug("[$containerId] \${frame.streamType}: $msg")
-                        }
-                    })
-
-                val exitCode = dockerClient.waitContainerCmd(containerId)
-                    .exec(WaitContainerResultCallback())
-                    .awaitStatusCode()
-
+                val exitCode = waitForContainer(containerId)
                 val finishedAt = Instant.now()
-
                 logger.info("Worker-$workerId: Processo evolutivo terminou com código de saída $exitCode")
 
-                dockerClient.removeContainerCmd(containerId).withForce(true).exec()
+                removeContainer(containerId)
 
-                val openevolveOutputDir = File(tempDir, "openevolve_output")
-
-                val logsDir = File(openevolveOutputDir, "logs")
-
-                val logFile = logsDir.listFiles()?.firstOrNull { it.extension == "log" }
-
-                val actualLogs = logFile?.readText() ?: logsBuilder.toString()
-
-                val bestDir = File(openevolveOutputDir, "best")
-
-                val bestSolutionFile = File(bestDir, "best_program.py")
-
-                val bestSolutionCode = if (bestSolutionFile.exists()) bestSolutionFile.readText() else null
-
-                // Guardar o output gerado permanentemente numa pasta local do projeto
-                val persistentOutputDir = File("evolab_runs/project_${project.id}_${System.currentTimeMillis()}")
-                persistentOutputDir.parentFile.mkdirs()
-                if (openevolveOutputDir.exists()) {
-                    openevolveOutputDir.copyRecursively(persistentOutputDir, overwrite = true)
-                    logger.info("Worker-$workerId: Output do OpenEvolve guardado com sucesso em ${persistentOutputDir.absolutePath}")
-                }
+                val (actualLogs, bestSolutionCode) = extractAndPersistResults(tempDir, logsBuilder.toString(), project.id, workerId)
 
                 return@withContext DockerExecutionResult(
                     exitCode = exitCode,
@@ -186,6 +119,89 @@ class DockerExecutionService {
                 tempDir.deleteRecursively()
             }
         }
+    }
+
+    private fun pullDockerImage(workerId: Int) {
+        try {
+            dockerClient.pullImageCmd(IMAGE_NAME).exec(PullImageResultCallback()).awaitCompletion()
+        } catch (e: Exception) {
+            logger.warn("Worker-$workerId: Falha ao puxar a imagem $IMAGE_NAME ou ja estava atualizada. Erro: ${e.message}")
+        }
+    }
+
+    private fun setupWorkspaceFiles(tempDir: File, project: Project, yamlConfigPath: Path?): MutableList<String> {
+        val initialProgramFile = File(tempDir, "initial_program.py")
+        initialProgramFile.writeText(project.initialProgram!!)
+
+        val evaluatorFile = File(tempDir, "evaluator.py")
+        evaluatorFile.writeText(project.evaluatorCode!!)
+
+        val cmdArgs = mutableListOf("initial_program.py", "evaluator.py")
+
+        if (yamlConfigPath != null) {
+            val configFileInTemp = File(tempDir, "config.yaml")
+            Files.copy(yamlConfigPath, configFileInTemp.toPath())
+            cmdArgs.add("--config")
+            cmdArgs.add("config.yaml")
+        }
+        return cmdArgs
+    }
+
+    private fun createContainer(hostPath: String, containerPath: String, environment: Map<String, String>, cmdArgs: List<String>): String {
+        val hostConfig = HostConfig.newHostConfig()
+            .withBinds(Bind(hostPath, Volume(containerPath)))
+            .withNetworkMode("host")
+
+        val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
+            .withHostConfig(hostConfig)
+            .withWorkingDir(containerPath)
+            .withEnv(environment.map { (key, value) -> "$key=$value" })
+            .withCmd(cmdArgs)
+            .exec()
+
+        return createCmdResponse.id
+    }
+
+    private fun collectContainerLogs(containerId: String, logsBuilder: StringBuilder) {
+        dockerClient.logContainerCmd(containerId)
+            .withStdOut(true)
+            .withStdErr(true)
+            .withFollowStream(true)
+            .exec(object : ResultCallback.Adapter<Frame>() {
+                override fun onNext(frame: Frame) {
+                    val msg = String(frame.payload, Charsets.UTF_8)
+                    logsBuilder.append(msg)
+                }
+            })
+    }
+
+    private fun waitForContainer(containerId: String): Int {
+        return dockerClient.waitContainerCmd(containerId)
+            .exec(WaitContainerResultCallback())
+            .awaitStatusCode()
+    }
+
+    private fun removeContainer(containerId: String) {
+        dockerClient.removeContainerCmd(containerId).withForce(true).exec()
+    }
+
+    private fun extractAndPersistResults(tempDir: File, fallbackLogs: String, projectId: Int, workerId: Int): Pair<String, String?> {
+        val openevolveOutputDir = File(tempDir, "openevolve_output")
+        val logsDir = File(openevolveOutputDir, "logs")
+        val logFile = logsDir.listFiles()?.firstOrNull { it.extension == "log" }
+        val actualLogs = logFile?.readText() ?: fallbackLogs
+
+        val bestDir = File(openevolveOutputDir, "best")
+        val bestSolutionFile = File(bestDir, "best_program.py")
+        val bestSolutionCode = if (bestSolutionFile.exists()) bestSolutionFile.readText() else null
+
+        val persistentOutputDir = File("evolab_runs/project_${projectId}_${System.currentTimeMillis()}")
+        persistentOutputDir.parentFile.mkdirs()
+        if (openevolveOutputDir.exists()) {
+            openevolveOutputDir.copyRecursively(persistentOutputDir, overwrite = true)
+            logger.info("Worker-$workerId: Output do OpenEvolve guardado com sucesso em ${persistentOutputDir.absolutePath}")
+        }
+        return Pair(actualLogs, bestSolutionCode)
     }
 }
 

@@ -7,6 +7,7 @@
 @emailTeste = local@gmail.com
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
+@newGeminiKey = AIzaSyA8ZkA3IUs90DQ1OnR0QsS1YQZuyfBF3fI
 @configId = 4
 @llmCredentialId = 7
 @ollamaHostBase = http://localhost:11434/v1
@@ -98,11 +99,21 @@ Authorization: Bearer {{token}}
 
 {
   "llm": "GEMINI",
-  "apiKey": "{{geminiKey}}"
+  "apiKey": "{{newGeminiKey}}"
 }
 
 ### Criar GEMINI com formato invÃ¡lido
 POST {{baseUrl}}/api/llm-credentials
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llm": "GEMINI",
+  "apiKey": "gemini-key-invalida"
+}
+
+### Criar GEMINI com formato invÃ¡lido
+PUT {{baseUrl}}/api/llm-credentials
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -159,10 +170,58 @@ GET {{baseUrl}}/api/llm-credentials/all
 
 
 ### Apagar uma determinada credencial LLM por ID
-DELETE {{baseUrl}}/api/llm-credentials/6
+DELETE {{baseUrl}}/api/llm-credentials/8
 Authorization: Bearer {{token}}
 
 ### -------------------- CONFIG TESTS --------------------
+
+### Criar Config para teste leve com GEMINI
+POST {{baseUrl}}/api/configs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llmCredentialsId": 9,
+  "modelName": "gemini-2.0-flash-lite",
+  "maxIter": 4,
+  "checkPointInterval": 2,
+  "additionalParams": {
+    "llm.temperature": "0.7",
+    "database.population_size": "2",
+    "database.num_islands": "1",
+    "evaluator.parallel_evaluations": "1",
+    "llm.timeout": "30",
+    "llm.retries": "1",
+    "llm.max_tokens": "256",
+    "prompt.num_top_programs": "1",
+    "prompt.num_diverse_programs": "1",
+    "evaluator.cascade_evaluation": "false"
+  }
+}
+
+### Criar Config para teste leve com OPENAI
+POST {{baseUrl}}/api/configs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "llmCredentialsId": 7,
+  "modelName": "gpt-4o-mini",
+  "maxIter": 4,
+  "checkPointInterval": 2,
+  "additionalParams": {
+    "llm.temperature": "0.7",
+    "database.population_size": "2",
+    "database.num_islands": "1",
+    "evaluator.parallel_evaluations": "1",
+    "llm.timeout": "30",
+    "llm.retries": "1",
+    "llm.max_tokens": "128",
+    "prompt.num_top_programs": "1",
+    "prompt.num_diverse_programs": "1",
+    "evaluator.cascade_evaluation": "false"
+  }
+}
 
 ### Criar Config
 POST {{baseUrl}}/api/configs
@@ -196,6 +255,11 @@ Authorization: Bearer {{token}}
 
 ### Ler todas as minhas Configs
 GET {{baseUrl}}/api/configs/me
+Authorization: Bearer {{token}}
+
+
+### apagar Config por ID
+DELETE {{baseUrl}}/api/configs/6
 Authorization: Bearer {{token}}
 
 ### Update Config
@@ -297,9 +361,9 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "Sorting Optimization Demo v3",
+  "name": "Sorting Optimization Demo v5",
   "description": "Exemplo para o OpenEvolve melhorar um algoritmo de ordenacao com espaco real para evolucao",
-  "configId": 4,
+  "configId": 7,
   "initialProgram": "# Initial Program (Random Search)\ndef minimize_function(func, bounds, max_evals=1000):\n    best_x, best_val = None, float('inf')\n    for _ in range(max_evals):\n        x = random_point_in_bounds(bounds)\n        val = func(x)\n        if val < best_val:\n            best_x, best_val = x, val\n    return best_x, best_val",
   "evaluatorCode": "import math\nimport random\n\ndef evaluate(candidate_code):\n    try:\n        ns = {}\n        exec(candidate_code, ns)\n        minimize_function = ns.get('minimize_function')\n        if not callable(minimize_function):\n            return {'combined_score': 0.0}\n        \n        # Dummy evaluation for testing\n        return {'combined_score': 0.85}\n    except Exception:\n        return {'combined_score': 0.0}"
 }
@@ -330,11 +394,11 @@ Authorization: Bearer {{token}}
 }
 
 ### Iniciar Experimentacao de um Projeto
-POST {{baseUrl}}/api/projects/12/start
+POST {{baseUrl}}/api/projects/15/start
 Authorization: Bearer {{token}}
 
 ### Apagar um Projeto
-DELETE {{baseUrl}}/api/projects/10
+DELETE {{baseUrl}}/api/projects/14
 Authorization: Bearer {{token}}
 
 ### Atualizar Status do Projeto (Usado pelo Worker - normalmente sem Auth ou regras definidas)
