@@ -1,5 +1,5 @@
 import { API_BASE_URL, request, type RequestResult } from "../../api/api";
-import type {LLMCredentials, CreateLLMCredentialRequest} from "../../types/credentials";
+import type {LLMCredentials, CreateLLMCredentialRequest, CreateLocalModelCredentialRequest} from "../../types/credentials";
 
 export const apiCredentials = {
 
@@ -12,9 +12,15 @@ export const apiCredentials = {
     create(input: CreateLLMCredentialRequest): Promise<RequestResult<LLMCredentials>> {
         return request<LLMCredentials>(`${API_BASE_URL}/llm-credentials`, {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(input),
+        });
+    },
+
+    createLocalModel(input: CreateLocalModelCredentialRequest): Promise<RequestResult<LLMCredentials>> {
+        return request<LLMCredentials>(`${API_BASE_URL}/llm-credentials/localModel`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(input),
         });
     },

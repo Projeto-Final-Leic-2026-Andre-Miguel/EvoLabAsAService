@@ -109,6 +109,28 @@ class ProjectServiceImp(
             success(updatedProject)
         }
 
+    override fun restartProject(
+        projectId: Int,
+        userId: Int,
+    ): Either<ProjectServiceErrors, Project> =
+        trxManager.run {
+            val project = findRequiredProject(projectId) ?: return@run failureNotFound(projectId)
+
+            validateOwnership(project, userId)?.let { return@run it }
+
+            if (project.status != EvolutionStatus.COMPLETED && project.status != EvolutionStatus.FAILED) {
+                return@run failure(
+                    ProjectServiceErrors.InvalidProjectStatus(
+                        "Project with id '$projectId' is in status '${project.status}' and cannot be restarted",
+                    ),
+                )
+            }
+
+            val updatedProject = project.copy(status = EvolutionStatus.CREATED)
+            repoProjects.save(updatedProject)
+            success(updatedProject)
+        }
+
     // StartExperimentation: adicionar o projeto ao request da nossa queue para, quando
     // houver um worker disponivel, ele comecar a trabalhar.
     // O pedido HTTP para isto devera ser um POST vazio no controller.

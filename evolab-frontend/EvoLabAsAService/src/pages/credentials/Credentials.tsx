@@ -20,6 +20,8 @@ type State = {
     editId: number | null;
     provider: LLM;
     apiKey: string;
+    port: string;
+    modelName: string;
     isSubmitting: boolean;
     validatingId: number | null;
     errorMessage: string | null;
@@ -33,6 +35,8 @@ type Action =
     | { type: "CLOSE_MODAL" }
     | { type: "SET_PROVIDER"; payload: LLM }
     | { type: "SET_API_KEY"; payload: string }
+    | { type: "SET_PORT"; payload: string }
+    | { type: "SET_MODEL_NAME"; payload: string }
     | { type: "SUBMIT_START" }
     | { type: "SUBMIT_ERROR"; payload: string }
     | { type: "SUBMIT_SUCCESS_CREATE"; payload: LLMCredentials }
@@ -48,6 +52,8 @@ const initialState: State = {
     editId: null,
     provider: "OPENAI",
     apiKey: "",
+    port: "11434",
+    modelName: "",
     isSubmitting: false,
     validatingId: null,
     errorMessage: null,
@@ -60,15 +66,19 @@ function reducer(state: State, action: Action): State {
         case "FETCH_SUCCESS":
             return { ...state, isLoading: false, credentials: action.payload };
         case "OPEN_MODAL_CREATE":
-            return { ...state, isModalOpen: true, provider: "OPENAI", apiKey: "", editId: null, errorMessage: null };
+            return { ...state, isModalOpen: true, provider: "OPENAI", apiKey: "", port: "11434", modelName: "", editId: null, errorMessage: null };
         case "OPEN_MODAL_EDIT":
-            return { ...state, isModalOpen: true, provider: action.payload.llm, apiKey: "", editId: action.payload.id, errorMessage: null };
+            return { ...state, isModalOpen: true, provider: action.payload.llm, apiKey: "", port: "11434", modelName: "", editId: action.payload.id, errorMessage: null };
         case "CLOSE_MODAL":
             return { ...state, isModalOpen: false, errorMessage: null };
         case "SET_PROVIDER":
             return { ...state, provider: action.payload };
         case "SET_API_KEY":
             return { ...state, apiKey: action.payload };
+        case "SET_PORT":
+            return { ...state, port: action.payload };
+        case "SET_MODEL_NAME":
+            return { ...state, modelName: action.payload };
         case "SUBMIT_START":
             return { ...state, isSubmitting: true, errorMessage: null };
         case "SUBMIT_ERROR":
@@ -128,6 +138,24 @@ export function Credentials() {
                 dispatch({ type: "SUBMIT_SUCCESS_UPDATE", payload: res.data });
             } else {
                 dispatch({ type: "SUBMIT_ERROR", payload: getFriendlyErrorMessage(res.error.message, "Erro ao atualizar credencial.") });
+            }
+        } else if (state.provider === "LOCAL_MODEL") {
+            const portNumber = parseInt(state.port, 10);
+            if (isNaN(portNumber)) {
+                dispatch({ type: "SUBMIT_ERROR", payload: "O porto deve ser um número válido." });
+                return;
+            }
+            const res = await apiCredentials.createLocalModel({
+                llm: "LOCAL_MODEL",
+                apiKey: state.apiKey,
+                port: portNumber,
+                modelName: state.modelName,
+            });
+            if (res.type === "Success") {
+                setCredentialValidity(res.data.id, true);
+                dispatch({ type: "SUBMIT_SUCCESS_CREATE", payload: res.data });
+            } else {
+                dispatch({ type: "SUBMIT_ERROR", payload: getFriendlyErrorMessage(res.error.message, "Erro ao criar credencial local.") });
             }
         } else {
             const res = await apiCredentials.create({ llm: state.provider, apiKey: state.apiKey });
@@ -248,29 +276,66 @@ export function Credentials() {
                         <form onSubmit={handleSave}>
                             <div className={styles.formGroup}>
                                 <label>Provider</label>
-                                <select 
-                                    value={state.provider} 
+                                <select
+                                    value={state.provider}
                                     onChange={e => dispatch({ type: "SET_PROVIDER", payload: e.target.value as LLM })}
                                     className={styles.inputField}
                                     disabled={!!state.editId}
                                 >
                                     <option value="OPENAI">OpenAI</option>
                                     <option value="GEMINI">Google Gemini</option>
-                                    <option value="LOCAL_MODEL">Local Model</option>
+                                    <option value="LOCAL_MODEL">Local Model (Ollama)</option>
                                 </select>
                             </div>
 
-                            <div className={styles.formGroup}>
-                                <label>API Key</label>
-                                <input 
-                                    type="password" 
-                                    required 
-                                    placeholder="Enter your secret key"
-                                    value={state.apiKey}
-                                    onChange={e => dispatch({ type: "SET_API_KEY", payload: e.target.value })}
-                                    className={styles.inputField}
-                                />
-                            </div>
+                            {state.provider === "LOCAL_MODEL" ? (
+                                <>
+                                    <div className={styles.formGroup}>
+                                        <label>Model Name</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="e.g. llama3, qwen2.5-coder:14b"
+                                            value={state.modelName}
+                                            onChange={e => dispatch({ type: "SET_MODEL_NAME", payload: e.target.value })}
+                                            className={styles.inputField}
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label>Port</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            placeholder="11434"
+                                            value={state.port}
+                                            onChange={e => dispatch({ type: "SET_PORT", payload: e.target.value })}
+                                            className={styles.inputField}
+                                        />
+                                    </div>
+                                    <div className={styles.formGroup}>
+                                        <label>API Key <span style={{ fontWeight: "normal", opacity: 0.6 }}>(opcional)</span></label>
+                                        <input
+                                            type="password"
+                                            placeholder="Deixe vazio se não necessário"
+                                            value={state.apiKey}
+                                            onChange={e => dispatch({ type: "SET_API_KEY", payload: e.target.value })}
+                                            className={styles.inputField}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className={styles.formGroup}>
+                                    <label>API Key</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="Enter your secret key"
+                                        value={state.apiKey}
+                                        onChange={e => dispatch({ type: "SET_API_KEY", payload: e.target.value })}
+                                        className={styles.inputField}
+                                    />
+                                </div>
+                            )}
 
                             <div className={styles.modalActions}>
                                 <button type="button" onClick={() => dispatch({ type: "CLOSE_MODAL" })} className={styles.cancelBtn}>

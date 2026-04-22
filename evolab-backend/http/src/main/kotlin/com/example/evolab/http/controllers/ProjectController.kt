@@ -154,6 +154,21 @@ class ProjectController(
         }
     }
 
+    @PostMapping("/{id}/restart")
+    fun restartProject(
+        @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser,
+    ): ResponseEntity<*> {
+        val result = projectService.restartProject(
+            projectId = id,
+            userId = authenticatedUser.user.id,
+        )
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
+
     @DeleteMapping("/{id}")
     fun deleteProject(
         @PathVariable id: Int,

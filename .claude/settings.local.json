@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm *)",
+      "Bash(.\\\\gradlew.bat :evolab-backend:service:compileKotlin)",
+      "Bash(cmd.exe /c \"gradlew.bat :evolab-backend:service:compileKotlin 2>&1\")",
+      "Bash(cmd.exe /c \"gradlew.bat :evolab-backend:service:compileKotlin\")",
+      "Bash(powershell.exe *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -E \"\\\\.\\(md|txt|yaml|yml\\)$\")",
+      "Bash(npm run *)"
+    ]
+  },
+  "prefersReducedMotion": false
+}

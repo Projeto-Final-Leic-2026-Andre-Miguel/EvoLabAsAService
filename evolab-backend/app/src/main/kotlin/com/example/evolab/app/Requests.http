@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:8080
-@token = Io71IqL7aPyclx-JOu0XwvSfLICwqzWP_lsnL7uH3p0=
+@token = fVnUIw49vOUNm3UC-dn9BvzmmlkBSgu1VAWaodonKqg=
 @userIdToDelete = 8
 @localEmail = Teste3@evolab.dev
 @localPassword = 12345
@@ -9,7 +9,7 @@
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
 @newGeminiKey = AIzaSyA8ZkA3IUs90DQ1OnR0QsS1YQZuyfBF3fI
 @configId = 4
-@llmCredentialId = 7
+@llmCredentialId = 4
 @ollamaHostBase = http://localhost:11434/v1
 @ollamaDockerBase = http://host.docker.internal:11434/v1
 @jobId = 7
@@ -39,8 +39,8 @@ POST {{baseUrl}}/api/users/token
 Content-Type: application/json
 
 {
-  "email": "{{emailTeste}}",
-  "password": "{{localPassword}}"
+  "email": "miguelmoraispintomoraispinto@gmail.com",
+  "password": "123456789"
 }
 
 
@@ -130,7 +130,7 @@ Authorization: Bearer {{token}}
 {
   "llm": "LOCAL_MODEL",
   "apiKey": "",
-  "modelName": "llama3",
+  "modelName": "qwen2.5-coder:14b",
   "port": 11434
 }
 

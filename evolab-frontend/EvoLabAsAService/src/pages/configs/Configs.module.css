@@ -352,6 +352,102 @@
   font-size: 0.9rem;
 }
 
+.toggleAdvancedBtn {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.toggleAdvancedBtn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.advancedParamsPanel {
+  margin-top: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.paramSection {
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.paramSection:last-child {
+  border-bottom: none;
+}
+
+.paramSectionTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin: 0 0 0.75rem 0;
+}
+
+.paramGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.paramField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.paramField label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.paramField input[type="text"],
+.paramField input[type="number"],
+.paramField textarea {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #0f172a;
+  background: #fff;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.paramField input:focus,
+.paramField textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #4F46E5);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.paramFieldCheckbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.paramFieldCheckbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--primary-color, #4F46E5);
+  cursor: pointer;
+}
+
 .docLink a {
   color: var(--primary-color, #4F46E5);
   text-decoration: none;

@@ -170,8 +170,19 @@ class LLMCredentialsServiceImp(
             LLMCredentialsServiceErrors.LLMCredentialNotFound("Credential with id '$id' was not found for user with id '$userId'"),
         )
 
-        val apiKey = credential.apiKeyEncrypted?.let { encryptionService.decrypt(it) }
-            ?: return failure(LLMCredentialsServiceErrors.InvalidApiKey("Failed to decrypt API key or key is missing"))
+        if (credential.llm == LLM.LOCAL_MODEL) {
+            val localCred = trxManager.run { repoLLmCredentials.findLocalModelCredentialById(id) }
+                ?: return failure(LLMCredentialsServiceErrors.LLMCredentialNotFound("Local model credential with id '$id' not found"))
+            val apiKey = localCred.apiKeyEncrypted.takeIf { it.isNotBlank() }?.let { encryptionService.decrypt(it) } ?: ""
+            return when (val result = llmValidator.validateLocalModelApiKey(localCred.port, apiKey.ifBlank { "dummy" }, localCred.modelName)) {
+                is Failure -> failure(mapValidatorError(result.value))
+                is Success -> success(true)
+            }
+        }
+
+        val apiKey = credential.apiKeyEncrypted.takeIf { it.isNotBlank() }
+            ?.let { encryptionService.decrypt(it) }
+            ?: return failure(LLMCredentialsServiceErrors.InvalidApiKey("API key is missing"))
 
         return when (val result = llmValidator.validateApiKeyForLLM(credential.llm, apiKey)) {
             is Failure -> failure(mapValidatorError(result.value))

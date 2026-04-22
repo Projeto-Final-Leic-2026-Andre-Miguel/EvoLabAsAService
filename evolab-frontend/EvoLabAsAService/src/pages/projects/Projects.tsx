@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiProjects, type Project, type CreateProjectInput, type UpdateProjectDetailsInput } from './apiProjects';
 import { apiConfigs, type Config } from '../configs/apiConfigs';
@@ -22,11 +22,25 @@ const Projects: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [startingId, setStartingId] = useState<number | null>(null);
+  const [restartingId, setRestartingId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const initialProgramFileRef = useRef<HTMLInputElement>(null);
+  const evaluatorCodeFileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (field: 'initialProgram' | 'evaluatorCode', file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setFormData(prev => ({ ...prev, [field]: content }));
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
     fetchData();
   }, []);
+
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -144,6 +158,23 @@ const Projects: React.FC = () => {
     }
   };
 
+  const handleRestart = async (id: number) => {
+    setRestartingId(id);
+    setErrorMessage(null);
+    try {
+      const res = await apiProjects.restart(id);
+      if (res.type === "Success" && res.data) {
+        setProjects(prev => prev.map(p => p.id === id ? res.data! : p));
+      } else if (res.type === "Failure") {
+        setErrorMessage(`Failed to restart: ${res.error?.message || 'Unknown Error'}`);
+      }
+    } catch {
+      setErrorMessage('A network error occurred while restarting.');
+    } finally {
+      setRestartingId(null);
+    }
+  };
+
   const getStatusColorClass = (status: string) => {
     switch (status) {
       case 'CREATED': return styles.statusCREATED;
@@ -222,23 +253,33 @@ const Projects: React.FC = () => {
               </div>
 
               <div className={styles.cardActions}>
-                <button 
-                  className={`${styles.actionBtn} ${styles.startBtn}`} 
+                <button
+                  className={`${styles.actionBtn} ${styles.startBtn}`}
                   onClick={() => handleStart(project.id)}
                   disabled={project.status === 'RUNNING' || project.status === 'QUEUED' || startingId === project.id}
                   title="Start Experimentation"
                 >
                   {startingId === project.id ? <span>⏳ Starting</span> : <span>Start</span>}
                 </button>
-                <button 
-                  className={`${styles.actionBtn} ${styles.editBtn}`} 
+                {(project.status === 'COMPLETED' || project.status === 'FAILED') && (
+                  <button
+                    className={`${styles.actionBtn} ${styles.restartBtn}`}
+                    onClick={() => handleRestart(project.id)}
+                    disabled={restartingId === project.id}
+                    title="Reset to Created"
+                  >
+                    {restartingId === project.id ? <span>⏳ Restarting</span> : <span>Restart</span>}
+                  </button>
+                )}
+                <button
+                  className={`${styles.actionBtn} ${styles.editBtn}`}
                   onClick={() => handleOpenModal(project)}
                   title="Edit Project"
                 >
                   <span>Update</span>
                 </button>
-                <button 
-                  className={`${styles.actionBtn} ${styles.deleteBtn}`} 
+                <button
+                  className={`${styles.actionBtn} ${styles.deleteBtn}`}
                   onClick={() => handleDelete(project.id)}
                   title="Delete Project"
                 >
@@ -320,20 +361,42 @@ const Projects: React.FC = () => {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Initial Program Code</label>
-                <textarea 
-                  value={formData.initialProgram || ''} 
-                  onChange={e => setFormData({...formData, initialProgram: e.target.value || null})} 
+                <div className={styles.labelRow}>
+                  <label>Initial Program Code</label>
+                  <button type="button" className={styles.uploadBtn} onClick={() => initialProgramFileRef.current?.click()}>
+                    📂 Upload file
+                  </button>
+                  <input
+                    ref={initialProgramFileRef}
+                    type="file"
+                    style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files?.[0]) handleFileUpload('initialProgram', e.target.files[0]); e.target.value = ''; }}
+                  />
+                </div>
+                <textarea
+                  value={formData.initialProgram || ''}
+                  onChange={e => setFormData({...formData, initialProgram: e.target.value || null})}
                   placeholder="def main():&#10;    pass"
                 />
                 <span className={styles.helperText}>The initial codebase for the evolution process.</span>
               </div>
 
               <div className={styles.formGroup}>
-                <label>Evaluation Function / Fitness Logic</label>
-                <textarea 
-                  value={formData.evaluatorCode || ''} 
-                  onChange={e => setFormData({...formData, evaluatorCode: e.target.value || null})} 
+                <div className={styles.labelRow}>
+                  <label>Evaluation Function / Fitness Logic</label>
+                  <button type="button" className={styles.uploadBtn} onClick={() => evaluatorCodeFileRef.current?.click()}>
+                    📂 Upload file
+                  </button>
+                  <input
+                    ref={evaluatorCodeFileRef}
+                    type="file"
+                    style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files?.[0]) handleFileUpload('evaluatorCode', e.target.files[0]); e.target.value = ''; }}
+                  />
+                </div>
+                <textarea
+                  value={formData.evaluatorCode || ''}
+                  onChange={e => setFormData({...formData, evaluatorCode: e.target.value || null})}
                   placeholder="def evaluate(code):&#10;    return fitness_score"
                 />
                 <span className={styles.helperText}>The Python/Java logic used to evaluate the correctness of the evolved programs.</span>

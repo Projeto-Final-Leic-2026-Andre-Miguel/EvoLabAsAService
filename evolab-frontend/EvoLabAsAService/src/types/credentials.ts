@@ -14,3 +14,10 @@ export interface CreateLLMCredentialRequest {
     llm: LLM;
     apiKey: string;
 }
+
+export interface CreateLocalModelCredentialRequest {
+    llm: "LOCAL_MODEL";
+    apiKey: string;
+    port: number;
+    modelName: string;
+}

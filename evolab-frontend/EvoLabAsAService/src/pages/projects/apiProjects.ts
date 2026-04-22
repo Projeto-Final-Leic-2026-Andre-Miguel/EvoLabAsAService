@@ -55,5 +55,8 @@ export const apiProjects = {
   },
   start: (id: number): Promise<RequestResult<Project>> => {
     return request(`/api/projects/${id}/start`, { method: 'POST' });
+  },
+  restart: (id: number): Promise<RequestResult<Project>> => {
+    return request(`/api/projects/${id}/restart`, { method: 'POST' });
   }
 };

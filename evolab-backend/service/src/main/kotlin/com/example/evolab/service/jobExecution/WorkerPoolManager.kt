@@ -133,7 +133,8 @@ class WorkerPoolManager(
 
            saveProjectState(project.copy(status = EvolutionStatus.RUNNING))
 
-            val decryptedKey = encryptionService.decrypt(credentials.apiKeyEncrypted)
+            val decryptedKey = credentials.apiKeyEncrypted.takeIf { it.isNotBlank() }
+                ?.let { encryptionService.decrypt(it) } ?: ""
 
             val apiKeyVariableName = OpenEvolvePayloadBuilder.apiKeyEnvironmentVariableName(credentials.llm)
 

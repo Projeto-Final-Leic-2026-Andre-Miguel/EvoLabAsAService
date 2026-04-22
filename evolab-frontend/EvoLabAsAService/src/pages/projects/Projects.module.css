@@ -189,6 +189,18 @@
   border-color: #fecaca;
 }
 
+.restartBtn {
+  color: #d97706;
+}
+.restartBtn:hover {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.restartBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Modal Styles */
 .modalOverlay {
   position: fixed;
@@ -250,11 +262,33 @@
 }
 
 .formGroup label {
-  display: block;
   font-size: 0.875rem;
   font-weight: 500;
   color: #334155;
+}
+
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
+}
+
+.uploadBtn {
+  background: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.uploadBtn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }
 
 .formGroup input,
