@@ -8,6 +8,7 @@ export interface LLMCredentials {
 
     // Added for frontend display
     apiKeyPreview?: string;
+    modelName?: string;
 }
 
 export interface CreateLLMCredentialRequest {

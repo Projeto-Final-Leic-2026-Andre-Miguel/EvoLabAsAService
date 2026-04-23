@@ -31,6 +31,8 @@ interface LLMCredentialsService {
 
     fun getLLMCredentialById(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, LLMCredentials>
 
+    fun getLocalModelCredentialById(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, LocalModelCredentials>
+
     fun getLLMCredentialsByUserId(userId: Int): Either<LLMCredentialsServiceErrors,List<LLMCredentials>>
 
     fun getAllLLMCredentials(): Either<LLMCredentialsServiceErrors, List<LLMCredentials>>

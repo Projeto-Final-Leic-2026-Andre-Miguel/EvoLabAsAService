@@ -257,6 +257,13 @@ export function Credentials() {
                             </motion.div>
                         );
                     })}
+
+                    {state.credentials.length === 0 && (
+                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                                No credentials found. Create one to get started.
+                            </div>
+                            )}
+
                 </div>
             )}
 
@@ -272,6 +279,8 @@ export function Credentials() {
                             <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '0.9rem' }}>
                                 {state.errorMessage}
                             </div>
+
+                            
                         )}
                         <form onSubmit={handleSave}>
                             <div className={styles.formGroup}>
@@ -316,7 +325,7 @@ export function Credentials() {
                                         <label>API Key <span style={{ fontWeight: "normal", opacity: 0.6 }}>(opcional)</span></label>
                                         <input
                                             type="password"
-                                            placeholder="Deixe vazio se não necessário"
+                                            placeholder="Leave Empty if not needed"
                                             value={state.apiKey}
                                             onChange={e => dispatch({ type: "SET_API_KEY", payload: e.target.value })}
                                             className={styles.inputField}

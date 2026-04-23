@@ -154,7 +154,9 @@ class UserController(
 					"id" to userAuthenticatedUser.user.id,
 					"name" to userAuthenticatedUser.user.name,
 					"email" to userAuthenticatedUser.user.email,
-				),
+					"authProvider" to userAuthenticatedUser.user.authProvider,
+					"createdAt" to userAuthenticatedUser.user.createdAt.toString()
 			)
+		)
 	}
 }

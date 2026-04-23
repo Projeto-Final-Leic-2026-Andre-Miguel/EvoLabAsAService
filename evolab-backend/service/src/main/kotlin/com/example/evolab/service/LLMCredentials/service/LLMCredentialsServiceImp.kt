@@ -88,6 +88,21 @@ class LLMCredentialsServiceImp(
             return@run success(credential)
         }
 
+    override fun getLocalModelCredentialById(userId: Int, id: Int): Either<LLMCredentialsServiceErrors, LocalModelCredentials> =
+        trxManager.run {
+            val credential = repoLLmCredentials.findLocalModelCredentialById(id)
+                ?: return@run failure(
+                    LLMCredentialsServiceErrors.LLMCredentialNotFound("Local Model Credential with id '$id' was not found"),
+                )
+
+            if(credential.userId != userId) {
+                return@run failure(
+                    LLMCredentialsServiceErrors.UnauthorizedAccess("User with id $userId is not the owner of credential with id '$id'"),
+                )
+            }
+            return@run success(credential)
+        }
+
     override fun getLLMCredentialsByUserId(userId: Int): Either<LLMCredentialsServiceErrors, List<LLMCredentials>> =
         trxManager.run {
             success(getAllUserCredentialsById(userId))

@@ -9,6 +9,12 @@ export const apiCredentials = {
         });
     },
 
+    getLocalModel(id: number): Promise<RequestResult<LLMCredentials & { port: number; modelName: string }>> {
+        return request<LLMCredentials & { port: number; modelName: string }>(`${API_BASE_URL}/llm-credentials/localModel/${id}`, {
+            method: "GET"
+        });
+    },
+
     create(input: CreateLLMCredentialRequest): Promise<RequestResult<LLMCredentials>> {
         return request<LLMCredentials>(`${API_BASE_URL}/llm-credentials`, {
             method: "POST",

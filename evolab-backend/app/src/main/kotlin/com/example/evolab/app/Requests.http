@@ -1,10 +1,10 @@
 @baseUrl = http://localhost:8080
-@token = fVnUIw49vOUNm3UC-dn9BvzmmlkBSgu1VAWaodonKqg=
+@token = XdEUmyMENgTr82REqsLa1U1vqkMrZz1NUy5uPx9T_Oc=
 @userIdToDelete = 8
-@localEmail = Teste3@evolab.dev
+@localEmail = test@gmail.com
 @localPassword = 12345
 @nome = Teste
-@emailTeste = local@gmail.com
+@emailTeste = av@gmail.com
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
 @newGeminiKey = AIzaSyA8ZkA3IUs90DQ1OnR0QsS1YQZuyfBF3fI
@@ -25,7 +25,7 @@ POST {{baseUrl}}/api/users/local
 Content-Type: application/json
 
 {
-  "name": "teste",
+  "name": "av",
   "email": "{{emailTeste}}",
   "password": "{{localPassword}}"
 }
@@ -39,8 +39,8 @@ POST {{baseUrl}}/api/users/token
 Content-Type: application/json
 
 {
-  "email": "miguelmoraispintomoraispinto@gmail.com",
-  "password": "123456789"
+  "email": "{{emailTeste}}",
+  "password": "{{localPassword}}"
 }
 
 
@@ -170,7 +170,7 @@ GET {{baseUrl}}/api/llm-credentials/all
 
 
 ### Apagar uma determinada credencial LLM por ID
-DELETE {{baseUrl}}/api/llm-credentials/8
+DELETE {{baseUrl}}/api/llm-credentials/9
 Authorization: Bearer {{token}}
 
 ### -------------------- CONFIG TESTS --------------------
@@ -181,9 +181,9 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "llmCredentialsId": 9,
+  "llmCredentialsId": 14,
   "modelName": "gemini-2.0-flash-lite",
-  "maxIter": 4,
+  "maxIter": 5 ,
   "checkPointInterval": 2,
   "additionalParams": {
     "llm.temperature": "0.7",
@@ -259,7 +259,7 @@ Authorization: Bearer {{token}}
 
 
 ### apagar Config por ID
-DELETE {{baseUrl}}/api/configs/6
+DELETE {{baseUrl}}/api/configs/7
 Authorization: Bearer {{token}}
 
 ### Update Config

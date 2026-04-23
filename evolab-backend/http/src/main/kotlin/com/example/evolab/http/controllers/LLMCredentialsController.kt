@@ -90,6 +90,19 @@ class LLMCredentialsController(
         }
     }
 
+    @GetMapping("/localModel/{id}")
+    fun getLocalModelCredentialById(
+        @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser
+    ): ResponseEntity<*> {
+
+        val result = llmCredentialsService.getLocalModelCredentialById(authenticatedUser.user.id, id)
+
+        return when (result) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
+        }
+    }
 
     @DeleteMapping("/{id}")
     fun deleteLLMCredential(

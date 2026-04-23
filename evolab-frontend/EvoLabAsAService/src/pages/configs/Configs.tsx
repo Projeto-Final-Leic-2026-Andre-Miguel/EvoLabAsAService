@@ -67,8 +67,45 @@ const Configs: React.FC = () => {
   // Form State
   const [projectId, setProjectId] = useState<string>('');
   const [llmCredentialsId, setLlmCredentialsId] = useState<string>('');
-  const [modelName, setModelName] = useState<string>('gpt-4');
+  const [modelName, setModelName] = useState<string>('');
   const [maxIter, setMaxIter] = useState<number>(10);
+
+  const selectedCredential = credentials.find(c => c.id.toString() === llmCredentialsId);
+
+  const OPENAI_MODELS = ['gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-3.5-turbo', 'o1-mini', 'o1-preview'];
+  const GEMINI_MODELS = ['gemini-pro', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'];
+
+  useEffect(() => {
+    let active = true;
+
+    if (!editingConfig && selectedCredential) {
+      if (selectedCredential.llm === 'OPENAI') {
+        setModelName(OPENAI_MODELS[0]);
+      } else if (selectedCredential.llm === 'GEMINI') {
+        setModelName(GEMINI_MODELS[0]);
+      } else if (selectedCredential.llm === 'LOCAL_MODEL') {
+        if (selectedCredential.modelName) {
+           setModelName(selectedCredential.modelName);
+        } else {
+           setModelName('Loading...');
+           apiCredentials.getLocalModel(selectedCredential.id).then(res => {
+             if (!active) return;
+             if (res.type === 'Success' && res.data) {
+               // save the modelName on the object
+               const model = res.data.modelName;
+               setCredentials(prev => prev.map(c => c.id === selectedCredential.id ? { ...c, modelName: model } : c));
+               setModelName(model);
+             } else {
+               setModelName('local-model-error');
+             }
+           });
+        }
+      }
+    }
+
+    return () => { active = false; };
+  }, [llmCredentialsId, editingConfig, selectedCredential]);
+
   const [checkPointInterval, setCheckPointInterval] = useState<number>(5);
   const [showAdvancedParams, setShowAdvancedParams] = useState<boolean>(false);
   const [advancedParams, setAdvancedParams] = useState<Record<string, string>>(defaultAdvancedParams());
@@ -369,12 +406,31 @@ const Configs: React.FC = () => {
                   Model Name
                   <span className={styles.labelHint}>* Required</span>
                 </label>
-                <input 
-                  type="text" 
-                  value={modelName}
-                  onChange={e => setModelName(e.target.value)}
-                  placeholder="e.g., gpt-4, gemini-pro, llama2"
-                />
+                {selectedCredential?.llm === 'OPENAI' || (editingConfig && OPENAI_MODELS.includes(editingConfig.modelName)) ? (
+                  <select value={modelName} onChange={e => setModelName(e.target.value)}>
+                    <option value="" disabled>-- Select OpenAI Model --</option>
+                    {OPENAI_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                ) : selectedCredential?.llm === 'GEMINI' || (editingConfig && GEMINI_MODELS.includes(editingConfig.modelName)) ? (
+                  <select value={modelName} onChange={e => setModelName(e.target.value)}>
+                    <option value="" disabled>-- Select Gemini Model --</option>
+                    {GEMINI_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                ) : selectedCredential?.llm === 'LOCAL_MODEL' ? (
+                  <input
+                    type="text"
+                    value={modelName || 'Unknown Local Model'}
+                    disabled
+                    title="Local models are directly linked to the credential."
+                  />
+                ) : (
+                  <input 
+                    type="text" 
+                    value={modelName}
+                    onChange={e => setModelName(e.target.value)}
+                    placeholder="e.g., gpt-4, gemini-pro"
+                  />
+                )}
               </div>
 
               <div className={styles.formGroup}>
@@ -405,7 +461,7 @@ const Configs: React.FC = () => {
                   className={styles.toggleAdvancedBtn}
                   onClick={() => setShowAdvancedParams(prev => !prev)}
                 >
-                  {showAdvancedParams ? '▲ Ocultar Parâmetros Avançados' : '▼ Mais Parâmetros'}
+                  {showAdvancedParams ? '▲ Hide Advanced Parameters' : '▼  Advanced Parameters'}
                 </button>
 
                 {showAdvancedParams && (
@@ -560,7 +616,7 @@ const Configs: React.FC = () => {
                   onClick={handleSave} 
                   disabled={saving || (!editingConfig && !llmCredentialsId) || !modelName}
                 >
-                  {saving ? <span>⏳ Saving...</span> : 'Save Configuration'}
+                  {saving ? <span> Saving...</span> : 'Save Configuration'}
                 </button>
               </div>
 
