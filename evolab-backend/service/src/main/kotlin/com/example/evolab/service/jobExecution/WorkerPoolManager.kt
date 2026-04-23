@@ -138,7 +138,17 @@ class WorkerPoolManager(
 
             val apiKeyVariableName = OpenEvolvePayloadBuilder.apiKeyEnvironmentVariableName(credentials.llm)
 
-            val runtimeConfig = configService.buildRuntimeConfig(config, project.id, jobId)
+            var runtimeConfig = configService.buildRuntimeConfig(config, project.id, jobId)
+            
+            val resolvedApiBase = OpenEvolvePayloadBuilder.resolveApiBase(
+                credentials.llm,
+                config.modelName,
+                config.additionalParams["llm.api_base"]
+            )
+            
+            runtimeConfig = runtimeConfig.copy(
+                additionalParams = runtimeConfig.additionalParams + mapOf("llm.api_base" to resolvedApiBase)
+            )
 
             val runtimePayload = OpenEvolvePayloadBuilder.build(
                 config = runtimeConfig,

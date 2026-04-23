@@ -49,6 +49,8 @@ class DockerExecutionService {
                 } else {
                     "unix:///var/run/docker.sock"
                 }
+            } else if (os.contains("win")) {
+                "npipe:////./pipe/docker_engine"
             } else {
                 "unix:///var/run/docker.sock"
             }

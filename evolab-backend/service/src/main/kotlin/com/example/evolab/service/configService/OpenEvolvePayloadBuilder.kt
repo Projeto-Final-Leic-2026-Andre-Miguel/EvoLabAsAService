@@ -92,7 +92,14 @@ object OpenEvolvePayloadBuilder {
     ): String {
         validateProviderModelConsistency(llm, modelName)
 
-        val configured = configuredApiBase?.trim().orEmpty()
+        var configured = configuredApiBase?.trim().orEmpty()
+        
+        // Se usar localhost ou 127.0.0.1, temos de reescrever para o docker poder aceder ao host
+        if (configured.contains("localhost") || configured.contains("127.0.0.1")) {
+            configured = configured.replace("localhost", "host.docker.internal")
+                .replace("127.0.0.1", "host.docker.internal")
+        }
+        
         if (configured.isNotBlank()) return configured
 
         return when (llm) {
