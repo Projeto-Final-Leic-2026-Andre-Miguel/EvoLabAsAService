@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiProjects, type Project, type CreateProjectInput, type UpdateProjectDetailsInput } from './apiProjects';
 import { apiConfigs, type Config } from '../configs/apiConfigs';
 import styles from './Projects.module.css';
 
 const Projects: React.FC = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [configs, setConfigs] = useState<Config[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -254,8 +256,18 @@ const Projects: React.FC = () => {
 
               <div className={styles.cardActions}>
                 <button
+                  className={`${styles.actionBtn} ${styles.detailBtn}`}
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                  title="View Metrics & Checkpoints"
+                >
+                  <span>Details</span>
+                </button>
+                <button
                   className={`${styles.actionBtn} ${styles.startBtn}`}
-                  onClick={() => handleStart(project.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStart(project.id);
+                  }}
                   disabled={project.status === 'RUNNING' || project.status === 'QUEUED' || startingId === project.id}
                   title="Start Experimentation"
                 >
@@ -264,7 +276,10 @@ const Projects: React.FC = () => {
                 {(project.status === 'COMPLETED' || project.status === 'FAILED') && (
                   <button
                     className={`${styles.actionBtn} ${styles.restartBtn}`}
-                    onClick={() => handleRestart(project.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRestart(project.id);
+                    }}
                     disabled={restartingId === project.id}
                     title="Reset to Created"
                   >
@@ -273,14 +288,20 @@ const Projects: React.FC = () => {
                 )}
                 <button
                   className={`${styles.actionBtn} ${styles.editBtn}`}
-                  onClick={() => handleOpenModal(project)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenModal(project);
+                  }}
                   title="Edit Project"
                 >
                   <span>Update</span>
                 </button>
                 <button
                   className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                  onClick={() => handleDelete(project.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(project.id);
+                  }}
                   title="Delete Project"
                 >
                   <span>Delete</span>

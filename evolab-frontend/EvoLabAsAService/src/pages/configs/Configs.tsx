@@ -62,6 +62,7 @@ const Configs: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
+  const [viewingConfig, setViewingConfig] = useState<Config | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Form State
@@ -73,7 +74,7 @@ const Configs: React.FC = () => {
   const selectedCredential = credentials.find(c => c.id.toString() === llmCredentialsId);
 
   const OPENAI_MODELS = ['gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-3.5-turbo', 'o1-mini', 'o1-preview'];
-  const GEMINI_MODELS = ['gemini-pro', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'];
+  const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-preview-04-17', 'gemini-2.5-pro-preview-05-06', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
   useEffect(() => {
     let active = true;
@@ -294,7 +295,8 @@ const Configs: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={styles.card}
+              className={`${styles.card} ${styles.cardClickable}`}
+              onClick={() => setViewingConfig(config)}
             >
               <div className={styles.cardHeader}>
                 <h3 className={styles.configIdText}>Config #{config.configId}</h3>
@@ -330,13 +332,19 @@ const Configs: React.FC = () => {
               <div className={styles.cardActions}>
                 <button 
                   className={`${styles.actionBtn} ${styles.editBtn}`} 
-                  onClick={() => handleOpenModal(config)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenModal(config);
+                  }}
                 >
                   <span>Update</span>
                 </button>
                 <button 
                   className={`${styles.actionBtn} ${styles.deleteBtn}`} 
-                  onClick={() => handleDelete(config.configId)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(config.configId);
+                  }}
                 >
                   <span>Delete</span>
                 </button>
@@ -351,6 +359,66 @@ const Configs: React.FC = () => {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {viewingConfig && (
+          <motion.div
+            className={styles.modalOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className={styles.modal}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+            >
+              <div className={styles.modalHeader}>
+                <h2 className={styles.modalTitle}>Configuration Details</h2>
+                <button className={styles.closeBtn} onClick={() => setViewingConfig(null)}>×</button>
+              </div>
+
+              <div className={styles.detailGrid}>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Config ID</span>
+                  <span className={styles.detailValue}>#{viewingConfig.configId}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Model Name</span>
+                  <span className={styles.detailValue}>{viewingConfig.modelName}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>LLM Credentials ID</span>
+                  <span className={styles.detailValue}>{viewingConfig.llmCredentialsId}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Linked Project ID</span>
+                  <span className={styles.detailValue}>{viewingConfig.projectId ? `#${viewingConfig.projectId}` : 'Unassigned'}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Max Iterations</span>
+                  <span className={styles.detailValue}>{viewingConfig.maxIter}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Checkpoint Interval</span>
+                  <span className={styles.detailValue}>{viewingConfig.checkPointInterval}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Created At</span>
+                  <span className={styles.detailValue}>{new Date(viewingConfig.createdAt).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className={styles.detailLabel}>Additional Parameters</span>
+                  <div className={styles.jsonBox}>
+                    {JSON.stringify(viewingConfig.additionalParams, null, 2)}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal */}
       <AnimatePresence>

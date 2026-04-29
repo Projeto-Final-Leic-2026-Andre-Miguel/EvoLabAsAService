@@ -13,6 +13,7 @@ import {Profile} from "../pages/profile/Profile";
 import { ProtectedRoute } from './ProtectRoute.tsx'
 import { Credentials } from '../pages/credentials/Credentials'
 import Projects from '../pages/projects/Projects'
+import ProjectDetail from '../pages/projects/ProjectDetail'
 import Configs from '../pages/configs/Configs'
 import {ValidCredentialsProvider} from "../contexts/ValidCredentialsContext.tsx"
 
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
     children: [
         { index: true, element: <Home /> },
         { path: "projects", element: <ProtectedRoute><Projects /></ProtectedRoute> },
+        { path: "projects/:id", element: <ProtectedRoute><ProjectDetail /></ProtectedRoute> },
         { path: "credentials", element: <ProtectedRoute><Credentials /></ProtectedRoute> },
      //   { path: "contact", element: <Contact /> }, 
         { path: "config", element: <ProtectedRoute><Configs /></ProtectedRoute> },

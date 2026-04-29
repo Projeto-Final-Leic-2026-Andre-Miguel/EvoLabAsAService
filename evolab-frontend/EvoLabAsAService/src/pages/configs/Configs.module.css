@@ -89,6 +89,10 @@
   transform: translateY(-2px);
 }
 
+.cardClickable {
+  cursor: pointer;
+}
+
 .cardHeader {
   display: flex;
   justify-content: space-between;
@@ -125,6 +129,25 @@
 .detailRow {
   display: flex;
   justify-content: space-between;
+}
+
+.detailGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.detailLabel {
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.detailValue {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: right;
 }
 
 .jsonBox {

@@ -1,10 +1,10 @@
 @baseUrl = http://localhost:8080
-@token = XdEUmyMENgTr82REqsLa1U1vqkMrZz1NUy5uPx9T_Oc=
+@token = LgzduVOu41TabtNQwzwU_tidgdlaHQMtibSPN43vQoU=
 @userIdToDelete = 8
 @localEmail = test@gmail.com
-@localPassword = 12345
+@localPassword = 123456789
 @nome = Teste
-@emailTeste = av@gmail.com
+@emailTeste = miguelmoraispintomoraispinto@gmail.com
 @openAIKey = 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
 @geminiKey = AIzaSyCovmLsHKncRg7gtXmWhWpMDvsKKGfgOww
 @newGeminiKey = AIzaSyA8ZkA3IUs90DQ1OnR0QsS1YQZuyfBF3fI
@@ -261,6 +261,20 @@ Authorization: Bearer {{token}}
 ### apagar Config por ID
 DELETE {{baseUrl}}/api/configs/7
 Authorization: Bearer {{token}}
+
+### Update Config Gemini — alterar model name para gemini-2.0-flash (leve e recente)
+PUT {{baseUrl}}/api/configs/5
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "modelName": "gemini-2.0-flash",
+  "maxIter": 10,
+  "checkPointInterval": 5,
+  "additionalParams": {
+    "llm.api_base": "https://generativelanguage.googleapis.com/v1beta/openai/"
+  }
+}
 
 ### Update Config
 PUT {{baseUrl}}/api/configs/{{configId}}

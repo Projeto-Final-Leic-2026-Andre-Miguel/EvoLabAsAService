@@ -11,7 +11,9 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.configService.ConfigService
 import com.example.evolab.service.configService.OpenEvolvePayloadBuilder
+import com.example.evolab.service.checkpoints.CheckpointService
 import com.example.evolab.service.jobsService.JobService
+import com.example.evolab.service.metrics.MetricService
 import com.example.evolab.service.security.EncryptionService
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
@@ -40,6 +42,8 @@ class WorkerPoolManager(
     private val configService: ConfigService,
     private val encryptionService: EncryptionService,
     private val jobService: JobService,
+    private val metricService: MetricService,
+    private val checkpointService: CheckpointService,
     private val poolSize: Int = WORKERS,
 ) {
     private val logger = LoggerFactory.getLogger(WorkerPoolManager::class.java)
@@ -197,6 +201,31 @@ class WorkerPoolManager(
 
         trxManager.run {
             saveProjectState(project.copy(status = finalStatus))
+        }
+
+        for (cp in result.parsedCheckpoints) {
+            val metricResult = metricService.createMetric(
+                userId = project.userId,
+                jobId = jobId,
+                iteration = cp.iteration,
+                fitnessScore = cp.fitnessScore,
+                executionTime = null,
+            )
+            when (metricResult) {
+                is Failure -> logger.warn("Worker-$workerId: Falha ao guardar métrica da iteração ${cp.iteration}: ${metricResult.value}")
+                is Success -> {
+                    val checkpointResult = checkpointService.createCheckpoint(
+                        userId = project.userId,
+                        jobId = jobId,
+                        metricsId = metricResult.value.id,
+                        iteration = cp.iteration,
+                        solution = cp.solution,
+                    )
+                    if (checkpointResult is Failure) {
+                        logger.warn("Worker-$workerId: Falha ao guardar checkpoint da iteração ${cp.iteration}: ${checkpointResult.value}")
+                    }
+                }
+            }
         }
 
         logger.info("Worker-$workerId terminou o Job $jobId do Projeto ${project.id} -> $finalStatus")

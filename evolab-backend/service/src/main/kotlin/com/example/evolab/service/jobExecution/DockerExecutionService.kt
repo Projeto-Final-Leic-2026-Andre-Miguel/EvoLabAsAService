@@ -16,6 +16,11 @@ import jakarta.annotation.PostConstruct
 import jakarta.inject.Named
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Files
@@ -107,7 +112,7 @@ class DockerExecutionService {
 
                 removeContainer(containerId)
 
-                val (actualLogs, bestSolutionCode) = extractAndPersistResults(tempDir, logsBuilder.toString(), project.id, workerId)
+                val (actualLogs, bestSolutionCode, parsedCheckpoints) = extractAndPersistResults(tempDir, logsBuilder.toString(), project.id, workerId)
 
                 return@withContext DockerExecutionResult(
                     exitCode = exitCode,
@@ -115,7 +120,8 @@ class DockerExecutionService {
                     bestSolution = bestSolutionCode,
                     containerId = containerId,
                     startedAt = startedAt,
-                    finishedAt = finishedAt
+                    finishedAt = finishedAt,
+                    parsedCheckpoints = parsedCheckpoints,
                 )
             } finally {
                 tempDir.deleteRecursively()
@@ -187,7 +193,7 @@ class DockerExecutionService {
         dockerClient.removeContainerCmd(containerId).withForce(true).exec()
     }
 
-    private fun extractAndPersistResults(tempDir: File, fallbackLogs: String, projectId: Int, workerId: Int): Pair<String, String?> {
+    private fun extractAndPersistResults(tempDir: File, fallbackLogs: String, projectId: Int, workerId: Int): Triple<String, String?, List<ParsedCheckpointData>> {
         val openevolveOutputDir = File(tempDir, "openevolve_output")
         val logsDir = File(openevolveOutputDir, "logs")
         val logFile = logsDir.listFiles()?.firstOrNull { it.extension == "log" }
@@ -203,9 +209,47 @@ class DockerExecutionService {
             openevolveOutputDir.copyRecursively(persistentOutputDir, overwrite = true)
             logger.info("Worker-$workerId: Output do OpenEvolve guardado com sucesso em ${persistentOutputDir.absolutePath}")
         }
-        return Pair(actualLogs, bestSolutionCode)
+
+        val parsedCheckpoints = parseCheckpoints(openevolveOutputDir, workerId)
+
+        return Triple(actualLogs, bestSolutionCode, parsedCheckpoints)
+    }
+
+    private fun parseCheckpoints(openevolveOutputDir: File, workerId: Int): List<ParsedCheckpointData> {
+        val checkpointsDir = File(openevolveOutputDir, "checkpoints")
+        if (!checkpointsDir.exists()) return emptyList()
+
+        return checkpointsDir.listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith("checkpoint_") }
+            ?.sortedBy { it.name.removePrefix("checkpoint_").toIntOrNull() ?: 0 }
+            ?.mapNotNull { checkpointDir ->
+                try {
+                    val infoFile = File(checkpointDir, "best_program_info.json")
+                    val solutionFile = File(checkpointDir, "best_program.py")
+                    if (!infoFile.exists() || !solutionFile.exists()) return@mapNotNull null
+
+                    val root = Json.parseToJsonElement(infoFile.readText()).jsonObject
+                    val iteration = root["current_iteration"]?.jsonPrimitive?.intOrNull
+                                    ?: checkpointDir.name.removePrefix("checkpoint_").toIntOrNull() ?: 0
+                    if (iteration <= 0) return@mapNotNull null
+
+                    val fitnessScore = root["metrics"]?.jsonObject?.get("combined_score")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                    val solution = solutionFile.readText()
+
+                    ParsedCheckpointData(iteration = iteration, fitnessScore = fitnessScore, solution = solution)
+                } catch (e: Exception) {
+                    logger.warn("Worker-$workerId: Falha ao parsear checkpoint '${checkpointDir.name}': ${e.message}")
+                    null
+                }
+            } ?: emptyList()
     }
 }
+
+data class ParsedCheckpointData(
+    val iteration: Int,
+    val fitnessScore: Double,
+    val solution: String,
+)
 
 data class DockerExecutionResult(
     val exitCode: Int,
@@ -213,5 +257,6 @@ data class DockerExecutionResult(
     val bestSolution: String?,
     val containerId: String?,
     val startedAt: Instant?,
-    val finishedAt: Instant?
+    val finishedAt: Instant?,
+    val parsedCheckpoints: List<ParsedCheckpointData> = emptyList(),
 )

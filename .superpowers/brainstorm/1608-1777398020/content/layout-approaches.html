@@ -1,0 +1,82 @@
+<h2>Como estruturar a página de detalhes do projeto?</h2>
+<p class="subtitle">Ao clicar num projeto, o utilizador vê os detalhes, métricas e checkpoints. Escolhe o layout que mais te agrada.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:1rem;border-radius:8px;font-size:0.8rem;">
+      <div style="background:#4F46E5;color:white;padding:0.4rem 0.8rem;border-radius:6px;margin-bottom:0.6rem;font-weight:600;">← Voltar &nbsp;&nbsp; NomeProjeto &nbsp;&nbsp; <span style="background:#10b981;padding:0.1rem 0.4rem;border-radius:4px;font-size:0.7rem;">COMPLETED</span></div>
+      <div style="display:flex;gap:0.5rem;">
+        <div style="flex:1;background:white;border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem;">
+          <div style="font-size:0.65rem;color:#64748b;font-weight:600;margin-bottom:0.3rem;">TABS</div>
+          <div style="background:#4F46E5;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.65rem;display:inline-block;margin-right:0.3rem;">Métricas</div>
+          <div style="background:#f1f5f9;color:#475569;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.65rem;display:inline-block;">Checkpoints</div>
+          <div style="margin-top:0.5rem;background:#f8fafc;border-radius:4px;padding:0.4rem;">
+            <div style="font-size:0.6rem;color:#1e293b;font-weight:600;">Fitness Score por Iteração</div>
+            <div style="display:flex;align-items:flex-end;gap:2px;height:40px;margin-top:0.3rem;">
+              <div style="width:10px;background:#4F46E5;height:20px;border-radius:2px 2px 0 0;"></div>
+              <div style="width:10px;background:#4F46E5;height:30px;border-radius:2px 2px 0 0;"></div>
+              <div style="width:10px;background:#4F46E5;height:25px;border-radius:2px 2px 0 0;"></div>
+              <div style="width:10px;background:#10b981;height:38px;border-radius:2px 2px 0 0;"></div>
+              <div style="width:10px;background:#10b981;height:35px;border-radius:2px 2px 0 0;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Tabs (Métricas / Checkpoints)</h3>
+      <p>Uma página com tabs que alterna entre a vista de métricas e a vista de checkpoints. Clean e focado.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:1rem;border-radius:8px;font-size:0.8rem;">
+      <div style="background:#4F46E5;color:white;padding:0.4rem 0.8rem;border-radius:6px;margin-bottom:0.6rem;font-weight:600;">← Voltar &nbsp;&nbsp; NomeProjeto</div>
+      <div style="display:flex;gap:0.5rem;height:80px;">
+        <div style="flex:1;background:white;border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem;">
+          <div style="font-size:0.6rem;color:#64748b;font-weight:700;margin-bottom:0.3rem;">MÉTRICAS</div>
+          <div style="display:flex;align-items:flex-end;gap:1px;height:40px;">
+            <div style="width:8px;background:#4F46E5;height:15px;border-radius:1px 1px 0 0;"></div>
+            <div style="width:8px;background:#4F46E5;height:25px;border-radius:1px 1px 0 0;"></div>
+            <div style="width:8px;background:#10b981;height:35px;border-radius:1px 1px 0 0;"></div>
+            <div style="width:8px;background:#10b981;height:38px;border-radius:1px 1px 0 0;"></div>
+          </div>
+        </div>
+        <div style="flex:1;background:white;border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem;overflow:hidden;">
+          <div style="font-size:0.6rem;color:#64748b;font-weight:700;margin-bottom:0.3rem;">CHECKPOINTS</div>
+          <div style="font-size:0.55rem;background:#f0fdf4;border-left:2px solid #10b981;padding:0.2rem 0.3rem;margin-bottom:0.2rem;border-radius:0 3px 3px 0;">Iter #4 — score 0.94</div>
+          <div style="font-size:0.55rem;background:#f0fdf4;border-left:2px solid #10b981;padding:0.2rem 0.3rem;border-radius:0 3px 3px 0;">Iter #3 — score 0.88</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Duas colunas (lado a lado)</h3>
+      <p>Métricas e checkpoints visíveis ao mesmo tempo em colunas. Ideal para ver correlação entre os dois.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8fafc;padding:1rem;border-radius:8px;font-size:0.8rem;">
+      <div style="background:#4F46E5;color:white;padding:0.4rem 0.8rem;border-radius:6px;margin-bottom:0.6rem;font-weight:600;">← Voltar &nbsp;&nbsp; NomeProjeto</div>
+      <div style="background:white;border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem;margin-bottom:0.4rem;">
+        <div style="font-size:0.6rem;color:#64748b;font-weight:700;margin-bottom:0.25rem;">MÉTRICAS — Fitness ao longo do tempo</div>
+        <div style="display:flex;align-items:flex-end;gap:2px;height:30px;">
+          <div style="width:8px;background:#4F46E5;height:12px;border-radius:1px 1px 0 0;"></div>
+          <div style="width:8px;background:#4F46E5;height:20px;border-radius:1px 1px 0 0;"></div>
+          <div style="width:8px;background:#4F46E5;height:16px;border-radius:1px 1px 0 0;"></div>
+          <div style="width:8px;background:#10b981;height:28px;border-radius:1px 1px 0 0;"></div>
+        </div>
+      </div>
+      <div style="background:white;border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem;">
+        <div style="font-size:0.6rem;color:#64748b;font-weight:700;margin-bottom:0.25rem;">CHECKPOINTS — Código evoluído</div>
+        <div style="font-size:0.55rem;background:#f0fdf4;border-left:2px solid #10b981;padding:0.2rem 0.3rem;border-radius:0 3px 3px 0;">Iter #4 — def solve(): return optimal()</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Página única com scroll (secções)</h3>
+      <p>Tudo numa página: métricas em cima (gráfico de barras), checkpoints em baixo (lista). Simples e linear.</p>
+    </div>
+  </div>
+
+</div>

@@ -8,7 +8,8 @@
       "Bash(powershell.exe *)",
       "Bash(xargs grep *)",
       "Bash(grep -E \"\\\\.\\(md|txt|yaml|yml\\)$\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(C:/Users/pinto/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh *)"
     ]
   },
   "prefersReducedMotion": false
