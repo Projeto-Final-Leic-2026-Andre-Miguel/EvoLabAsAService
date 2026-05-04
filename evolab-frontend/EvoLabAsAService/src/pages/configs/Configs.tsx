@@ -5,6 +5,7 @@ import { apiConfigs, type Config, type CreateConfigInput, type UpdateConfigInput
 import { apiCredentials } from '../credentials/apiCredentials';
 import type { LLMCredentials } from '../../types/credentials';
 import { useValidCredentials } from '../../contexts/ValidCredentialsContext';
+import { getErrorMessage } from '../../utils/errorsDescriptions';
 
 const defaultAdvancedParams = (): Record<string, string> => ({
   'llm.temperature': '',
@@ -52,11 +53,20 @@ const loadAdvancedParams = (existing: Record<string, string>): Record<string, st
   return loaded;
 };
 
+const sortedStringify = (params: Record<string, string>): string => {
+  const sorted = Object.keys(params).sort().reduce<Record<string, string>>((acc, key) => {
+    acc[key] = params[key];
+    return acc;
+  }, {});
+  return JSON.stringify(sorted);
+};
+
 const Configs: React.FC = () => {
   const [configs, setConfigs] = useState<Config[]>([]);
   const [credentials, setCredentials] = useState<LLMCredentials[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const { validCredentialsMap, validateCredential } = useValidCredentials();
 
@@ -149,6 +159,7 @@ const Configs: React.FC = () => {
 
   const handleOpenModal = (config?: Config) => {
     setErrorMessage(null);
+    setModalError(null);
     setShowAdvancedParams(false);
 
     if (config) {
@@ -174,6 +185,7 @@ const Configs: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingConfig(null);
+    setModalError(null);
     setShowAdvancedParams(false);
     setAdvancedParams(defaultAdvancedParams());
   };
@@ -182,12 +194,12 @@ const Configs: React.FC = () => {
     const params = buildAdditionalParams(advancedParams);
 
     if (!llmCredentialsId && !editingConfig) {
-      setErrorMessage('You must select valid LLM Credentials to create a configuration.');
+      setModalError('You must select valid LLM Credentials to create a configuration.');
       return;
     }
 
     setSaving(true);
-    setErrorMessage(null);
+    setModalError(null);
 
     try {
       if (editingConfig) {
@@ -197,13 +209,25 @@ const Configs: React.FC = () => {
           checkPointInterval,
           additionalParams: params
         };
+
+        const unchanged =
+          modelName === editingConfig.modelName &&
+          maxIter === editingConfig.maxIter &&
+          checkPointInterval === editingConfig.checkPointInterval &&
+          sortedStringify(params) === sortedStringify(editingConfig.additionalParams);
+
+        if (unchanged) {
+          handleCloseModal();
+          return;
+        }
+
         const res = await apiConfigs.update(editingConfig.configId, payload);
         
         if (res.type === "Success" && res.data) {
           setConfigs(prev => prev.map(c => c.configId === editingConfig.configId ? res.data! : c));
           handleCloseModal();
         } else if (res.type === "Failure") {
-          setErrorMessage(`Update failed: ${res.error?.message || 'Unknown Error'}`);
+          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
         }
       } else {
         const payload: CreateConfigInput = {
@@ -220,12 +244,12 @@ const Configs: React.FC = () => {
           setConfigs(prev => [...prev, res.data!]);
           handleCloseModal();
         } else if (res.type === "Failure") {
-          setErrorMessage(`Creation failed: ${res.error?.message || 'Unknown Error'}`);
+          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
         }
       }
     } catch (error) {
       console.error(error);
-      setErrorMessage('Network error while saving configuration.');
+      setModalError(getErrorMessage('unknown-error'));
     } finally {
       setSaving(false);
     }
@@ -674,6 +698,12 @@ const Configs: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {modalError && (
+                <div className={styles.errorBanner}>
+                  <strong>Error:</strong> {modalError}
+                </div>
+              )}
 
               <div className={styles.modalActions}>
                 <button className={styles.cancelBtn} onClick={handleCloseModal} disabled={saving}>

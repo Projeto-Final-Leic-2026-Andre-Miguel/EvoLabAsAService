@@ -173,7 +173,7 @@ export function Credentials() {
         if (res.type === "Success" || res.error?.status === 0 || res.error?.status === 200 || !res.error) {
             dispatch({ type: "DELETE_SUCCESS", payload: id });
         } else {
-            dispatch({ type: "SET_ERROR", payload: getFriendlyErrorMessage(res.error?.message ?? "", "Erro ao apagar credencial.") });
+            dispatch({ type: "SET_ERROR", payload: "This credential cannot be deleted because it is linked to a configuration. Delete all associated configurations and projects first." });
             setTimeout(() => dispatch({ type: "SET_ERROR", payload: null }), 5000);
         }
     };

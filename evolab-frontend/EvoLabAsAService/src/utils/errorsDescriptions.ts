@@ -27,5 +27,5 @@ export const ErrorDescriptions: Record<string, string> = {
 export function getErrorMessage(errorTitle: string): string {
     if (!errorTitle) return "An unexpected error occurred.";
     // errorTitle is usually the end of the URI: "invalid-api-key", etc.
-    return ErrorDescriptions[errorTitle] || errorTitle;
+    return ErrorDescriptions[errorTitle] || "An unexpected error occurred. Please try again.";
 }

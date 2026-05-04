@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { onResult } from "../../api/api.ts";
 import {apiUsers} from "./data/apiUsers.ts";
 import styles from "./Register.module.css";
+import { getErrorMessage } from "../../utils/errorsDescriptions";
 
 
 
@@ -55,10 +56,15 @@ export function Register() {
 
     const [state, dispatch] = useReducer(reducer, initialState);
     const navigate = useNavigate();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!emailRegex.test(state.email)) {
+            dispatch({type: "error", message: "Please enter a valid email address."});
+            return;
+        }
         dispatch({ type: "post" });
         onResult(
             await apiUsers.createLocalUser({name :state.name,email : state.email,password : state.password}),
@@ -67,8 +73,12 @@ export function Register() {
                 navigate("/login");
             } ,
             (failure) => {
-                const errorType = failure.error?.message;
-                const msg = errorType 
+                const msg =
+                    failure.error?.status === 409
+                        ? "An account with this email already exists."
+                        : failure.error?.status === 400
+                            ? "Your password is too weak. Use at least 8 characters."
+                            : getErrorMessage(failure.error?.message || "unknown-error");
                 dispatch({type: "error", message: msg})
             }
 

@@ -4,6 +4,7 @@ import { onResult } from "../../api/api";
 import { apiUsers } from "./data/apiUsers";
 import styles from "./Login.module.css";
 import { useAuth } from "../../contexts/AuthContext";
+import { getErrorMessage } from "../../utils/errorsDescriptions";
 
 type Stage = "editing" | "posting" | "success" | "failed";
 
@@ -44,20 +45,28 @@ export function Login() {
     const [state, dispatch] = useReducer(reducer, initialState);
     const navigate = useNavigate();
     const { reload } = useAuth(); // Importa o reload do authContext
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!emailRegex.test(state.email)) {
+            dispatch({ type: "error", message: "Please enter a valid email address." });
+            return;
+        }
         dispatch({ type: "post" });
         onResult(
             await apiUsers.login({ email: state.email, password: state.password }),
-            (success) => {
+            () => {
                 dispatch({ type: "success" });
                 reload(); // Atualiza o estado global para reconhecer o cookie recém-adquirido
                 navigate("/"); 
             },
             (failure) => {
-                const errorType = failure.error?.message;
-                dispatch({ type: "error", message: errorType || "Erro ao fazer login" });
+                const message =
+                    failure.error?.status === 401
+                        ? "Invalid email or password. Please try again."
+                        : getErrorMessage(failure.error?.message || "unknown-error");
+                dispatch({ type: "error", message });
             }
         );
     };
@@ -99,7 +108,7 @@ export function Login() {
                     </label>
                     {state.error && <div className={styles.errorMsg}>{state.error}</div>}
                     <button type="submit" disabled={state.stage === "posting"} className={styles.submitBtn}>
-                        {state.stage === "posting" ? "Verifing..." : "Sign in"}
+                        {state.stage === "posting" ? "Verifying..." : "Sign in"}
                     </button>
                 </form>
 
@@ -124,7 +133,7 @@ export function Login() {
                 </button>
 
                 <p className={styles.loginPrompt}>
-                    Don´t have an account? <span onClick={() => navigate("/register")} className={styles.link}>Register through here</span>
+                    Don't have an account? <span onClick={() => navigate("/register")} className={styles.link}>Register through here</span>
                 </p>
             </div>
         </div>

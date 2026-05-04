@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { request } from '../../api/api';
 import styles from './ProjectDetail.module.css';
+import { getErrorMessage } from '../../utils/errorsDescriptions';
 
 interface Job {
   id: number;
@@ -55,8 +56,13 @@ const ProjectDetail: React.FC = () => {
     setError(null);
     try {
       const jobsRes = await request<Job[]>(`/api/projects/${projectId}/jobs`);
-      if (jobsRes.type === 'Failure' || !jobsRes.data || jobsRes.data.length === 0) {
-        setError('No jobs found for this project.');
+      if (jobsRes.type === 'Failure') {
+        setError(getErrorMessage(jobsRes.error?.message || 'unknown-error'));
+        setIsLoading(false);
+        return;
+      }
+      if (jobsRes.data.length === 0) {
+        setError('This project has no run history yet. Start the project from the Projects page to begin.');
         setIsLoading(false);
         return;
       }

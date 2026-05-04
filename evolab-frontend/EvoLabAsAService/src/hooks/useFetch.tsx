@@ -12,6 +12,7 @@ type State<T> =
 type Action<T> =
     | { type: "load"; url: string }
     | { type: "success"; payload: T; url: string }
+    | { type: "error"; error: Error; url: string }
     | { type: "reset" };
 
 function unexpectedAction<T>(action: Action<T>, state: State<T>) {
@@ -30,7 +31,9 @@ function reducer<T>(state: State<T>, action: Action<T>): State<T> {
             if (state.type !== "loading" || state.url !== action.url) {
                 return unexpectedAction(action, state);
             }
-        return { type: "loaded", payload: action.payload, url: state.url };
+            return { type: "loaded", payload: action.payload, url: state.url };
+        case "error":
+            return { type: "error", error: action.error, url: action.url };
     }
 }
 
@@ -73,13 +76,14 @@ export function useFetch<T>(
                     dispatch({ type: "success", payload: response.data, url: urlToUse });
                 } else {
                     // Handle cases where data is null/undefined without an explicit error
-                    dispatch({ type: "reset" });
+                    dispatch({ type: "error", error: new Error("No data"), url: urlToUse });
                 }
 
             } catch (error) {
                 if (!cancelled) {
-                    console.error(error instanceof Error ? error : new Error("An error occurred"));
-                    dispatch({ type: "reset" });
+                    const fetchError = error instanceof Error ? error : new Error("An error occurred");
+                    console.error(fetchError);
+                    dispatch({ type: "error", error: fetchError, url: urlToUse });
                 }
             }
         }

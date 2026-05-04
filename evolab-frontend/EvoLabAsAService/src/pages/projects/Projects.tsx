@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { apiProjects, type Project, type CreateProjectInput, type UpdateProjectDetailsInput } from './apiProjects';
 import { apiConfigs, type Config } from '../configs/apiConfigs';
 import styles from './Projects.module.css';
+import { getErrorMessage } from '../../utils/errorsDescriptions';
 
 const Projects: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const Projects: React.FC = () => {
   const [startingId, setStartingId] = useState<number | null>(null);
   const [restartingId, setRestartingId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const initialProgramFileRef = useRef<HTMLInputElement>(null);
   const evaluatorCodeFileRef = useRef<HTMLInputElement>(null);
@@ -92,11 +94,12 @@ const Projects: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingProject(null);
+    setModalError(null);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    setErrorMessage(null);
+    setModalError(null);
     try {
       if (editingProject) {
         const payload: UpdateProjectDetailsInput = {
@@ -111,7 +114,7 @@ const Projects: React.FC = () => {
           setProjects(prev => prev.map(p => p.id === editingProject.id ? res.data! : p));
           handleCloseModal();
         } else if (res.type === "Failure") {
-          setErrorMessage(`Update failed: ${res.error?.message || 'Unknown Error'}`);
+          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
         }
       } else {
         const res = await apiProjects.create(formData);
@@ -119,12 +122,12 @@ const Projects: React.FC = () => {
           setProjects(prev => [...prev, res.data!]);
           handleCloseModal();
         } else if (res.type === "Failure") {
-          setErrorMessage(`Creation failed: ${res.error?.message || 'Unknown Error'}`);
+          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
         }
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      setErrorMessage('Network error while saving project.');
+      setModalError(getErrorMessage('unknown-error'));
     } finally {
       setSaving(false);
     }
@@ -133,11 +136,15 @@ const Projects: React.FC = () => {
   const handleDelete = async (id: number) => {
     setErrorMessage(null);
     try {
-      await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-      setProjects(prev => prev.filter(p => p.id !== id));
+      const res = await apiProjects.delete(id);
+      if (res.type === "Success") {
+        setProjects(prev => prev.filter(p => p.id !== id));
+      } else {
+        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
+      }
     } catch (error) {
       console.error('Failed to delete project:', error);
-      setErrorMessage('Failed to delete the project.');
+      setErrorMessage(getErrorMessage('unknown-error'));
     }
   };
 
@@ -149,12 +156,11 @@ const Projects: React.FC = () => {
       if (res.type === "Success") {
         fetchData();
       } else {
-        const title = res.error?.message || 'Unknown Error';
-        setErrorMessage(`Failed to start: ${title}`);
+        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
       }
     } catch (error) {
       console.error('Error starting project:', error);
-      setErrorMessage('A network error occurred while starting.');
+      setErrorMessage(getErrorMessage('unknown-error'));
     } finally {
       setStartingId(null);
     }
@@ -168,10 +174,10 @@ const Projects: React.FC = () => {
       if (res.type === "Success" && res.data) {
         setProjects(prev => prev.map(p => p.id === id ? res.data! : p));
       } else if (res.type === "Failure") {
-        setErrorMessage(`Failed to restart: ${res.error?.message || 'Unknown Error'}`);
+        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
       }
     } catch {
-      setErrorMessage('A network error occurred while restarting.');
+      setErrorMessage(getErrorMessage('unknown-error'));
     } finally {
       setRestartingId(null);
     }
@@ -422,6 +428,12 @@ const Projects: React.FC = () => {
                 />
                 <span className={styles.helperText}>The Python/Java logic used to evaluate the correctness of the evolved programs.</span>
               </div>
+
+              {modalError && (
+                <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                  {modalError}
+                </div>
+              )}
 
               <div className={styles.modalActions}>
                 <button className={styles.cancelBtn} onClick={handleCloseModal} disabled={saving}>

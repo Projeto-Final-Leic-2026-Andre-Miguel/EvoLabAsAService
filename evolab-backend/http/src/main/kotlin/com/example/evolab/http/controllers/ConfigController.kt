@@ -139,8 +139,7 @@ class ConfigController(
             }
 
             is Failure -> {
-                //TODO: Project Endpoint not implemented yet
-                //return ResponseEntity.status(HttpStatus.BAD_REQUEST).build<Unit>()
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build<Unit>()
             }
         }
 
