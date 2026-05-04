@@ -339,6 +339,43 @@
   border-color: #c7d2fe;
 }
 
+/* Final Result Card */
+.finalResultCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.finalResultLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.finalResultIcon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.finalResultTitle {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1e1b4b;
+  margin: 0 0 0.2rem 0;
+}
+
+.finalResultSub {
+  font-size: 0.8rem;
+  color: #6366f1;
+  margin: 0;
+}
+
 /* Modal */
 .modalOverlay {
   position: fixed;

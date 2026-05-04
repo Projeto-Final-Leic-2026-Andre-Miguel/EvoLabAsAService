@@ -112,16 +112,17 @@ class DockerExecutionService {
 
                 removeContainer(containerId)
 
-                val (actualLogs, bestSolutionCode, parsedCheckpoints) = extractAndPersistResults(tempDir, logsBuilder.toString(), project.id, workerId)
+                val extraction = extractAndPersistResults(tempDir, logsBuilder.toString(), project.id, workerId)
 
                 return@withContext DockerExecutionResult(
                     exitCode = exitCode,
-                    logs = actualLogs,
-                    bestSolution = bestSolutionCode,
+                    logs = extraction.logs,
+                    bestSolution = extraction.bestSolution,
                     containerId = containerId,
                     startedAt = startedAt,
                     finishedAt = finishedAt,
-                    parsedCheckpoints = parsedCheckpoints,
+                    parsedCheckpoints = extraction.parsedCheckpoints,
+                    parsedIterationMetrics = extraction.parsedIterationMetrics,
                 )
             } finally {
                 tempDir.deleteRecursively()
@@ -193,7 +194,7 @@ class DockerExecutionService {
         dockerClient.removeContainerCmd(containerId).withForce(true).exec()
     }
 
-    private fun extractAndPersistResults(tempDir: File, fallbackLogs: String, projectId: Int, workerId: Int): Triple<String, String?, List<ParsedCheckpointData>> {
+    private fun extractAndPersistResults(tempDir: File, fallbackLogs: String, projectId: Int, workerId: Int): ExtractionResult {
         val openevolveOutputDir = File(tempDir, "openevolve_output")
         val logsDir = File(openevolveOutputDir, "logs")
         val logFile = logsDir.listFiles()?.firstOrNull { it.extension == "log" }
@@ -211,8 +212,37 @@ class DockerExecutionService {
         }
 
         val parsedCheckpoints = parseCheckpoints(openevolveOutputDir, workerId)
+        val parsedIterationMetrics = parseIterationMetricsFromLog(actualLogs)
 
-        return Triple(actualLogs, bestSolutionCode, parsedCheckpoints)
+        return ExtractionResult(actualLogs, bestSolutionCode, parsedCheckpoints, parsedIterationMetrics)
+    }
+
+    private fun parseIterationMetricsFromLog(logText: String): List<ParsedIterationMetric> {
+        val result = mutableListOf<ParsedIterationMetric>()
+        val iterationPattern = Regex("""Iteration (\d+): .* completed in ([\d.]+)s""")
+        val metricsPattern = Regex("""Metrics: combined_score=([\d.]+)""")
+
+        val lines = logText.lines()
+        var currentIteration: Int? = null
+        var currentExecutionTime: Double? = null
+
+        for (line in lines) {
+            val iterMatch = iterationPattern.find(line)
+            if (iterMatch != null) {
+                currentIteration = iterMatch.groupValues[1].toIntOrNull()
+                currentExecutionTime = iterMatch.groupValues[2].toDoubleOrNull()
+                continue
+            }
+            val metricsMatch = metricsPattern.find(line)
+            if (metricsMatch != null && currentIteration != null) {
+                val fitnessScore = metricsMatch.groupValues[1].toDoubleOrNull() ?: 0.0
+                result.add(ParsedIterationMetric(currentIteration!!, fitnessScore, currentExecutionTime))
+                currentIteration = null
+                currentExecutionTime = null
+            }
+        }
+
+        return result
     }
 
     private fun parseCheckpoints(openevolveOutputDir: File, workerId: Int): List<ParsedCheckpointData> {
@@ -251,6 +281,19 @@ data class ParsedCheckpointData(
     val solution: String,
 )
 
+data class ParsedIterationMetric(
+    val iteration: Int,
+    val fitnessScore: Double,
+    val executionTime: Double?,
+)
+
+private data class ExtractionResult(
+    val logs: String,
+    val bestSolution: String?,
+    val parsedCheckpoints: List<ParsedCheckpointData>,
+    val parsedIterationMetrics: List<ParsedIterationMetric>,
+)
+
 data class DockerExecutionResult(
     val exitCode: Int,
     val logs: String,
@@ -259,4 +302,5 @@ data class DockerExecutionResult(
     val startedAt: Instant?,
     val finishedAt: Instant?,
     val parsedCheckpoints: List<ParsedCheckpointData> = emptyList(),
+    val parsedIterationMetrics: List<ParsedIterationMetric> = emptyList(),
 )

@@ -9,6 +9,7 @@ interface Job {
   projectId: number;
   status: string;
   createdAt: string;
+  bestSolution: string | null;
 }
 
 interface Metric {
@@ -41,6 +42,7 @@ const ProjectDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | null>(null);
+  const [showFinalSolution, setShowFinalSolution] = useState(false);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   useEffect(() => {
@@ -120,6 +122,29 @@ const ProjectDetail: React.FC = () => {
         <div style={{ color: '#ef4444', background: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
           {error}
         </div>
+      )}
+
+      {job?.bestSolution && (
+        <motion.div
+          className={styles.finalResultCard}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className={styles.finalResultLeft}>
+            <span className={styles.finalResultIcon}>🏆</span>
+            <div>
+              <p className={styles.finalResultTitle}>Final Result</p>
+              <p className={styles.finalResultSub}>
+                Best solution found after {metrics.length} iteration{metrics.length !== 1 ? 's' : ''}
+                {metrics.length > 0 && ` — score: ${(Math.max(...metrics.map(m => m.fitnessScore)) * 100).toFixed(1)}%`}
+              </p>
+            </div>
+          </div>
+          <button className={styles.viewCodeBtn} onClick={() => setShowFinalSolution(true)}>
+            View Final Solution
+          </button>
+        </motion.div>
       )}
 
       <div className={styles.columns}>
@@ -239,7 +264,34 @@ const ProjectDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Solution modal ── */}
+      {/* ── Final solution modal ── */}
+      <AnimatePresence>
+        {showFinalSolution && job?.bestSolution && (
+          <motion.div
+            className={styles.modalOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowFinalSolution(false)}
+          >
+            <motion.div
+              className={styles.modal}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className={styles.modalHeader}>
+                <h3>🏆 Final Best Solution</h3>
+                <button className={styles.closeBtn} onClick={() => setShowFinalSolution(false)}>×</button>
+              </div>
+              <pre className={styles.codeBlock}>{job.bestSolution}</pre>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Checkpoint solution modal ── */}
       <AnimatePresence>
         {selectedCheckpoint && (
           <motion.div

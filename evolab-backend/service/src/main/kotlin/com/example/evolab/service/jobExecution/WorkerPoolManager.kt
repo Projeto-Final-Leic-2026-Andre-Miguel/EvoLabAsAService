@@ -203,26 +203,62 @@ class WorkerPoolManager(
             saveProjectState(project.copy(status = finalStatus))
         }
 
-        for (cp in result.parsedCheckpoints) {
-            val metricResult = metricService.createMetric(
-                userId = project.userId,
-                jobId = jobId,
-                iteration = cp.iteration,
-                fitnessScore = cp.fitnessScore,
-                executionTime = null,
-            )
-            when (metricResult) {
-                is Failure -> logger.warn("Worker-$workerId: Falha ao guardar métrica da iteração ${cp.iteration}: ${metricResult.value}")
-                is Success -> {
-                    val checkpointResult = checkpointService.createCheckpoint(
-                        userId = project.userId,
-                        jobId = jobId,
-                        metricsId = metricResult.value.id,
-                        iteration = cp.iteration,
-                        solution = cp.solution,
-                    )
-                    if (checkpointResult is Failure) {
-                        logger.warn("Worker-$workerId: Falha ao guardar checkpoint da iteração ${cp.iteration}: ${checkpointResult.value}")
+        val iterationToMetricId = mutableMapOf<Int, Int>()
+
+        if (result.parsedIterationMetrics.isNotEmpty()) {
+            for (im in result.parsedIterationMetrics) {
+                val metricResult = metricService.createMetric(
+                    userId = project.userId,
+                    jobId = jobId,
+                    iteration = im.iteration,
+                    fitnessScore = im.fitnessScore,
+                    executionTime = im.executionTime,
+                )
+                when (metricResult) {
+                    is Failure -> logger.warn("Worker-$workerId: Falha ao guardar métrica da iteração ${im.iteration}: ${metricResult.value}")
+                    is Success -> iterationToMetricId[im.iteration] = metricResult.value.id
+                }
+            }
+
+            for (cp in result.parsedCheckpoints) {
+                val metricId = iterationToMetricId[cp.iteration]
+                if (metricId == null) {
+                    logger.warn("Worker-$workerId: Sem métrica para checkpoint da iteração ${cp.iteration}, a ignorar")
+                    continue
+                }
+                val checkpointResult = checkpointService.createCheckpoint(
+                    userId = project.userId,
+                    jobId = jobId,
+                    metricsId = metricId,
+                    iteration = cp.iteration,
+                    solution = cp.solution,
+                )
+                if (checkpointResult is Failure) {
+                    logger.warn("Worker-$workerId: Falha ao guardar checkpoint da iteração ${cp.iteration}: ${checkpointResult.value}")
+                }
+            }
+        } else {
+            for (cp in result.parsedCheckpoints) {
+                val metricResult = metricService.createMetric(
+                    userId = project.userId,
+                    jobId = jobId,
+                    iteration = cp.iteration,
+                    fitnessScore = cp.fitnessScore,
+                    executionTime = null,
+                )
+                when (metricResult) {
+                    is Failure -> logger.warn("Worker-$workerId: Falha ao guardar métrica da iteração ${cp.iteration}: ${metricResult.value}")
+                    is Success -> {
+                        val checkpointResult = checkpointService.createCheckpoint(
+                            userId = project.userId,
+                            jobId = jobId,
+                            metricsId = metricResult.value.id,
+                            iteration = cp.iteration,
+                            solution = cp.solution,
+                        )
+                        if (checkpointResult is Failure) {
+                            logger.warn("Worker-$workerId: Falha ao guardar checkpoint da iteração ${cp.iteration}: ${checkpointResult.value}")
+                        }
                     }
                 }
             }
