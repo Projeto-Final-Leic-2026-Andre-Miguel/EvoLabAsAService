@@ -20,7 +20,7 @@ export default defineConfig({
         // Advanced proxy configuration to handle connection lifecycle
         // This ensures proper cleanup of connections and error handling
         configure: (proxy) => {
-          proxy.on("error", (err, req, res) => {
+          proxy.on("error", (_err, _req, res) => {
             console.log("error connection upstream")
             if ('writeHead' in res) {
               res.writeHead(502)

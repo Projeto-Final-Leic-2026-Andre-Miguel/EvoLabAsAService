@@ -12,4 +12,3 @@ COPY --chown=postgres:postgres docker/scripts/wait-for-postgres.sh ./bin/wait-fo
 RUN chmod +x ./bin/wait-for-postgres.sh
 
 EXPOSE 5432
-

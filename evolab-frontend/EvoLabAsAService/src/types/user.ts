@@ -1,7 +1,9 @@
-export enum AuthProvider {
-    LOCAL = 'LOCAL',
-    GOOGLE = 'GOOGLE',
-}
+export const AuthProvider = {
+    LOCAL: 'LOCAL',
+    GOOGLE: 'GOOGLE',
+} as const;
+
+export type AuthProvider = typeof AuthProvider[keyof typeof AuthProvider];
 export interface User {
     id: number;
     name: string;
