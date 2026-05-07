@@ -1,15 +1,13 @@
 services:
   db:
     build:
-      context: ../db
-      dockerfile: ../app/docker/Dockerfile-bd
+      context: ./evolab-backend/db
+      dockerfile: Dockerfile
     container_name: evolab-db
     environment:
       POSTGRES_DB: evolab
       POSTGRES_USER: evolabuser
       POSTGRES_PASSWORD: changeit
-    #ports:
-    #  - "5432:5432" # <-- Descomentar apenas se precisares de aceder a DB por fora (via DataGrip, por exemplo) para debugar
     volumes:
       - evolab-db-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -18,17 +16,18 @@ services:
 
   backend:
     build:
-      context: ../..
-      dockerfile: evolab-backend/app/docker/Dockerfile-back
+      context: ./evolab-backend/
+      dockerfile: Dockerfile
     container_name: evolab-backend
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
+      - SERVER_PORT=8080
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/evolab
       - SPRING_DATASOURCE_USERNAME=evolabuser
       - SPRING_DATASOURCE_PASSWORD=changeit
-      # O backend precisa de comunicar com o docker host caso o OpenEvolve suba containers dinÃ¢micos:
-      # - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
@@ -38,10 +37,10 @@ services:
 
   frontend:
     build:
-      context: ../../evolab-frontend/EvoLabAsAService
-      dockerfile: ../../evolab-backend/app/docker/Dockerfile-front
+      context: ./evolab-frontend/EvoLabAsAService
+      dockerfile: Dockerfile
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./evolab-frontend/EvoLabAsAService/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     container_name: evolab-frontend
     depends_on:
       - backend

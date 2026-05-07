@@ -62,8 +62,10 @@ class OAuth2LoginSuccessHandler(
                 .build()
 
         response.addHeader("Set-Cookie", cookie.toString())
-        // Redirecionamento explícito sempre de volta para o cliente Frontend no hostname correto
-        // Caso faças deploy em Produção, deverás parametrizar a App URL, ex: enviroment variable FRONTEND_URL
-        response.sendRedirect("http://localhost:5173/")
+
+        // previosly we were redirecting to the frontend using vite so the redirect urk was
+        // response.sendRedirect("http://localhost:5173/")
+
+        response.sendRedirect("/")
     }
 }
