@@ -2,6 +2,7 @@ package com.example.evolab.service.checkpoints
 
 import com.example.evolab.domain.LLMCredentials.LLM
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
+import com.example.evolab.domain.LLMCredentials.LocalModelCredentials
 import com.example.evolab.domain.checkpoint.Checkpoint
 import com.example.evolab.domain.config.Config
 import com.example.evolab.domain.evolution.EvolutionStatus
@@ -543,8 +544,10 @@ private class FakeTransaction(
     override val repoLLmCredentials: RepositoryLLMCredentials =
         object : RepositoryLLMCredentials {
             override fun createLLMCredential(userId: Int, provider: LLM, apiKeyEncrypted: String): LLMCredentials = error("unused")
+            override fun createLocalModelCredential(userId: Int, apiKeyEncrypted: String, port: Int, modelName: String): LocalModelCredentials = error("unused")
             override fun findAllByUserId(userId: Int): List<LLMCredentials> = error("unused")
             override fun findAllByProvider(provider: LLM): List<LLMCredentials> = error("unused")
+            override fun findLocalModelCredentialById(id: Int): LocalModelCredentials? = error("unused")
             override fun findById(id: Int): LLMCredentials? = error("unused")
             override fun findAll(): List<LLMCredentials> = error("unused")
             override fun save(entity: LLMCredentials) = error("unused")
