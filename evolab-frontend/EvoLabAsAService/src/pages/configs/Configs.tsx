@@ -419,14 +419,14 @@ const Configs: React.FC = () => {
               onClick={() => setViewingConfig(config)}
             >
               <div className={styles.cardHeader}>
-                <h3 className={styles.configIdText}>Config #{config.configId}</h3>
+                <h3 className={styles.configIdText}>Config {config.configId}</h3>
                 <span className={styles.modelBadge}>{config.modelName}</span>
               </div>
 
               <div className={styles.cardDetails}>
                 <div className={styles.detailRow}>
                   <span>Linked Project ID:</span>
-                  <strong>{config.projectId ? `#${config.projectId}` : 'Unassigned'}</strong>
+                  <strong>{config.projectId ?? 'Unassigned'}</strong>
                 </div>
                 <div className={styles.detailRow}>
                   <span>Credentials ID:</span>
@@ -507,7 +507,7 @@ const Configs: React.FC = () => {
               <div className={styles.detailGrid}>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Config ID</span>
-                  <span className={styles.detailValue}>#{viewingConfig.configId}</span>
+                  <span className={styles.detailValue}>{viewingConfig.configId}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Model Name</span>
@@ -519,7 +519,7 @@ const Configs: React.FC = () => {
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Linked Project ID</span>
-                  <span className={styles.detailValue}>{viewingConfig.projectId ? `#${viewingConfig.projectId}` : 'Unassigned'}</span>
+                  <span className={styles.detailValue}>{viewingConfig.projectId ?? 'Unassigned'}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Max Iterations</span>

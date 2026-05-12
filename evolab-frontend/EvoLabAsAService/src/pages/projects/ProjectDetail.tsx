@@ -111,7 +111,7 @@ const ProjectDetail: React.FC = () => {
           ← Back
         </button>
         <div className={styles.pageTitle}>
-          <h1>Project #{id}</h1>
+          <h1>Project {id}</h1>
           {job && (
             <span className={`${styles.statusBadge} ${styles[`status${job.status}`] ?? ''}`}>
               {job.status === 'COMPLETED' && '✅ '}

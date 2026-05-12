@@ -388,7 +388,7 @@ const Projects: React.FC = () => {
                   <option value="">-- Select an Existing Config --</option>
                   {configs.map(c => (
                     <option key={c.configId} value={c.configId}>
-                      Config #{c.configId} ({c.modelName})
+                      Config {c.configId} ({c.modelName})
                     </option>
                   ))}
                 </select>
