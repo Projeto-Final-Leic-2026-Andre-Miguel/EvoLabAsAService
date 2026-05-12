@@ -89,6 +89,7 @@ class ProjectServiceImp(
                     configId = configId ?: project.configId,
                     initialProgram = initialProgram ?: project.initialProgram,
                     evaluatorCode = evaluatorCode ?: project.evaluatorCode,
+                    status = if (project.status.isTerminal()) EvolutionStatus.CREATED else project.status,
                 )
 
             repoProjects.save(updatedProject)
@@ -243,7 +244,7 @@ class ProjectServiceImp(
     }
 
     private fun validateMutableStatus(project: Project): Either<ProjectServiceErrors, Nothing>? {
-        if (project.status != EvolutionStatus.CREATED) {
+        if (project.status != EvolutionStatus.CREATED && !project.status.isTerminal()) {
             return failure(
                 ProjectServiceErrors.InvalidProjectStatus(
                     "Project with id '${project.id}' is in status '${project.status}' and cannot be edited",
@@ -252,6 +253,9 @@ class ProjectServiceImp(
         }
         return null
     }
+
+    private fun EvolutionStatus.isTerminal(): Boolean =
+        this == EvolutionStatus.COMPLETED || this == EvolutionStatus.FAILED
 
     private fun validateStatusTransition(
         project: Project,

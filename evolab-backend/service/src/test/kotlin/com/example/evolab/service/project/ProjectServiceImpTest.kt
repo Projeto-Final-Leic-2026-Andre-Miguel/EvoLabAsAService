@@ -159,6 +159,98 @@ class ProjectServiceImpTest {
     }
 
     @Test
+    fun updateProjectDetailsRestartsCompletedProjectAndPersistsNewValues() {
+        val projectRepo = FakeRepositoryProject()
+        val configRepo = FakeRepositoryConfig()
+        val config = configRepo.seed(userId = 1)
+        val project = projectRepo.seed(userId = 1, status = EvolutionStatus.COMPLETED)
+        val service = createService(projectRepo = projectRepo, configRepo = configRepo)
+
+        val result =
+            service.updateProjectDetails(
+                projectId = project.id,
+                userId = 1,
+                name = "Projeto Atualizado",
+                description = "descricao nova",
+                configId = config.id,
+                initialProgram = "def solve(x): return x * 2",
+                evaluatorCode = "def evaluate(candidate): return 2.0",
+            )
+
+        val updated = assertRight(result)
+
+        assertEquals("Projeto Atualizado", updated.name)
+        assertEquals("descricao nova", updated.description)
+        assertEquals(config.id, updated.configId)
+        assertEquals("def solve(x): return x * 2", updated.initialProgram)
+        assertEquals("def evaluate(candidate): return 2.0", updated.evaluatorCode)
+        assertEquals(EvolutionStatus.CREATED, updated.status)
+        assertEquals(updated, projectRepo.findById(project.id))
+    }
+
+    @Test
+    fun updateProjectDetailsRestartsFailedProjectAndPersistsNewValues() {
+        val projectRepo = FakeRepositoryProject()
+        val configRepo = FakeRepositoryConfig()
+        val config = configRepo.seed(userId = 1)
+        val project = projectRepo.seed(userId = 1, status = EvolutionStatus.FAILED)
+        val service = createService(projectRepo = projectRepo, configRepo = configRepo)
+
+        val result =
+            service.updateProjectDetails(
+                projectId = project.id,
+                userId = 1,
+                name = "Projeto Atualizado",
+                description = "descricao nova",
+                configId = config.id,
+                initialProgram = "def solve(x): return x * 2",
+                evaluatorCode = "def evaluate(candidate): return 2.0",
+            )
+
+        val updated = assertRight(result)
+
+        assertEquals("Projeto Atualizado", updated.name)
+        assertEquals("descricao nova", updated.description)
+        assertEquals(config.id, updated.configId)
+        assertEquals("def solve(x): return x * 2", updated.initialProgram)
+        assertEquals("def evaluate(candidate): return 2.0", updated.evaluatorCode)
+        assertEquals(EvolutionStatus.CREATED, updated.status)
+        assertEquals(updated, projectRepo.findById(project.id))
+    }
+
+    @Test
+    fun updateProjectDetailsRejectsQueuedProject() {
+        val projectRepo = FakeRepositoryProject()
+        val project = projectRepo.seed(userId = 1, status = EvolutionStatus.QUEUED)
+        val service = createService(projectRepo = projectRepo)
+
+        val result = service.updateProjectDetails(project.id, 1, "Projeto Atualizado", null, null, null, null)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.InvalidProjectStatus(
+                "Project with id '${project.id}' is in status 'QUEUED' and cannot be edited",
+            ),
+        )
+    }
+
+    @Test
+    fun updateProjectDetailsRejectsRunningProject() {
+        val projectRepo = FakeRepositoryProject()
+        val project = projectRepo.seed(userId = 1, status = EvolutionStatus.RUNNING)
+        val service = createService(projectRepo = projectRepo)
+
+        val result = service.updateProjectDetails(project.id, 1, "Projeto Atualizado", null, null, null, null)
+
+        assertLeftEquals(
+            result,
+            ProjectServiceErrors.InvalidProjectStatus(
+                "Project with id '${project.id}' is in status 'RUNNING' and cannot be edited",
+            ),
+        )
+    }
+
+    @Test
     fun updateProjectStatusRejectsTransitionWhenProjectIsNotReady() {
         val repo = FakeRepositoryProject()
         val project = repo.seed(userId = 1, configId = null, initialProgram = "def solve(x): return x", evaluatorCode = null)
