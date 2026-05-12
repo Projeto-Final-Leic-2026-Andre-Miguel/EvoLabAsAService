@@ -24,6 +24,7 @@ dependencies {
     implementation("com.github.docker-java:docker-java:3.3.6")
     implementation("com.github.docker-java:docker-java-transport-httpclient5:3.3.6")
     implementation("com.github.docker-java:docker-java-transport-zerodep:3.3.6")
+    implementation("org.apache.commons:commons-compress:1.27.1")
 
     implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
 

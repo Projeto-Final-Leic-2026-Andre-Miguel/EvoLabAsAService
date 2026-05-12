@@ -32,7 +32,7 @@ class ProjectController(
         @RequestBody input: CreateProjectInput,
         authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> =
-        try {
+        when (
             val result: Either<ProjectServiceErrors, Project> =
                 projectService.createProject(
                     userId = authenticatedUser.user.id,
@@ -42,18 +42,14 @@ class ProjectController(
                     initialProgram = input.initialProgram,
                     evaluatorCode = input.evaluatorCode,
                 )
+        ) {
+            is Success ->
+                ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .header("Location", "/api/projects/${result.value.id}")
+                    .body(result.value)
 
-            when (result) {
-                is Success ->
-                    ResponseEntity
-                        .status(HttpStatus.CREATED)
-                        .header("Location", "/api/projects/${result.value.id}")
-                        .body(result.value)
-
-                is Failure -> mapServiceErrors(result.value)
-            }
-        } catch (_: Exception) {
-            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
+            is Failure -> mapServiceErrors(result.value)
         }
 
     @GetMapping("/me")
@@ -99,7 +95,7 @@ class ProjectController(
         @RequestBody input: UpdateProjectDetailsInput,
         authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> =
-        try {
+        when (
             val result: Either<ProjectServiceErrors, Project> =
                 projectService.updateProjectDetails(
                     projectId = id,
@@ -110,13 +106,9 @@ class ProjectController(
                     initialProgram = input.initialProgram,
                     evaluatorCode = input.evaluatorCode,
                 )
-
-            when (result) {
-                is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-                is Failure -> mapServiceErrors(result.value)
-            }
-        } catch (_: Exception) {
-            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
+        ) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
         }
 
     // Worker lifecycle updates should not depend on project ownership from the API caller.
@@ -188,14 +180,21 @@ class ProjectController(
 
     private fun mapServiceErrors(error: ProjectServiceErrors): ResponseEntity<*> =
         when (error) {
-            is ProjectServiceErrors.ProjectNotFound -> Problem.ProjectNotFound.response(HttpStatus.NOT_FOUND)
-            is ProjectServiceErrors.ConfigNotFound -> Problem.ConfigNotFound.response(HttpStatus.NOT_FOUND)
-            is ProjectServiceErrors.InvalidProjectInput -> Problem.InvalidProjectInput.response(HttpStatus.BAD_REQUEST)
-            is ProjectServiceErrors.NotProjectOwner -> Problem.NotProjectOwner.response(HttpStatus.FORBIDDEN)
-            is ProjectServiceErrors.ConfigAccessDenied -> Problem.ConfigAccessDenied.response(HttpStatus.FORBIDDEN)
-            is ProjectServiceErrors.DuplicateProjectName -> Problem.DuplicateProjectName.response(HttpStatus.CONFLICT)
-            is ProjectServiceErrors.InvalidProjectStatus -> Problem.InvalidProjectStatus.response(HttpStatus.CONFLICT)
+            is ProjectServiceErrors.ProjectNotFound ->
+                Problem.ProjectNotFound.withDetail(error.message).response(HttpStatus.NOT_FOUND)
+            is ProjectServiceErrors.ConfigNotFound ->
+                Problem.ConfigNotFound.withDetail(error.message).response(HttpStatus.NOT_FOUND)
+            is ProjectServiceErrors.InvalidProjectInput ->
+                Problem.InvalidProjectInput.withDetail(error.message).response(HttpStatus.BAD_REQUEST)
+            is ProjectServiceErrors.NotProjectOwner ->
+                Problem.NotProjectOwner.withDetail(error.message).response(HttpStatus.FORBIDDEN)
+            is ProjectServiceErrors.ConfigAccessDenied ->
+                Problem.ConfigAccessDenied.withDetail(error.message).response(HttpStatus.FORBIDDEN)
+            is ProjectServiceErrors.DuplicateProjectName ->
+                Problem.DuplicateProjectName.withDetail(error.message).response(HttpStatus.CONFLICT)
+            is ProjectServiceErrors.InvalidProjectStatus ->
+                Problem.InvalidProjectStatus.withDetail(error.message).response(HttpStatus.CONFLICT)
             is ProjectServiceErrors.ExecutionQueueUnavailable ->
-                Problem.ExecutionQueueUnavailable.response(HttpStatus.SERVICE_UNAVAILABLE)
+                Problem.ExecutionQueueUnavailable.withDetail(error.message).response(HttpStatus.SERVICE_UNAVAILABLE)
         }
 }

@@ -14,6 +14,7 @@ interface RepositoryJobs : Repository<Job> {
         finishedAt: Instant? = null,
         bestSolution: String? = null,
         executionLogs: String? = null,
+        failureReason: String? = null,
     ): Int
 
     fun findAllByProjectId(projectId: Int): List<Job>

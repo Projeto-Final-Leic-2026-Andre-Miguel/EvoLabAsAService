@@ -36,10 +36,7 @@ class ConfigController(
         @RequestBody input: CreateConfigInput,
         authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> =
-        try {
-
-
-
+        when (
             val result =
                 configService.createConfig(
                     userId = authenticatedUser.user.id,
@@ -50,18 +47,14 @@ class ConfigController(
                     checkPointInterval = input.checkPointInterval,
                     additionalParams = input.additionalParams,
                 )
-
-            when (result) {
-                is Success -> {
-                    ResponseEntity.status(HttpStatus.CREATED)
-                        .header("Location", "/api/configs/${result.value.id}")
-                        .body(result.value)
-                }
-
-                is Failure -> mapServiceErrors(result.value)
+        ) {
+            is Success -> {
+                ResponseEntity.status(HttpStatus.CREATED)
+                    .header("Location", "/api/configs/${result.value.id}")
+                    .body(result.value)
             }
-        } catch (_: Exception) {
-            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
+
+            is Failure -> mapServiceErrors(result.value)
         }
 
     @GetMapping("/{id}")
@@ -69,19 +62,15 @@ class ConfigController(
         @PathVariable id: Int,
         authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> =
-        try {
+        when (
             val result: Either<ConfigError, *> =
                 configService.getConfigById(
                     configId = id,
                     userId = authenticatedUser.user.id,
                 )
-
-            when (result) {
-                is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
-                is Failure -> mapServiceErrors(result.value)
-            }
-        } catch (_: Exception) {
-            Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
+        ) {
+            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Failure -> mapServiceErrors(result.value)
         }
 
     @GetMapping("/me")
@@ -159,10 +148,11 @@ class ConfigController(
         @RequestBody input: UpdateConfigInput,
         authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> {
+        val userId = authenticatedUser.user.id
         val result =
             configService.updateConfig(
                 configId = id,
-                userId = authenticatedUser.user.id,
+                userId = userId,
                 modelName = input.modelName,
                 maxIter = input.maxIter,
                 checkPointInterval = input.checkPointInterval,
@@ -170,7 +160,27 @@ class ConfigController(
             )
 
         return when (result) {
-            is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
+            is Success -> {
+                val config = result.value
+                val projectId =
+                    when (val projectsResult = projectService.getAllProjectsFromUser(userId)) {
+                        is Success -> projectsResult.value.firstOrNull { it.configId == config.id }?.id
+                        is Failure -> null
+                    }
+                val output =
+                    UserConfigOutput(
+                        configId = config.id,
+                        projectId = projectId,
+                        userId = config.userId,
+                        llmCredentialsId = config.llmCredentialsId,
+                        modelName = config.modelName,
+                        maxIter = config.maxIter,
+                        checkPointInterval = config.checkPointInterval,
+                        additionalParams = config.additionalParams,
+                        createdAt = config.createdAt,
+                    )
+                ResponseEntity.status(HttpStatus.OK).body(output)
+            }
             is Failure -> mapServiceErrors(result.value)
         }
     }
@@ -192,20 +202,22 @@ class ConfigController(
 
     private fun mapServiceErrors(error: ConfigError): ResponseEntity<*> {
         return when (error) {
-            is ConfigError.ConfigNotFound -> ResponseEntity.status(HttpStatus.NOT_FOUND).build<Unit>()
+            is ConfigError.ConfigNotFound -> Problem.ConfigNotFound.response(HttpStatus.NOT_FOUND)
             is ConfigError.ProjectNotFound -> Problem.ProjectNotFound.response(HttpStatus.NOT_FOUND)
-            is ConfigError.AccessDenied -> ResponseEntity.status(HttpStatus.FORBIDDEN).build<Unit>()
+            is ConfigError.AccessDenied -> Problem.ConfigAccessDenied.response(HttpStatus.FORBIDDEN)
             is ConfigError.ProjectNotEditable -> Problem.InvalidProjectStatus.response(HttpStatus.CONFLICT)
             is ConfigError.InvalidModelName,
             is ConfigError.InvalidMaxIterations,
             is ConfigError.InvalidCheckpointInterval,
-            is ConfigError.InvalidOpenEvolveConfig,
-            -> ResponseEntity.status(HttpStatus.BAD_REQUEST).build<Unit>()
+            -> Problem.InvalidProjectInput.response(HttpStatus.BAD_REQUEST)
+
+            is ConfigError.InvalidOpenEvolveConfig ->
+                Problem.InvalidProjectInput.withDetail(error.reason).response(HttpStatus.BAD_REQUEST)
 
             is ConfigError.ErrorDeletingConfig,
             is ConfigError.ErrorCreatingTemporaryConfigFile,
             is ConfigError.ErrorCleaningTemporaryConfigFile,
-            -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<Unit>()
+            -> Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
     }
 }

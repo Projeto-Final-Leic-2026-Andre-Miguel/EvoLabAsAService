@@ -15,6 +15,7 @@ interface JobService {
         finishedAt: Instant? = null,
         bestSolution: String? = null,
         executionLogs: String? = null,
+        failureReason: String? = null,
     ): Either<JobServiceErrors, Int>
 
     fun getJobById(id: Int): Either<JobServiceErrors, Job>

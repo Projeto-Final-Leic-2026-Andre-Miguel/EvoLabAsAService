@@ -326,6 +326,13 @@
   display: block;
 }
 
+.helperTextSuccess {
+  font-size: 0.75rem;
+  color: #16a34a;
+  margin-top: 0.25rem;
+  display: block;
+}
+
 .modalActions {
   display: flex;
   justify-content: flex-end;

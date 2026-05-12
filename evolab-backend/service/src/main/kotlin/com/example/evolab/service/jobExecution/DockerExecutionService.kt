@@ -5,10 +5,8 @@ import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.PullImageResultCallback
 import com.github.dockerjava.api.command.WaitContainerResultCallback
 import com.github.dockerjava.api.async.ResultCallback
-import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Frame
 import com.github.dockerjava.api.model.HostConfig
-import com.github.dockerjava.api.model.Volume
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientImpl
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient
@@ -21,7 +19,12 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.slf4j.LoggerFactory
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -64,20 +67,17 @@ class DockerExecutionService {
         }
 
         val config = configBuilder.build()
-        
+
         val httpClient = ZerodepDockerHttpClient.Builder()
             .dockerHost(config.dockerHost)
             .sslConfig(config.sslConfig)
             .build()
-            
+
         dockerClient = DockerClientImpl.getInstance(config, httpClient)
-        
+
         logger.info("Docker client built successfully")
     }
 
-    /**
-     * Utiliza API docker-java para subir o OpenEvolve! Bloqueia at a run terminar de forma async com Dispatcher IO
-     */
     suspend fun runOpenEvolveContainerForProject(
         project: Project,
         yamlConfigPath: Path?,
@@ -94,10 +94,13 @@ class DockerExecutionService {
 
             try {
                 val cmdArgs = setupWorkspaceFiles(tempDir, project, yamlConfigPath)
-                val containerPath = "/workspace"
 
-                val containerId = createContainer(tempDir.absolutePath, containerPath, environment, cmdArgs)
+                // Create container without bind mounts (DooD-safe)
+                val containerId = createContainer(environment, cmdArgs)
                 logger.info("Worker-$workerId: Contentor criado com ID $containerId")
+
+                // Copy workspace files into container via tar stream
+                copyFilesToContainer(containerId, tempDir, workerId)
 
                 val startedAt = Instant.now()
                 onContainerStarted(containerId, startedAt)
@@ -109,6 +112,9 @@ class DockerExecutionService {
                 val exitCode = waitForContainer(containerId)
                 val finishedAt = Instant.now()
                 logger.info("Worker-$workerId: Processo evolutivo terminou com código de saída $exitCode")
+
+                // Extract output from container before removal
+                extractOutputFromContainer(containerId, tempDir, workerId)
 
                 removeContainer(containerId)
 
@@ -134,7 +140,8 @@ class DockerExecutionService {
         try {
             dockerClient.pullImageCmd(IMAGE_NAME).exec(PullImageResultCallback()).awaitCompletion()
         } catch (e: Exception) {
-            logger.warn("Worker-$workerId: Falha ao puxar a imagem $IMAGE_NAME ou ja estava atualizada. Erro: ${e.message}")
+            logger.warn("Worker-$workerId: Falha ao puxar a imagem $IMAGE_NAME. Erro: ${e.message}", e)
+            throw e
         }
     }
 
@@ -156,19 +163,64 @@ class DockerExecutionService {
         return cmdArgs
     }
 
-    private fun createContainer(hostPath: String, containerPath: String, environment: Map<String, String>, cmdArgs: List<String>): String {
+    private fun createContainer(environment: Map<String, String>, cmdArgs: List<String>): String {
         val hostConfig = HostConfig.newHostConfig()
-            .withBinds(Bind(hostPath, Volume(containerPath)))
             .withNetworkMode("host")
 
         val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
             .withHostConfig(hostConfig)
-            .withWorkingDir(containerPath)
+            .withWorkingDir("/workspace")
             .withEnv(environment.map { (key, value) -> "$key=$value" })
             .withCmd(cmdArgs)
             .exec()
 
         return createCmdResponse.id
+    }
+
+    private fun copyFilesToContainer(containerId: String, sourceDir: File, workerId: Int) {
+        val baos = ByteArrayOutputStream()
+        TarArchiveOutputStream(baos).use { tar ->
+            sourceDir.walkTopDown()
+                .filter { it.isFile }
+                .forEach { file ->
+                    val entryName = file.relativeTo(sourceDir).path.replace('\\', '/')
+                    val bytes = file.readBytes()
+                    val entry = TarArchiveEntry(entryName)
+                    entry.size = bytes.size.toLong()
+                    tar.putArchiveEntry(entry)
+                    tar.write(bytes)
+                    tar.closeArchiveEntry()
+                }
+        }
+        dockerClient.copyArchiveToContainerCmd(containerId)
+            .withRemotePath("/workspace")
+            .withTarInputStream(ByteArrayInputStream(baos.toByteArray()))
+            .exec()
+        logger.info("Worker-$workerId: Ficheiros copiados para o contentor via tar stream")
+    }
+
+    private fun extractOutputFromContainer(containerId: String, targetDir: File, workerId: Int) {
+        try {
+            val inputStream = dockerClient.copyArchiveFromContainerCmd(containerId, "/workspace/openevolve_output")
+                .exec()
+            // Docker tar entries already start with "openevolve_output/", so extract to targetDir directly
+            TarArchiveInputStream(inputStream).use { tar ->
+                var entry = tar.nextTarEntry
+                while (entry != null) {
+                    val outFile = File(targetDir, entry.name)
+                    if (entry.isDirectory) {
+                        outFile.mkdirs()
+                    } else {
+                        outFile.parentFile?.mkdirs()
+                        outFile.writeBytes(tar.readBytes())
+                    }
+                    entry = tar.nextTarEntry
+                }
+            }
+            logger.info("Worker-$workerId: Output extraído do contentor com sucesso")
+        } catch (e: Exception) {
+            logger.warn("Worker-$workerId: Sem output openevolve_output no contentor (${e.message})")
+        }
     }
 
     private fun collectContainerLogs(containerId: String, logsBuilder: StringBuilder) {

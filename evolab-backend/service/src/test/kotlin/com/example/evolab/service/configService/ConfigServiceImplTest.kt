@@ -508,7 +508,7 @@ private class FakeTransaction(
         }
     override val repoJobs: RepositoryJobs =
         object : RepositoryJobs {
-            override fun createJob(projectId: Int, status: EvolutionStatus, containerId: String?, startedAt: Instant?, finishedAt: Instant?, bestSolution: String?, executionLogs: String?): Int = error("unused")
+            override fun createJob(projectId: Int, status: EvolutionStatus, containerId: String?, startedAt: Instant?, finishedAt: Instant?, bestSolution: String?, executionLogs: String?, failureReason: String?): Int = error("unused")
             override fun findAllByProjectId(projectId: Int): List<Job> = error("unused")
             override fun findAllByStatus(status: EvolutionStatus): List<Job> = error("unused")
             override fun findByContainerId(containerId: String): Job? = error("unused")

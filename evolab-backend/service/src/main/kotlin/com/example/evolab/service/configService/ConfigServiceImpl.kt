@@ -12,6 +12,7 @@ import com.example.evolab.service.auxiliary.success
 import jakarta.inject.Named
 import java.nio.file.Files
 import java.nio.file.Path
+import org.slf4j.LoggerFactory
 
 @Named
 class ConfigServiceImpl(
@@ -19,6 +20,9 @@ class ConfigServiceImpl(
     private val repoProject: RepositoryProject,
     private val repoLLMCredentials: RepositoryLLMCredentials,
 ) : ConfigService {
+    companion object {
+        private val logger = LoggerFactory.getLogger(ConfigServiceImpl::class.java)
+    }
     override fun createConfig(
         userId: Int,
         projectId: Int?,
@@ -175,7 +179,8 @@ class ConfigServiceImpl(
             val tempFile = Files.createTempFile("evolab-config-", ".yaml")
             Files.writeString(tempFile, OpenEvolveYamlRenderer.renderOpenEvolveYaml(openEvolveConfig))
             success(tempFile)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logger.error("Failed to create temporary config file", e)
             failure(ConfigError.ErrorCreatingTemporaryConfigFile)
         }
     }
@@ -183,7 +188,8 @@ class ConfigServiceImpl(
     override fun cleanupTemporaryConfigFile(path: Path): Either<ConfigError, Boolean> {
         return try {
             success(Files.deleteIfExists(path))
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logger.error("Failed to delete temporary config file: $path", e)
             failure(ConfigError.ErrorCleaningTemporaryConfigFile)
         }
     }

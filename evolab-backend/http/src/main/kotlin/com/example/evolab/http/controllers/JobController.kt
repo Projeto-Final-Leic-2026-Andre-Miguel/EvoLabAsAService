@@ -9,6 +9,7 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.jobsService.JobService
 import com.example.evolab.service.jobsService.JobServiceErrors
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -25,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController
 class JobController(
     private val jobService: JobService,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(JobController::class.java)
+    }
     @PostMapping("/api/jobs")
     fun createJob(
         @RequestBody input: CreateJobInput,
@@ -44,7 +48,8 @@ class JobController(
 
                 is Failure -> mapServiceErrors(result.value)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logger.error("Unexpected error in JobController", e)
             Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
 

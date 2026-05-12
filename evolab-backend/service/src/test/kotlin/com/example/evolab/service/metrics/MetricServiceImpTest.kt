@@ -264,6 +264,7 @@ private class FakeRepositoryJobs : RepositoryJobs {
         finishedAt: Instant?,
         bestSolution: String?,
         executionLogs: String?,
+        failureReason: String?,
     ): Int {
         val id = nextId++
         jobs[id] =
@@ -277,6 +278,7 @@ private class FakeRepositoryJobs : RepositoryJobs {
                 bestSolution = bestSolution,
                 executionLogs = executionLogs,
                 createdAt = Instant.now(),
+                failureReason = failureReason,
             )
         return id
     }

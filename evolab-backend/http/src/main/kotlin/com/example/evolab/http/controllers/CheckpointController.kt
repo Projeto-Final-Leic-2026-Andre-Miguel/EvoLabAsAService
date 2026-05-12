@@ -9,6 +9,7 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.checkpoints.CheckpointService
 import com.example.evolab.service.checkpoints.CheckpointServiceErrors
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -24,6 +25,9 @@ import org.springframework.web.bind.annotation.RestController
 class CheckpointController(
     private val checkpointService: CheckpointService,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(CheckpointController::class.java)
+    }
     @PostMapping("/api/jobs/{jobId}/checkpoints")
     fun createCheckpoint(
         @PathVariable jobId: Int,
@@ -49,7 +53,8 @@ class CheckpointController(
 
                 is Failure -> mapServiceErrors(result.value)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logger.error("Unexpected error in CheckpointController", e)
             Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
 

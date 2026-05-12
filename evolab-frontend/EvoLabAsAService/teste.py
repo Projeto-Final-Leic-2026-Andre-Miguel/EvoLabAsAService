@@ -1,11 +1,13 @@
-def solve(arr):
-    a = arr[:]
-    n = len(a)
-    for i in range(1, n):
-        x = a[i]
-        j = i - 1
-        while j >= 0 and a[j] > x:
-            a[j + 1] = a[j]
-            j -= 1
-        a[j + 1] = x
-    return a
+import random
+
+def minimize_function(func, bounds, max_evals=1000):
+    best_x, best_val = None, float('inf')
+
+    for _ in range(max_evals):
+        x = [random.uniform(low, high) for (low, high) in bounds]
+        val = func(x)
+
+        if val < best_val:
+            best_x, best_val = x, val
+
+    return best_x, best_val

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { request } from '../../api/api';
 import styles from './ProjectDetail.module.css';
 import { getErrorMessage } from '../../utils/errorsDescriptions';
+import { usePolling } from '../../hooks/usePolling';
 
 interface Job {
   id: number;
@@ -11,6 +12,7 @@ interface Job {
   status: string;
   createdAt: string;
   bestSolution: string | null;
+  failureReason: string | null;
 }
 
 interface Metric {
@@ -37,58 +39,55 @@ const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [metrics, setMetrics] = useState<Metric[]>([]);
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
-  const [job, setJob] = useState<Job | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const projectId = Number(id);
+
+  const fetchDetail = useCallback(async () => {
+    const jobsRes = await request<Job[]>(`/api/projects/${projectId}/jobs`);
+    if (jobsRes.type === 'Failure') {
+      throw new Error(getErrorMessage(jobsRes.error?.message || 'unknown-error'));
+    }
+    const jobs = jobsRes.data ?? [];
+    if (jobs.length === 0) {
+      return {
+        job: null,
+        metrics: [],
+        checkpoints: [],
+        hasRunHistory: false,
+      };
+    }
+    const latestJob = [...jobs].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+    const [metricsRes, checkpointsRes] = await Promise.all([
+      request<Metric[]>(`/api/jobs/${latestJob.id}/metrics`),
+      request<Checkpoint[]>(`/api/jobs/${latestJob.id}/checkpoints`),
+    ]);
+    return {
+      job: latestJob,
+      metrics: metricsRes.type === 'Success' && metricsRes.data
+        ? metricsRes.data.sort((a, b) => a.iteration - b.iteration)
+        : [],
+      checkpoints: checkpointsRes.type === 'Success' && checkpointsRes.data
+        ? checkpointsRes.data.sort((a, b) => a.iteration - b.iteration)
+        : [],
+      hasRunHistory: true,
+    };
+  }, [projectId]);
+
+  const { data: detail, isLoading, error } = usePolling(
+    fetchDetail,
+    4000,
+    (d) => !d.job || d.job.status === 'COMPLETED' || d.job.status === 'FAILED'
+  );
+
+  const job = detail?.job ?? null;
+  const metrics = detail?.metrics ?? [];
+  const checkpoints = detail?.checkpoints ?? [];
+  const hasRunHistory = detail?.hasRunHistory ?? true;
+
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | null>(null);
   const [showFinalSolution, setShowFinalSolution] = useState(false);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    fetchData(Number(id));
-  }, [id]);
-
-  const fetchData = async (projectId: number) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const jobsRes = await request<Job[]>(`/api/projects/${projectId}/jobs`);
-      if (jobsRes.type === 'Failure') {
-        setError(getErrorMessage(jobsRes.error?.message || 'unknown-error'));
-        setIsLoading(false);
-        return;
-      }
-      if (jobsRes.data.length === 0) {
-        setError('This project has no run history yet. Start the project from the Projects page to begin.');
-        setIsLoading(false);
-        return;
-      }
-
-      const latestJob = jobsRes.data.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
-      setJob(latestJob);
-
-      const [metricsRes, checkpointsRes] = await Promise.all([
-        request<Metric[]>(`/api/jobs/${latestJob.id}/metrics`),
-        request<Checkpoint[]>(`/api/jobs/${latestJob.id}/checkpoints`),
-      ]);
-
-      if (metricsRes.type === 'Success' && metricsRes.data) {
-        setMetrics(metricsRes.data.sort((a, b) => a.iteration - b.iteration));
-      }
-      if (checkpointsRes.type === 'Success' && checkpointsRes.data) {
-        setCheckpoints(checkpointsRes.data.sort((a, b) => a.iteration - b.iteration));
-      }
-    } catch {
-      setError('Failed to load project data.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const maxScore = metrics.length > 0 ? Math.max(...metrics.map(m => m.fitnessScore)) : 1;
 
@@ -127,6 +126,18 @@ const ProjectDetail: React.FC = () => {
       {error && (
         <div style={{ color: '#ef4444', background: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
           {error}
+        </div>
+      )}
+
+      {!hasRunHistory && (
+        <div style={{ color: '#334155', background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+          This project has no run history yet. Start the project from the Projects page to begin.
+        </div>
+      )}
+
+      {job?.failureReason && (
+        <div style={{ color: '#991b1b', background: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+          <strong>Failure reason:</strong> {job.failureReason}
         </div>
       )}
 
@@ -187,7 +198,6 @@ const ProjectDetail: React.FC = () => {
                         )}
                         <motion.div
                           className={`${styles.bar} ${m.fitnessScore === maxScore ? styles.barBest : ''}`}
-                          style={{ height }}
                           initial={{ height: 0 }}
                           animate={{ height }}
                           transition={{ duration: 0.5, delay: m.iteration * 0.04 }}

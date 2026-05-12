@@ -65,10 +65,10 @@ class UserController(
 			is Success -> {
 				val cookie = ResponseCookie.from(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_NAME, tokenInfo.value.tokenValue)
 					.httpOnly(true)
-					.secure(true) // Should be true if using HTTPS, otherwise consider false for local dev depending on setup. SameSite relies on secure if None.
+					.secure(false)
 					.path("/")
 					.maxAge(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_MAX_AGE.toLong())
-					.sameSite("Strict")
+					.sameSite("Lax")
 					.build()
 
 				ResponseEntity
@@ -108,9 +108,9 @@ class UserController(
 			is Success -> {
 				val clearCookie = ResponseCookie.from(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_NAME, "")
 					.httpOnly(true)
-					.secure(true)
+					.secure(false)
 					.path("/")
-					.maxAge(0) // immediately expire
+					.maxAge(0)
 					.build()
 
 				ResponseEntity

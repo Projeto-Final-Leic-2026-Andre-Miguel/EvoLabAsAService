@@ -72,11 +72,10 @@ export function useFetch<T>(
 
                 if (cancelled) return;
 
-                if (response.data !== undefined && response.data !== null) {
+                if (response.type === "Success") {
                     dispatch({ type: "success", payload: response.data, url: urlToUse });
                 } else {
-                    // Handle cases where data is null/undefined without an explicit error
-                    dispatch({ type: "error", error: new Error("No data"), url: urlToUse });
+                    dispatch({ type: "error", error: response.error, url: urlToUse });
                 }
 
             } catch (error) {

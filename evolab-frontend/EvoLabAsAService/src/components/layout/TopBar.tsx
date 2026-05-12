@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import styles from "./TopBar.module.css";
 import { useAuth } from "../../contexts/AuthContext";
-import { apiUsers } from "../../pages/auth/data/apiUsers";
+import { apiUsers } from "../../pages/Auth/data/apiUsers";
 
 export function TopBar() {
     const navigate = useNavigate();

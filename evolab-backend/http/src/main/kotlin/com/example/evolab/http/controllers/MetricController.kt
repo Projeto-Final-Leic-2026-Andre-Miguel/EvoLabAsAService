@@ -9,6 +9,7 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.metrics.MetricService
 import com.example.evolab.service.metrics.MetricServiceErrors
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -24,6 +25,9 @@ import org.springframework.web.bind.annotation.RestController
 class MetricController(
     private val metricService: MetricService,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(MetricController::class.java)
+    }
     @PostMapping("/api/jobs/{jobId}/metrics")
     fun createMetric(
         @PathVariable jobId: Int,
@@ -49,7 +53,8 @@ class MetricController(
 
                 is Failure -> mapServiceErrors(result.value)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logger.error("Unexpected error in MetricController", e)
             Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
         }
 

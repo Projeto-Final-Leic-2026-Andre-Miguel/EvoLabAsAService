@@ -37,13 +37,18 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
             };
         }
         if (response.status === 204) {
-            return {type: "Failure", data: null, error: new ApiError(0, "IS EMPTY") };
+            return {type: "Success", data: null as T, error: null };
         }
         const contentLength = response.headers.get("Content-Length");
         if (contentLength === '0') {
             return {type: "Success", data: null as T, error: null };
         }
-        const data = await response.json();
+        let data: T;
+        try {
+            data = await response.json();
+        } catch {
+            return {type: "Success", data: null as T, error: null };
+        }
 
         return {type: "Success", data, error: null };
     } catch (e) {

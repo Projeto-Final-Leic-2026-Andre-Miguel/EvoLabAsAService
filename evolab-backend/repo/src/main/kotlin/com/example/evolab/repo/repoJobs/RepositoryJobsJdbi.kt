@@ -17,6 +17,7 @@ class RepositoryJobsJdbi(
         finishedAt: Instant?,
         bestSolution: String?,
         executionLogs: String?,
+        failureReason: String?,
     ): Int =
         handle
             .createQuery(JobsSql.CREATE_JOB)
@@ -27,6 +28,7 @@ class RepositoryJobsJdbi(
             .bind("finishedAt", finishedAt)
             .bind("bestSolution", bestSolution)
             .bind("executionLogs", executionLogs)
+            .bind("failureReason", failureReason)
             .mapTo(Int::class.java)
             .one()
 
@@ -77,6 +79,7 @@ class RepositoryJobsJdbi(
             .bind("finishedAt", entity.finishedAt)
             .bind("bestSolution", entity.bestSolution)
             .bind("executionLogs", entity.executionLogs)
+            .bind("failureReason", entity.failureReason)
             .execute()
     }
 
@@ -102,6 +105,7 @@ class RepositoryJobsJdbi(
             finishedAt = getTimestamp("finishedAt")?.toInstant(),
             bestSolution = getString("bestSolution"),
             executionLogs = getString("executionLogs"),
+            failureReason = getString("failureReason"),
             createdAt = getTimestamp("createdAt").toInstant(),
         )
 }

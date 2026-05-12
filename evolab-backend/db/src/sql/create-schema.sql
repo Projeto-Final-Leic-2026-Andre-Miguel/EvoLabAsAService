@@ -76,8 +76,11 @@ CREATE TABLE jobs (
                       finished_at         TIMESTAMPTZ,
                       best_solution       TEXT,                           -- melhor programa encontrado
                       execution_logs      TEXT,
+                      failure_reason      TEXT,
                       created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS failure_reason TEXT;
 
 
 CREATE TABLE metrics (

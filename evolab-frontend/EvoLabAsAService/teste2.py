@@ -1,77 +1,236 @@
+import math
+import os
 import random
-import time
 import statistics
+import time
+import traceback
 
 
-def _baseline(arr):
-    a = arr[:]
-    n = len(a)
-    for i in range(n):
-        swapped = False
-        for j in range(0, n - i - 1):
-            if a[j] > a[j + 1]:
-                a[j], a[j + 1] = a[j + 1], a[j]
-                swapped = True
-        if not swapped:
-            break
-    return a
+# ============================================================
+# Helpers
+# ============================================================
 
+def random_point_in_bounds(bounds):
+    return [random.uniform(low, high) for low, high in bounds]
+
+
+def clean_candidate_code(candidate_code):
+    code = str(candidate_code)
+
+    code = code.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+    # Remove markdown fences
+    if code.startswith("```"):
+        lines = code.split("\n")
+
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+
+        code = "\n".join(lines)
+
+    return code.strip()
+
+
+# ============================================================
+# Benchmark functions
+# ============================================================
+
+def sphere(x):
+    return sum(v ** 2 for v in x)
+
+
+def rastrigin(x):
+    return sum(
+        v ** 2 - 10 * math.cos(2 * math.pi * v) + 10
+        for v in x
+    )
+
+
+def rosenbrock(x):
+    total = 0.0
+
+    for i in range(len(x) - 1):
+        total += (
+            100 * (x[i + 1] - x[i] ** 2) ** 2
+            + (1 - x[i]) ** 2
+        )
+
+    return total
+
+
+# ============================================================
+# Main evaluator
+# ============================================================
 
 def evaluate(candidate_code):
     try:
-        ns = {}
-        exec(candidate_code, ns)
-        solve = ns.get("solve")
-        if not callable(solve):
-            return {"combined_score": 0.0, "correctness": 0.0, "speed": 0.0}
 
-        rng = random.Random(42)
-        tests = [
-            [],
-            [1],
-            [2, 1],
-            [3, 1, 2],
-            [5, 5, 1, 3],
-            list(range(20, 0, -1)),
-            [0, -1, 5, -3, 2, -1, 0],
-        ]
-        for _ in range(10):
-            n = rng.randint(8, 70)
-            tests.append([rng.randint(-500, 500) for _ in range(n)])
+        # ====================================================
+        # Read file if OpenEvolve passed a filepath
+        # ====================================================
 
-        passed = 0
-        for t in tests:
-            out = solve(t[:])
-            if out == sorted(t):
-                passed += 1
-        correctness = passed / len(tests)
+        if (
+            isinstance(candidate_code, str)
+            and os.path.isfile(candidate_code)
+        ):
+            with open(candidate_code, "r", encoding="utf-8") as f:
+                candidate_code = f.read()
 
-        if correctness < 0.85:
+        # ====================================================
+        # Clean code
+        # ====================================================
+
+        code = clean_candidate_code(candidate_code)
+
+        # ====================================================
+        # Execution namespace
+        # ====================================================
+
+        ns = {
+            "random": random,
+            "math": math,
+            "time": time,
+            "statistics": statistics,
+            "random_point_in_bounds": random_point_in_bounds,
+        }
+
+        # ====================================================
+        # Execute generated code
+        # ====================================================
+
+        exec(code, ns)
+
+        minimize_function = ns.get("minimize_function")
+
+        if not callable(minimize_function):
             return {
-                "combined_score": float(0.95 * correctness),
-                "correctness": float(correctness),
-                "speed": 0.0,
+                "combined_score": 0.0,
+                "error": "minimize_function not found"
             }
 
-        bench_input = [rng.randint(-2000, 2000) for _ in range(220)]
+        # ====================================================
+        # Optimization tasks
+        # ====================================================
 
-        def bench(fn, rounds=3):
-            samples = []
-            for _ in range(rounds):
-                t0 = time.perf_counter()
-                fn(bench_input[:])
-                samples.append(time.perf_counter() - t0)
-            return statistics.median(samples)
+        tasks = [
+            {
+                "name": "sphere",
+                "func": sphere,
+                "bounds": [(-100, 100)] * 10,
+            },
+            {
+                "name": "rastrigin",
+                "func": rastrigin,
+                "bounds": [(-5.12, 5.12)] * 10,
+            },
+            {
+                "name": "rosenbrock",
+                "func": rosenbrock,
+                "bounds": [(-5, 5)] * 10,
+            },
+        ]
 
-        t_candidate = bench(solve)
-        t_baseline = bench(_baseline)
-        speed = max(0.0, min(1.0, t_baseline / max(t_candidate * 2.0, 1e-9)))
+        all_scores = []
+        all_times = []
+        all_stds = []
 
-        combined = 0.90 * correctness + 0.10 * speed
+        # ====================================================
+        # Evaluate all benchmark tasks
+        # ====================================================
+
+        for task in tasks:
+
+            results = []
+            times = []
+
+            for seed in range(5):
+
+                random.seed(seed)
+
+                start = time.perf_counter()
+
+                best_x, val = minimize_function(
+                    task["func"],
+                    task["bounds"],
+                    max_evals=80
+                )
+
+                duration = time.perf_counter() - start
+
+                # =============================================
+                # Validation
+                # =============================================
+
+                if best_x is None:
+                    return {
+                        "combined_score": 0.0,
+                        "error": f"{task['name']} returned best_x=None"
+                    }
+
+                if not isinstance(val, (int, float)):
+                    return {
+                        "combined_score": 0.0,
+                        "error": f"{task['name']} returned non numeric value"
+                    }
+
+                if math.isnan(val) or math.isinf(val):
+                    return {
+                        "combined_score": 0.0,
+                        "error": f"{task['name']} produced invalid value"
+                    }
+
+                results.append(float(val))
+                times.append(duration)
+
+            avg_val = statistics.mean(results)
+
+            std_val = (
+                statistics.stdev(results)
+                if len(results) > 1
+                else 0.0
+            )
+
+            avg_time = statistics.mean(times)
+
+            # =================================================
+            # Scoring
+            # =================================================
+
+            quality_score = 1.0 / (1.0 + avg_val)
+
+            stability_score = 1.0 / (1.0 + std_val)
+
+            time_score = 1.0 / (1.0 + avg_time * 5.0)
+
+            task_score = (
+                0.70 * quality_score +
+                0.20 * stability_score +
+                0.10 * time_score
+            )
+
+            all_scores.append(task_score)
+            all_times.append(avg_time)
+            all_stds.append(std_val)
+
+        # ====================================================
+        # Final score
+        # ====================================================
+
+        combined_score = statistics.mean(all_scores)
+
         return {
-            "combined_score": float(combined),
-            "correctness": float(correctness),
-            "speed": float(speed),
+            "combined_score": float(combined_score * 100.0),
+            "task_scores": [float(s * 100.0) for s in all_scores],
+            "avg_time": float(statistics.mean(all_times)),
+            "avg_std": float(statistics.mean(all_stds)),
         }
-    except Exception:
-        return {"combined_score": 0.0, "correctness": 0.0, "speed": 0.0}
+
+    except Exception as e:
+        return {
+            "combined_score": 0.0,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }

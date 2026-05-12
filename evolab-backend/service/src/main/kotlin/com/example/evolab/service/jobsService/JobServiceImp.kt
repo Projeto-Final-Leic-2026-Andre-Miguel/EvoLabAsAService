@@ -22,6 +22,7 @@ class JobServiceImp(
         finishedAt: Instant?,
         bestSolution: String?,
         executionLogs: String?,
+        failureReason: String?,
     ): Either<JobServiceErrors, Int> =
         trxManager.run {
             val id = repoJobs.createJob(
@@ -32,6 +33,7 @@ class JobServiceImp(
                 finishedAt = finishedAt,
                 bestSolution = bestSolution,
                 executionLogs = executionLogs,
+                failureReason = failureReason,
             )
             success(id)
         }

@@ -11,6 +11,7 @@ object JobsSql {
             finished_at AS \"finishedAt\",
             best_solution AS \"bestSolution\",
             execution_logs AS \"executionLogs\",
+            failure_reason AS \"failureReason\",
             created_at AS \"createdAt\"
         FROM jobs
     """
@@ -23,7 +24,8 @@ object JobsSql {
             started_at,
             finished_at,
             best_solution,
-            execution_logs
+            execution_logs,
+            failure_reason
         )
         VALUES (
             :projectId,
@@ -32,7 +34,8 @@ object JobsSql {
             :startedAt,
             :finishedAt,
             :bestSolution,
-            :executionLogs
+            :executionLogs,
+            :failureReason
         )
         RETURNING id
     """
@@ -72,7 +75,8 @@ object JobsSql {
             started_at = :startedAt,
             finished_at = :finishedAt,
             best_solution = :bestSolution,
-            execution_logs = :executionLogs
+            execution_logs = :executionLogs,
+            failure_reason = :failureReason
         WHERE id = :id
     """
 

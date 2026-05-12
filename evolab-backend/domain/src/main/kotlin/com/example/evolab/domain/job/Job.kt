@@ -13,5 +13,6 @@ data class Job(
     val bestSolution: String?,
     val executionLogs: String?,
     val createdAt: Instant,
+    val failureReason: String? = null,
 )
 

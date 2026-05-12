@@ -1,16 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiProjects, type Project, type CreateProjectInput, type UpdateProjectDetailsInput } from './apiProjects';
-import { apiConfigs, type Config } from '../configs/apiConfigs';
+import { apiConfigs } from '../configs/apiConfigs';
 import styles from './Projects.module.css';
 import { getErrorMessage } from '../../utils/errorsDescriptions';
+import { usePolling } from '../../hooks/usePolling';
 
 const Projects: React.FC = () => {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [configs, setConfigs] = useState<Config[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
@@ -27,10 +25,35 @@ const Projects: React.FC = () => {
   const [startingId, setStartingId] = useState<number | null>(null);
   const [restartingId, setRestartingId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [configsError, setConfigsError] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
 
   const initialProgramFileRef = useRef<HTMLInputElement>(null);
   const evaluatorCodeFileRef = useRef<HTMLInputElement>(null);
+
+  const fetchProjectsAndConfigs = useCallback(async () => {
+    const [projectsResult, configsResult] = await Promise.all([
+      apiProjects.getAll(),
+      apiConfigs.getAllMyConfigs()
+    ]);
+    if (projectsResult.type === 'Failure') {
+      throw new Error(getErrorMessage(projectsResult.error?.message || 'unknown-error'));
+    }
+    if (configsResult.type === 'Failure') {
+      setConfigsError(getErrorMessage(configsResult.error?.message || 'unknown-error'));
+    } else {
+      setConfigsError(null);
+    }
+    return {
+      projects: projectsResult.data ?? [],
+      configs: configsResult.type === 'Success' && configsResult.data ? configsResult.data : [],
+    };
+  }, []);
+
+  const { data: projectsData, isLoading, error: pollingError, refresh } = usePolling(fetchProjectsAndConfigs, 4000);
+
+  const projects = projectsData?.projects ?? [];
+  const configs = projectsData?.configs ?? [];
 
   const handleFileUpload = (field: 'initialProgram' | 'evaluatorCode', file: File) => {
     const reader = new FileReader();
@@ -39,33 +62,6 @@ const Projects: React.FC = () => {
       setFormData(prev => ({ ...prev, [field]: content }));
     };
     reader.readAsText(file);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [projectsResult, configsResult] = await Promise.all([
-        apiProjects.getAll(),
-        apiConfigs.getAllMyConfigs().catch(() => ({ type: "Success" as const, data: [], error: null })) // Default empty array if no endpoint or error
-      ]);
-
-      if (projectsResult.type === "Success" && projectsResult.data) {
-        setProjects(projectsResult.data);
-      }
-      
-      if (configsResult && configsResult.type === "Success" && configsResult.data) {
-        setConfigs(configsResult.data);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleOpenModal = (project?: Project) => {
@@ -111,7 +107,7 @@ const Projects: React.FC = () => {
         };
         const res = await apiProjects.update(editingProject.id, payload);
         if (res.type === "Success" && res.data) {
-          setProjects(prev => prev.map(p => p.id === editingProject.id ? res.data! : p));
+          refresh();
           handleCloseModal();
         } else if (res.type === "Failure") {
           setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
@@ -119,7 +115,7 @@ const Projects: React.FC = () => {
       } else {
         const res = await apiProjects.create(formData);
         if (res.type === "Success" && res.data) {
-          setProjects(prev => [...prev, res.data!]);
+          refresh();
           handleCloseModal();
         } else if (res.type === "Failure") {
           setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
@@ -138,7 +134,7 @@ const Projects: React.FC = () => {
     try {
       const res = await apiProjects.delete(id);
       if (res.type === "Success") {
-        setProjects(prev => prev.filter(p => p.id !== id));
+        refresh();
       } else {
         setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
       }
@@ -154,7 +150,7 @@ const Projects: React.FC = () => {
     try {
       const res = await apiProjects.start(id);
       if (res.type === "Success") {
-        fetchData();
+        refresh();
       } else {
         setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
       }
@@ -172,7 +168,7 @@ const Projects: React.FC = () => {
     try {
       const res = await apiProjects.restart(id);
       if (res.type === "Success" && res.data) {
-        setProjects(prev => prev.map(p => p.id === id ? res.data! : p));
+        refresh();
       } else if (res.type === "Failure") {
         setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
       }
@@ -222,6 +218,18 @@ const Projects: React.FC = () => {
       {errorMessage && (
         <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
           <strong>Error:</strong> {errorMessage}
+        </div>
+      )}
+
+      {pollingError && (
+        <div style={{ color: '#92400e', backgroundColor: '#fffbeb', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <strong>Warning:</strong> {pollingError}
+        </div>
+      )}
+
+      {configsError && (
+        <div style={{ color: '#92400e', backgroundColor: '#fffbeb', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <strong>Warning:</strong> Configurations are unavailable: {configsError}
         </div>
       )}
 

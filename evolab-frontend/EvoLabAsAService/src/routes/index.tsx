@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
     createBrowserRouter,
@@ -6,8 +5,8 @@ import {
 } from "react-router-dom"
 import { Layout } from '../components/layout/Layout'
 import { Home } from '../pages/home/Home'
-import {Register} from "../pages/auth/Register.tsx";
-import {Login} from "../pages/auth/Login.tsx";
+import {Register} from "../pages/Auth/Register.tsx";
+import {Login} from "../pages/Auth/Login.tsx";
 import {AuthProvider} from "../contexts/AuthContext";
 import {Profile} from "../pages/profile/Profile";
 import { ProtectedRoute } from './ProtectRoute.tsx'
@@ -16,6 +15,11 @@ import Projects from '../pages/projects/Projects'
 import ProjectDetail from '../pages/projects/ProjectDetail'
 import Configs from '../pages/configs/Configs'
 import {ValidCredentialsProvider} from "../contexts/ValidCredentialsContext.tsx"
+import { ErrorBoundary } from '../components/ErrorBoundary'
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+});
 
 const router = createBrowserRouter([
   {
@@ -36,11 +40,11 @@ const router = createBrowserRouter([
 ])
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AuthProvider>
-        <ValidCredentialsProvider>
-            <RouterProvider router={router} />
-        </ValidCredentialsProvider>
-    </AuthProvider>
-  </StrictMode>,
+  <AuthProvider>
+    <ValidCredentialsProvider>
+      <ErrorBoundary>
+        <RouterProvider router={router} />
+      </ErrorBoundary>
+    </ValidCredentialsProvider>
+  </AuthProvider>,
 )

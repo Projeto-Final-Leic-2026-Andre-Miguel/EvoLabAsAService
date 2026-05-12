@@ -13,16 +13,27 @@ private const val PROBLEM_URI_PATH =
 
 sealed class Problem(
     typeUri: URI,
+    title: String? = null,
+    val detail: String? = null,
 ) {
     @Suppress("unused")
     val type = typeUri.toString()
-    val title = typeUri.toString().split("/").last()
+    val title = title ?: typeUri.toString().split("/").last()
 
     fun response(status: HttpStatus): ResponseEntity<Any> =
         ResponseEntity
             .status(status)
             .header("Content-Type", MEDIA_TYPE)
             .body(this)
+
+    fun withDetail(detail: String?): Problem =
+        DetailedProblem(URI(type), title, detail)
+
+    private class DetailedProblem(
+        typeUri: URI,
+        title: String,
+        detail: String?,
+    ) : Problem(typeUri, title, detail)
 
     data object InvalidLLMProvider : Problem(URI("$PROBLEM_URI_PATH/invalid-llm-provider"))
 
@@ -34,7 +45,10 @@ sealed class Problem(
 
     data object PersistenceError : Problem(URI("$PROBLEM_URI_PATH/persistence-error"))
 
-    data object UnknownError : Problem(URI("$PROBLEM_URI_PATH/unknown-error"))
+    data object UnknownError : Problem(
+        URI("$PROBLEM_URI_PATH/unknown-error"),
+        title = "An unexpected error occurred",
+    )
 
     data object UnauthorizedAccess : Problem(URI("$PROBLEM_URI_PATH/unauthorized-access"))
 

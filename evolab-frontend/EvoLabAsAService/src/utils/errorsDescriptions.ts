@@ -18,7 +18,11 @@ export const ErrorDescriptions: Record<string, string> = {
     "config-access-denied": "Access to configurations denied.",
     "duplicate-project-name": "A project with this name already exists.",
     "invalid-project-status": "The current status of the project does not allow this action.",
-    "execution-queue-unavailable": "The execution queue is currently unavailable."
+    "execution-queue-unavailable": "The execution queue is currently unavailable.",
+
+    // Model name errors (custom model support)
+    "model-not-found": "The model name was not recognized by the provider. Check the exact model id in your Configurations.",
+    "invalid-model-name": "The model name has an invalid format. Check it in your Configurations."
 };
 
 /**

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styles from './Configs.module.css';
 import { apiConfigs, type Config, type CreateConfigInput, type UpdateConfigInput } from './apiConfigs';
 import { apiCredentials } from '../credentials/apiCredentials';
-import type { LLMCredentials } from '../../types/credentials';
+import type { LLM, LLMCredentials } from '../../types/credentials';
 import { useValidCredentials } from '../../contexts/ValidCredentialsContext';
 import { getErrorMessage } from '../../utils/errorsDescriptions';
 
@@ -61,6 +61,25 @@ const sortedStringify = (params: Record<string, string>): string => {
   return JSON.stringify(sorted);
 };
 
+const OPENAI_MODELS = ['gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-3.5-turbo', 'o1-mini', 'o1-preview'];
+const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-preview-04-17', 'gemini-2.5-pro-preview-05-06', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+
+const CUSTOM_MODEL_SENTINEL = '__custom__';
+const MODEL_NAME_REGEX = /^[a-zA-Z0-9._\-/]+$/;
+
+function isPredefinedModel(llm: LLM | undefined, value: string): boolean {
+  if (!llm || !value) return false;
+  if (llm === 'OPENAI') return OPENAI_MODELS.includes(value);
+  if (llm === 'GEMINI') return GEMINI_MODELS.includes(value);
+  return true;
+}
+
+function placeholderForProvider(llm: LLM | undefined): string {
+  if (llm === 'OPENAI') return 'e.g., gpt-4.1-mini';
+  if (llm === 'GEMINI') return 'e.g., gemini-2.5-pro';
+  return 'e.g., model-id';
+}
+
 const Configs: React.FC = () => {
   const [configs, setConfigs] = useState<Config[]>([]);
   const [credentials, setCredentials] = useState<LLMCredentials[]>([]);
@@ -83,17 +102,28 @@ const Configs: React.FC = () => {
 
   const selectedCredential = credentials.find(c => c.id.toString() === llmCredentialsId);
 
-  const OPENAI_MODELS = ['gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-3.5-turbo', 'o1-mini', 'o1-preview'];
-  const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-preview-04-17', 'gemini-2.5-pro-preview-05-06', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  const [isCustomModel, setIsCustomModel] = useState(false);
+  const [modelInputHint, setModelInputHint] = useState<string | null>(null);
+  const [modelInputError, setModelInputError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
     if (!editingConfig && selectedCredential) {
-      if (selectedCredential.llm === 'OPENAI') {
-        setModelName(OPENAI_MODELS[0]);
-      } else if (selectedCredential.llm === 'GEMINI') {
-        setModelName(GEMINI_MODELS[0]);
+      if (selectedCredential.llm === 'OPENAI' || selectedCredential.llm === 'GEMINI') {
+        const list = selectedCredential.llm === 'OPENAI' ? OPENAI_MODELS : GEMINI_MODELS;
+        if (!modelName) {
+          setModelName(list[0]);
+          setIsCustomModel(false);
+          setModelInputHint(null);
+          setModelInputError(null);
+        } else if (list.includes(modelName)) {
+          setIsCustomModel(false);
+          setModelInputHint(null);
+          setModelInputError(null);
+        } else {
+          setIsCustomModel(true);
+        }
       } else if (selectedCredential.llm === 'LOCAL_MODEL') {
         if (selectedCredential.modelName) {
            setModelName(selectedCredential.modelName);
@@ -145,7 +175,7 @@ const Configs: React.FC = () => {
         // validate all fetched credentials just in case
         for (const cred of credsRes.data) {
           if (validCredentialsMap[cred.id] === undefined) {
-             validateCredential(cred.id).catch(() => {});
+             validateCredential(cred.id).catch(e => console.error('[Configs] validateCredential failed for id', cred.id, e));
           }
         }
       }
@@ -170,6 +200,11 @@ const Configs: React.FC = () => {
       setMaxIter(config.maxIter);
       setCheckPointInterval(config.checkPointInterval);
       setAdvancedParams(loadAdvancedParams(config.additionalParams));
+      const credForConfig = credentials.find(c => c.id === config.llmCredentialsId);
+      setIsCustomModel(
+        credForConfig?.llm !== 'LOCAL_MODEL' &&
+        !isPredefinedModel(credForConfig?.llm, config.modelName)
+      );
     } else {
       setEditingConfig(null);
       setProjectId('');
@@ -178,7 +213,10 @@ const Configs: React.FC = () => {
       setMaxIter(10);
       setCheckPointInterval(5);
       setAdvancedParams(defaultAdvancedParams());
+      setIsCustomModel(false);
     }
+    setModelInputHint(null);
+    setModelInputError(null);
     setIsModalOpen(true);
   };
 
@@ -188,6 +226,44 @@ const Configs: React.FC = () => {
     setModalError(null);
     setShowAdvancedParams(false);
     setAdvancedParams(defaultAdvancedParams());
+    setIsCustomModel(false);
+    setModelInputHint(null);
+    setModelInputError(null);
+  };
+
+  const handleModelSelectChange = (value: string) => {
+    if (value === CUSTOM_MODEL_SENTINEL) {
+      setIsCustomModel(true);
+      setModelName('');
+      setModelInputHint(null);
+      setModelInputError('Model name is required.');
+    } else {
+      setIsCustomModel(false);
+      setModelName(value);
+      setModelInputHint(null);
+      setModelInputError(null);
+    }
+  };
+
+  const handleCustomModelChange = (raw: string) => {
+    let v = raw.trim();
+    let hint: string | null = null;
+
+    if (v.startsWith('models/')) {
+      v = v.slice('models/'.length);
+      hint = "Removed 'models/' prefix (the API expects just the id).";
+    }
+
+    setModelName(v);
+    setModelInputHint(hint);
+
+    if (!v) {
+      setModelInputError('Model name is required.');
+    } else if (!MODEL_NAME_REGEX.test(v)) {
+      setModelInputError('Only letters, digits, dot, underscore, dash and slash are allowed.');
+    } else {
+      setModelInputError(null);
+    }
   };
 
   const handleSave = async () => {
@@ -198,20 +274,36 @@ const Configs: React.FC = () => {
       return;
     }
 
+    const finalModelName = isCustomModel ? modelName.trim() : modelName;
+
+    if (isCustomModel) {
+      if (!finalModelName) {
+        setModelInputError('Model name is required.');
+        setModalError('Custom model name is required.');
+        return;
+      }
+      if (!MODEL_NAME_REGEX.test(finalModelName)) {
+        setModelInputError('Only letters, digits, dot, underscore, dash and slash are allowed.');
+        setModalError('Custom model name has an invalid format.');
+        return;
+      }
+      if (finalModelName !== modelName) setModelName(finalModelName);
+    }
+
     setSaving(true);
     setModalError(null);
 
     try {
       if (editingConfig) {
         const payload: UpdateConfigInput = {
-          modelName,
+          modelName: finalModelName,
           maxIter,
           checkPointInterval,
           additionalParams: params
         };
 
         const unchanged =
-          modelName === editingConfig.modelName &&
+          finalModelName === editingConfig.modelName &&
           maxIter === editingConfig.maxIter &&
           checkPointInterval === editingConfig.checkPointInterval &&
           sortedStringify(params) === sortedStringify(editingConfig.additionalParams);
@@ -222,7 +314,7 @@ const Configs: React.FC = () => {
         }
 
         const res = await apiConfigs.update(editingConfig.configId, payload);
-        
+
         if (res.type === "Success" && res.data) {
           setConfigs(prev => prev.map(c => c.configId === editingConfig.configId ? res.data! : c));
           handleCloseModal();
@@ -233,7 +325,7 @@ const Configs: React.FC = () => {
         const payload: CreateConfigInput = {
           projectId: projectId ? parseInt(projectId, 10) : null,
           llmCredentialsId: parseInt(llmCredentialsId, 10),
-          modelName,
+          modelName: finalModelName,
           maxIter,
           checkPointInterval,
           additionalParams: params
@@ -258,8 +350,12 @@ const Configs: React.FC = () => {
   const handleDelete = async (id: number) => {
     setErrorMessage(null);
     try {
-      await apiConfigs.delete(id);
-      setConfigs(prev => prev.filter(c => c.configId !== id));
+      const res = await apiConfigs.delete(id);
+      if (res.type === 'Success') {
+        setConfigs(prev => prev.filter(c => c.configId !== id));
+      } else {
+        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
+      }
     } catch (error) {
       console.error(error);
       setErrorMessage('Failed to delete the configuration.');
@@ -345,12 +441,17 @@ const Configs: React.FC = () => {
                   <strong>{config.checkPointInterval}</strong>
                 </div>
                 
-                <div style={{ marginTop: '0.5rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Additional Params:</span>
-                  <div className={styles.jsonBox}>
-                    {JSON.stringify(config.additionalParams, null, 2)}
+                {Object.entries(config.additionalParams).length > 0 && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Additional Params:</span>
+                    {Object.entries(config.additionalParams).map(([key, value]) => (
+                      <div key={key} className={styles.detailRow} style={{ marginTop: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{key}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>{value}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
 
               <div className={styles.cardActions}>
@@ -432,12 +533,19 @@ const Configs: React.FC = () => {
                   <span className={styles.detailLabel}>Created At</span>
                   <span className={styles.detailValue}>{new Date(viewingConfig.createdAt).toLocaleString()}</span>
                 </div>
-                <div>
-                  <span className={styles.detailLabel}>Additional Parameters</span>
-                  <div className={styles.jsonBox}>
-                    {JSON.stringify(viewingConfig.additionalParams, null, 2)}
-                  </div>
-                </div>
+                {Object.entries(viewingConfig.additionalParams).length > 0 && (
+                  <>
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel} style={{ fontWeight: 700 }}>Additional Parameters</span>
+                    </div>
+                    {Object.entries(viewingConfig.additionalParams).map(([key, value]) => (
+                      <div key={key} className={styles.detailRow}>
+                        <span className={styles.detailLabel}>{key}</span>
+                        <span className={styles.detailValue}>{value}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -485,7 +593,7 @@ const Configs: React.FC = () => {
                       <option value="">-- Select Validated Credential --</option>
                       {credentials.map(c => (
                         <option key={c.id} value={c.id} disabled={!validCredentialsMap[c.id]}>
-                          #{c.id} - {c.llm} {validCredentialsMap[c.id] ? '(Valid)' : '(Invalid)'}
+                          {c.id} - {c.llm} {validCredentialsMap[c.id] ? '(Valid)' : '(Invalid)'}
                         </option>
                       ))}
                     </select>
@@ -498,31 +606,75 @@ const Configs: React.FC = () => {
                   Model Name
                   <span className={styles.labelHint}>* Required</span>
                 </label>
-                {selectedCredential?.llm === 'OPENAI' || (editingConfig && OPENAI_MODELS.includes(editingConfig.modelName)) ? (
-                  <select value={modelName} onChange={e => setModelName(e.target.value)}>
-                    <option value="" disabled>-- Select OpenAI Model --</option>
-                    {OPENAI_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                ) : selectedCredential?.llm === 'GEMINI' || (editingConfig && GEMINI_MODELS.includes(editingConfig.modelName)) ? (
-                  <select value={modelName} onChange={e => setModelName(e.target.value)}>
-                    <option value="" disabled>-- Select Gemini Model --</option>
-                    {GEMINI_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                ) : selectedCredential?.llm === 'LOCAL_MODEL' ? (
-                  <input
-                    type="text"
-                    value={modelName || 'Unknown Local Model'}
-                    disabled
-                    title="Local models are directly linked to the credential."
-                  />
-                ) : (
-                  <input 
-                    type="text" 
-                    value={modelName}
-                    onChange={e => setModelName(e.target.value)}
-                    placeholder="e.g., gpt-4, gemini-pro"
-                  />
-                )}
+                {(() => {
+                  const provider: LLM | undefined =
+                    selectedCredential?.llm ??
+                    (editingConfig && OPENAI_MODELS.includes(editingConfig.modelName)
+                      ? 'OPENAI'
+                      : editingConfig && GEMINI_MODELS.includes(editingConfig.modelName)
+                      ? 'GEMINI'
+                      : undefined);
+
+                  if (provider === 'LOCAL_MODEL') {
+                    return (
+                      <input
+                        type="text"
+                        value={modelName || 'Unknown Local Model'}
+                        disabled
+                        title="Local models are directly linked to the credential."
+                      />
+                    );
+                  }
+
+                  if (provider === 'OPENAI' || provider === 'GEMINI') {
+                    const list = provider === 'OPENAI' ? OPENAI_MODELS : GEMINI_MODELS;
+                    const selectValue = isCustomModel ? CUSTOM_MODEL_SENTINEL : modelName;
+                    return (
+                      <>
+                        <select
+                          value={selectValue}
+                          onChange={e => handleModelSelectChange(e.target.value)}
+                        >
+                          <option value="" disabled>-- Select {provider === 'OPENAI' ? 'OpenAI' : 'Gemini'} Model --</option>
+                          {list.map(m => <option key={m} value={m}>{m}</option>)}
+                          <option disabled>──────────</option>
+                          <option value={CUSTOM_MODEL_SENTINEL}>Custom model...</option>
+                        </select>
+                        {isCustomModel && (
+                          <>
+                            <input
+                              type="text"
+                              value={modelName}
+                              onChange={e => handleCustomModelChange(e.target.value)}
+                              placeholder={placeholderForProvider(provider)}
+                              className={modelInputError ? styles.errorInput : undefined}
+                              style={{ marginTop: '0.5rem' }}
+                              autoFocus
+                            />
+                            <span className={styles.helperText}>
+                              Must match the exact model id used by the {provider === 'OPENAI' ? 'OpenAI' : 'Gemini'} API.
+                            </span>
+                            {modelInputHint && (
+                              <span className={styles.helperTextSuccess}>{modelInputHint}</span>
+                            )}
+                            {modelInputError && (
+                              <span className={styles.inputErrorMsg}>{modelInputError}</span>
+                            )}
+                          </>
+                        )}
+                      </>
+                    );
+                  }
+
+                  return (
+                    <input
+                      type="text"
+                      value={modelName}
+                      onChange={e => setModelName(e.target.value)}
+                      placeholder="e.g., gpt-4, gemini-pro"
+                    />
+                  );
+                })()}
               </div>
 
               <div className={styles.formGroup}>

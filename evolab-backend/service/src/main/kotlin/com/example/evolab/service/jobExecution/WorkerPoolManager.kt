@@ -67,6 +67,7 @@ class WorkerPoolManager(
 
         while (currentCoroutineContext().isActive) {
             var currentProjectId: Int? = null
+            var currentJobId: Int? = null
 
             try {
 
@@ -77,6 +78,7 @@ class WorkerPoolManager(
                 logger.info("Worker-$workerId pegou no Projeto: ${projectFromQueue.id}")
 
                 val newJobId = createInitialJob(projectFromQueue)
+                currentJobId = newJobId
                 var yamlConfigPath: Path? = null
 
                 try {
@@ -108,7 +110,7 @@ class WorkerPoolManager(
                 break
             } catch (e: Exception) {
                 logger.error("Worker-$workerId falhou criticamente no processamento:", e)
-                currentProjectId?.let { handleCriticalFailure(it) }
+                currentProjectId?.let { handleCriticalFailure(it, currentJobId, failureReasonFrom(e)) }
             }
         }
     }
@@ -193,6 +195,7 @@ class WorkerPoolManager(
                     finishedAt = result.finishedAt,
                     bestSolution = result.bestSolution,
                     executionLogs = result.logs,
+                    failureReason = failureReason,
                 )
                 saveJob(updatedJob)
             }
@@ -267,8 +270,23 @@ class WorkerPoolManager(
         logger.info("Worker-$workerId terminou o Job $jobId do Projeto ${project.id} -> $finalStatus")
     }
 
-    private fun handleCriticalFailure(failedProjectId: Int) {
+    private fun handleCriticalFailure(failedProjectId: Int, failedJobId: Int?, failureReason: String) {
         try {
+            failedJobId?.let { jobId ->
+                when (val jobResult = jobService.getJobById(jobId)) {
+                    is Success ->
+                        saveJob(
+                            jobResult.value.copy(
+                                status = EvolutionStatus.FAILED,
+                                finishedAt = Instant.now(),
+                                failureReason = failureReason,
+                            ),
+                        )
+
+                    is Failure -> logger.warn("Job $jobId not found while registering critical failure")
+                }
+            }
+
             trxManager.run {
                 val projectFail = repoProjects.findById(failedProjectId)
                 if (projectFail != null) {
@@ -279,6 +297,9 @@ class WorkerPoolManager(
             logger.error("Falha ao registar o estado de erro do projeto na BD:", updateEx)
         }
     }
+
+    private fun failureReasonFrom(exception: Exception): String =
+        (exception.message ?: exception::class.simpleName ?: "Unexpected worker failure").take(1000)
 
     @PreDestroy
     fun shutdown() {
