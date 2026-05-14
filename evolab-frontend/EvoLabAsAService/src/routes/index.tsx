@@ -16,6 +16,7 @@ import ProjectDetail from '../pages/projects/ProjectDetail'
 import Configs from '../pages/configs/Configs'
 import {ValidCredentialsProvider} from "../contexts/ValidCredentialsContext.tsx"
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import '../App.css'
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);

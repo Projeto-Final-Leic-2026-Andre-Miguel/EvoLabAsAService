@@ -9,8 +9,8 @@ import { API_BASE_URL, request, type RequestResult } from "../../../api/api";
 
 export const apiUsers = {
 
-    login(input: CreateTokenInput): Promise<RequestResult<TokenExternalInfo>> {
-        return request<TokenExternalInfo>(`${API_BASE_URL}/users/token`, {
+    login(input: CreateTokenInput): Promise<RequestResult<void>> {
+        return request<void>(`${API_BASE_URL}/users/token`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(input),

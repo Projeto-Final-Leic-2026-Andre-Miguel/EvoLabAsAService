@@ -110,6 +110,22 @@ class ProjectServiceImp(
             success(updatedProject)
         }
 
+    override fun updateProjectStatus(
+        projectId: Int,
+        userId: Int,
+        newStatus: EvolutionStatus,
+    ): Either<ProjectServiceErrors, Project> =
+        trxManager.run {
+            val project = findRequiredProject(projectId) ?: return@run failureNotFound(projectId)
+
+            validateOwnership(project, userId)?.let { return@run it }
+            validateStatusTransition(project, newStatus)?.let { return@run it }
+
+            val updatedProject = project.copy(status = newStatus)
+            repoProjects.save(updatedProject)
+            success(updatedProject)
+        }
+
     override fun restartProject(
         projectId: Int,
         userId: Int,

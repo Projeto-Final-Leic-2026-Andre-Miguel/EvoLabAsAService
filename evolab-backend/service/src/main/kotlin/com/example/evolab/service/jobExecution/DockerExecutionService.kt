@@ -33,6 +33,39 @@ import java.time.Instant
 
 private const val IMAGE_NAME = "ghcr.io/algorithmicsuperintelligence/openevolve:latest"
 
+object OpenEvolveLogParser {
+    private val iterationPattern = Regex("""Iteration\s+(\d+):\s+.*\s+completed\s+in\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)s""")
+    private val combinedScorePattern = Regex("""\bcombined_score=([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)""")
+
+    fun parseIterationMetrics(logText: String): List<ParsedIterationMetric> {
+        val result = mutableListOf<ParsedIterationMetric>()
+        var currentIteration: Int? = null
+        var currentExecutionTime: Double? = null
+
+        for (line in logText.lines()) {
+            val iterMatch = iterationPattern.find(line)
+            if (iterMatch != null) {
+                currentIteration = iterMatch.groupValues[1].toIntOrNull()
+                currentExecutionTime = iterMatch.groupValues[2].toDoubleOrNull()
+                continue
+            }
+
+            if (!line.contains("Metrics:", ignoreCase = true)) continue
+
+            val metricsMatch = combinedScorePattern.find(line)
+            val iteration = currentIteration
+            if (metricsMatch != null && iteration != null) {
+                val fitnessScore = metricsMatch.groupValues[1].toDoubleOrNull() ?: 0.0
+                result.add(ParsedIterationMetric(iteration, fitnessScore, currentExecutionTime))
+                currentIteration = null
+                currentExecutionTime = null
+            }
+        }
+
+        return result
+    }
+}
+
 @Named
 class DockerExecutionService {
 
@@ -166,6 +199,7 @@ class DockerExecutionService {
     private fun createContainer(environment: Map<String, String>, cmdArgs: List<String>): String {
         val hostConfig = HostConfig.newHostConfig()
             .withNetworkMode("host")
+            .withExtraHosts("host.docker.internal:host-gateway")
 
         val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
             .withHostConfig(hostConfig)
@@ -270,31 +304,7 @@ class DockerExecutionService {
     }
 
     private fun parseIterationMetricsFromLog(logText: String): List<ParsedIterationMetric> {
-        val result = mutableListOf<ParsedIterationMetric>()
-        val iterationPattern = Regex("""Iteration (\d+): .* completed in ([\d.]+)s""")
-        val metricsPattern = Regex("""Metrics: combined_score=([\d.]+)""")
-
-        val lines = logText.lines()
-        var currentIteration: Int? = null
-        var currentExecutionTime: Double? = null
-
-        for (line in lines) {
-            val iterMatch = iterationPattern.find(line)
-            if (iterMatch != null) {
-                currentIteration = iterMatch.groupValues[1].toIntOrNull()
-                currentExecutionTime = iterMatch.groupValues[2].toDoubleOrNull()
-                continue
-            }
-            val metricsMatch = metricsPattern.find(line)
-            if (metricsMatch != null && currentIteration != null) {
-                val fitnessScore = metricsMatch.groupValues[1].toDoubleOrNull() ?: 0.0
-                result.add(ParsedIterationMetric(currentIteration!!, fitnessScore, currentExecutionTime))
-                currentIteration = null
-                currentExecutionTime = null
-            }
-        }
-
-        return result
+        return OpenEvolveLogParser.parseIterationMetrics(logText)
     }
 
     private fun parseCheckpoints(openevolveOutputDir: File, workerId: Int): List<ParsedCheckpointData> {

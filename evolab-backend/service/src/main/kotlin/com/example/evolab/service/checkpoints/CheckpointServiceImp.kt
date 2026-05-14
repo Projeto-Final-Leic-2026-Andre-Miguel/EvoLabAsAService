@@ -180,13 +180,34 @@ class CheckpointServiceImp(
             }
         }
 
-    override fun getAllCheckpoints(): Either<CheckpointServiceErrors, List<Checkpoint>> =
+    override fun getAllCheckpoints(userId: Int): Either<CheckpointServiceErrors, List<Checkpoint>> =
         trxManager.run {
-            success(repoCheckpoints.findAll())
+            val ownedProjectIds = repoProjects.findAllByUserId(userId).map { it.id }.toSet()
+            val ownedJobIds = repoJobs.findAll().filter { it.projectId in ownedProjectIds }.map { it.id }.toSet()
+            success(repoCheckpoints.findAll().filter { it.jobId in ownedJobIds })
         }
 
-    override fun deleteCheckpoint(checkpointId: Int): Either<CheckpointServiceErrors, Int> =
+    override fun deleteCheckpoint(checkpointId: Int, userId: Int): Either<CheckpointServiceErrors, Int> =
         trxManager.run {
+            try {
+                val checkpoint = repoCheckpoints.findById(checkpointId)
+                    ?: return@run failure(CheckpointServiceErrors.CheckpointNotFound("Checkpoint with id '$checkpointId' was not found"))
+
+                ensureOwnedJob(checkpoint.jobId, userId) ?: return@run failureJobNotFound(checkpoint.jobId)
+            } catch (e: CheckpointAccessDeniedException) {
+                return@run failure(
+                    CheckpointServiceErrors.CheckpointAccessDenied(
+                        "User with id '${e.userId}' cannot access checkpoints for job with id '${e.jobId}'",
+                    ),
+                )
+            } catch (e: MissingProjectException) {
+                return@run failure(
+                    CheckpointServiceErrors.ProjectNotFound(
+                        "Project with id '${e.projectId}' was not found for job '${e.jobId}'",
+                    ),
+                )
+            }
+
             val deleted = repoCheckpoints.deleteById(checkpointId)
             if (!deleted) return@run failure(CheckpointServiceErrors.CheckpointNotFound("Checkpoint with id '$checkpointId' was not found"))
             success(checkpointId)

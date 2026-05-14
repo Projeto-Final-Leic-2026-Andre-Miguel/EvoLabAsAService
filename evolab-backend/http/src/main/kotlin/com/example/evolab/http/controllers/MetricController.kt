@@ -112,8 +112,8 @@ class MetricController(
     }
 
     @GetMapping("/api/metrics")
-    fun getAllMetrics(): ResponseEntity<*> {
-        val result = metricService.getAllMetrics()
+    fun getAllMetrics(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
+        val result = metricService.getAllMetrics(authenticatedUser.user.id)
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
             is Failure -> mapServiceErrors(result.value)
@@ -123,8 +123,9 @@ class MetricController(
     @DeleteMapping("/api/metrics/{id}")
     fun deleteMetric(
         @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> {
-        val result = metricService.deleteMetric(id)
+        val result = metricService.deleteMetric(id, authenticatedUser.user.id)
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.NO_CONTENT).build<Unit>()
             is Failure -> mapServiceErrors(result.value)

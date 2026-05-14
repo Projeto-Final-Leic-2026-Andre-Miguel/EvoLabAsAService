@@ -72,6 +72,8 @@ sealed class Problem(
 
     data object JobNotFound : Problem(URI("$PROBLEM_URI_PATH/job-not-found"))
 
+    data object JobAccessDenied : Problem(URI("$PROBLEM_URI_PATH/job-access-denied"))
+
     data object InvalidJobInput : Problem(URI("$PROBLEM_URI_PATH/invalid-job-input"))
 
     data object MetricAccessDenied : Problem(URI("$PROBLEM_URI_PATH/metric-access-denied"))

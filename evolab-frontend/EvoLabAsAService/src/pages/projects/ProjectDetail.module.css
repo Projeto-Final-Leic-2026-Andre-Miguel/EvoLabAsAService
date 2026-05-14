@@ -442,3 +442,97 @@
   margin: 0;
   flex: 1;
 }
+
+.container {
+  max-width: 1240px;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.pageTitle h1,
+.sectionTitle,
+.checkpointIteration {
+  color: var(--text-main);
+}
+
+.sectionCount,
+.checkpointDate,
+.barLabel,
+.chartLabel {
+  color: var(--text-muted);
+}
+
+.backBtn,
+.card,
+.empty,
+.checkpointCard,
+.viewCodeBtn {
+  background: var(--surface-1);
+  border-color: var(--border-color);
+  color: var(--text-soft);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.card,
+.checkpointCard {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--surface-1);
+}
+
+.checkpointCard:hover,
+.backBtn:hover,
+.viewCodeBtn:hover {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: var(--surface-2);
+}
+
+.metricTableHeader {
+  color: var(--text-muted);
+}
+
+.metricRow {
+  color: var(--text-soft);
+}
+
+.metricRow:hover {
+  background: var(--surface-2);
+}
+
+.score,
+.checkpointScore {
+  color: var(--primary-color);
+}
+
+.bar {
+  background: #3b4a5a;
+}
+
+.barWrapper:hover .bar {
+  background: var(--primary-color);
+}
+
+.barBest,
+.bestBadge {
+  background: var(--accent-success) !important;
+}
+
+.bestRow,
+.checkpointBest {
+  background: rgba(34, 197, 94, 0.08);
+  color: #9ef0bd;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.finalResultCard {
+  background: var(--surface-1);
+  border-color: rgba(45, 212, 191, 0.32);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.finalResultTitle {
+  color: var(--text-main);
+}
+
+.finalResultSub {
+  color: var(--primary-color);
+}

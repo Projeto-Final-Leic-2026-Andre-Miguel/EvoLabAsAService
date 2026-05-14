@@ -117,3 +117,46 @@
     font-size: 0.9rem;
     border: 1px dashed #d1d5db;
 }
+
+.profileContainer,
+.loadingContainer,
+.errorContainer {
+    background: transparent;
+    color: var(--text-main);
+}
+
+.profileCard {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+}
+
+.cardHeader,
+.infoRow {
+    border-color: var(--border-color);
+}
+
+.avatar {
+    background: var(--primary-color);
+    color: #06100e;
+    box-shadow: 0 16px 36px rgba(45, 212, 191, 0.18);
+}
+
+.userName,
+.infoValue {
+    color: var(--text-main);
+}
+
+.userEmail,
+.infoLabel {
+    color: var(--text-muted);
+}
+
+.badgeLocal,
+.badgeGoogle,
+.statsPlaceholder {
+    background: var(--surface-2);
+    border-color: var(--border-color);
+    color: var(--text-soft);
+}

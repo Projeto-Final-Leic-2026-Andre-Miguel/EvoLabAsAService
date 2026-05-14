@@ -3,6 +3,7 @@ package com.example.evolab.http.controllers
 import com.example.evolab.domain.LLMCredentials.LLMCredentials
 import com.example.evolab.domain.user.AuthenticatedUser
 import com.example.evolab.http.model.llmCredentials.CreateLLMCredentialRequest
+import com.example.evolab.http.model.llmCredentials.CreateLocalModelCredentialRequest
 import com.example.evolab.http.model.problem.Problem
 import com.example.evolab.service.LLMCredentials.service.LLMCredentialsService
 import com.example.evolab.service.LLMCredentials.service.LLMCredentialsServiceErrors
@@ -56,7 +57,7 @@ class LLMCredentialsController(
 
     @PostMapping("/localModel")
     suspend fun createLocalModelCredential(
-        @RequestBody input: com.example.evolab.http.model.llmCredentials.CreateLocalModelCredentialRequest,
+        @RequestBody input: CreateLocalModelCredentialRequest,
         authenticatedUser: AuthenticatedUser
     ): ResponseEntity<*> {
         val result = llmCredentialsService.createLocalModelCredential(
@@ -162,10 +163,10 @@ class LLMCredentialsController(
 
 
     @GetMapping("/all")
-    fun getAllLLMCredentials(): ResponseEntity<*> {
+    fun getAllLLMCredentials(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
 
         val result: Either<LLMCredentialsServiceErrors, List<LLMCredentials>> =
-            llmCredentialsService.getAllLLMCredentials()
+            llmCredentialsService.getLLMCredentialsByUserId(authenticatedUser.user.id)
 
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
@@ -191,12 +192,12 @@ class LLMCredentialsController(
 
 private fun mapServiceErrors(error: LLMCredentialsServiceErrors): ResponseEntity<*> {
     return when (error) {
-        is LLMCredentialsServiceErrors.InvalidLLMProvider -> Problem.InvalidLLMProvider.response(HttpStatus.BAD_REQUEST)
-        is LLMCredentialsServiceErrors.LLMCredentialNotFound -> Problem.LLMCrendentialsNotFound.response(HttpStatus.NOT_FOUND)
-        is LLMCredentialsServiceErrors.InvalidApiKey -> Problem.InvalidAPIKey.response(HttpStatus.BAD_REQUEST)
-        is LLMCredentialsServiceErrors.CredentialWithProviderAlreadyInUse -> Problem.CredentialWithProviderAlreadyInUse.response(HttpStatus.CONFLICT)
-        is LLMCredentialsServiceErrors.PersistenceError -> Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
-        is LLMCredentialsServiceErrors.UnknownError -> Problem.UnknownError.response(HttpStatus.INTERNAL_SERVER_ERROR)
-        is LLMCredentialsServiceErrors.UnauthorizedAccess -> Problem.UnauthorizedAccess.response(HttpStatus.FORBIDDEN)
+        is LLMCredentialsServiceErrors.InvalidLLMProvider -> Problem.InvalidLLMProvider.withDetail(error.message).response(HttpStatus.BAD_REQUEST)
+        is LLMCredentialsServiceErrors.LLMCredentialNotFound -> Problem.LLMCrendentialsNotFound.withDetail(error.message).response(HttpStatus.NOT_FOUND)
+        is LLMCredentialsServiceErrors.InvalidApiKey -> Problem.InvalidAPIKey.withDetail(error.message).response(HttpStatus.BAD_REQUEST)
+        is LLMCredentialsServiceErrors.CredentialWithProviderAlreadyInUse -> Problem.CredentialWithProviderAlreadyInUse.withDetail(error.message).response(HttpStatus.CONFLICT)
+        is LLMCredentialsServiceErrors.PersistenceError -> Problem.UnknownError.withDetail(error.message).response(HttpStatus.INTERNAL_SERVER_ERROR)
+        is LLMCredentialsServiceErrors.UnknownError -> Problem.UnknownError.withDetail(error.message).response(HttpStatus.INTERNAL_SERVER_ERROR)
+        is LLMCredentialsServiceErrors.UnauthorizedAccess -> Problem.UnauthorizedAccess.withDetail(error.message).response(HttpStatus.FORBIDDEN)
     }
 }

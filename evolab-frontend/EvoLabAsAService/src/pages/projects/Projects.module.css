@@ -416,3 +416,122 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.container {
+  max-width: 1240px;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.header {
+  align-items: flex-end;
+}
+
+.title {
+  color: var(--text-main);
+}
+
+.subtitle {
+  color: var(--text-muted);
+}
+
+.createBtn {
+  background: var(--primary-color);
+  color: #06100e;
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(45, 212, 191, 0.18);
+}
+
+.createBtn:hover {
+  background: var(--primary-hover);
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--surface-1);
+  border-color: var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.card:hover {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
+}
+
+.projectName,
+.modalTitle {
+  color: var(--text-main);
+}
+
+.projectDescription,
+.cardDetails,
+.detailGrid,
+.helperText {
+  color: var(--text-muted);
+}
+
+.cardDetails,
+.modalActions {
+  border-top-color: var(--border-color);
+}
+
+.detailCodeBlock,
+.actionBtn,
+.backBtn,
+.uploadBtn,
+.cancelBtn {
+  background: var(--surface-2);
+  border-color: var(--border-color);
+  color: var(--text-soft);
+}
+
+.actionBtn:hover,
+.backBtn:hover,
+.uploadBtn:hover,
+.cancelBtn:hover {
+  background: var(--surface-3);
+}
+
+.modal {
+  background: var(--surface-1);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.modalOverlay {
+  background: rgba(0, 0, 0, 0.66);
+}
+
+.closeBtn:hover {
+  background: var(--surface-2);
+}
+
+.formGroup label {
+  color: var(--text-soft);
+}
+
+.formGroup input,
+.formGroup textarea,
+.formGroup select {
+  background: #080b0f;
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus,
+.formGroup select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.14);
+}
+
+.saveBtn,
+.startBtn {
+  background: var(--primary-color);
+  color: #06100e;
+}
+
+.saveBtn:hover:not(:disabled),
+.startBtn:hover {
+  background: var(--primary-hover);
+}

@@ -211,7 +211,7 @@ const Projects: React.FC = () => {
           <p className={styles.subtitle}>Manage your experimental evolution projects.</p>
         </div>
         <button className={styles.createBtn} onClick={() => handleOpenModal()}>
-          <span>➕</span> New Project
+          <span>+</span> New Project
         </button>
       </div>
 
@@ -354,7 +354,7 @@ const Projects: React.FC = () => {
               </div>
 
               <div className={styles.warningAlert}>
-                <span>⚠️</span>
+                <span>!</span>
                 <span><strong>Notice:</strong> Before starting the experimentation, make sure your credential is valid, otherwise it will fail.</span>
               </div>
 

@@ -24,21 +24,25 @@ object OpenEvolvePayloadBuilder {
             featureDimensions
                 .filter { it !in setOf("complexity", "diversity") }
 
+        val llmPayload =
+            mutableMapOf<String, Any>(
+                "models" to listOf(mapOf("name" to config.modelName, "weight" to 1.0)),
+                "api_base" to (p["llm.api_base"] ?: ""),
+                "api_key" to (apiKeyValue ?: ""),
+                "temperature" to p["llm.temperature"].toDoubleOrNullOrDefault(0.7),
+                "top_p" to p["llm.top_p"].toDoubleOrNullOrDefault(0.95),
+                "max_tokens" to p["llm.max_tokens"].toIntOrNullOrDefault(4096),
+                "timeout" to p["llm.timeout"].toIntOrNullOrDefault(60),
+                "retries" to p["llm.retries"].toIntOrNullOrDefault(3),
+            )
+        resolveReasoningEffort(config.modelName, p["llm.api_base"], p["llm.reasoning_effort"])
+            ?.let { llmPayload["reasoning_effort"] = it }
+
         return mapOf(
             "max_iterations" to config.maxIter,
             "checkpoint_interval" to config.checkPointInterval,
             "diff_based_evolution" to p["diff_based_evolution"].toBooleanStrictOrNullOrDefault(true),
-            "llm" to
-                mapOf(
-                    "models" to listOf(mapOf("name" to config.modelName, "weight" to 1.0)),
-                    "api_base" to p["llm.api_base"],
-                    "api_key" to apiKeyValue,
-                    "temperature" to p["llm.temperature"].toDoubleOrNullOrDefault(0.7),
-                    "top_p" to p["llm.top_p"].toDoubleOrNullOrDefault(0.95),
-                    "max_tokens" to p["llm.max_tokens"].toIntOrNullOrDefault(4096),
-                    "timeout" to p["llm.timeout"].toIntOrNullOrDefault(60),
-                    "retries" to p["llm.retries"].toIntOrNullOrDefault(3),
-                ),
+            "llm" to llmPayload,
             "prompt" to
                 mapOf(
                     "system_message" to
@@ -128,6 +132,23 @@ object OpenEvolvePayloadBuilder {
         if (llm == LLM.OPENAI && modelLooksGemini) {
             throw IllegalStateException("Config model '$modelName' is Gemini-like but credential provider is OPENAI")
         }
+    }
+
+    fun resolveReasoningEffort(
+        modelName: String,
+        apiBase: String?,
+        configuredReasoningEffort: String?,
+    ): String? {
+        val configured = configuredReasoningEffort?.trim()?.lowercase()
+        if (!configured.isNullOrBlank()) return configured
+
+        val normalizedModel = modelName.trim().lowercase()
+        val normalizedApiBase = apiBase?.trim()?.lowercase()?.trimEnd('/').orEmpty()
+        val geminiApiBase = GEMINI_API_BASE.lowercase().trimEnd('/')
+        val isGemini = normalizedModel.startsWith("gemini") ||
+            normalizedApiBase == geminiApiBase
+
+        return if (isGemini) "low" else null
     }
 
     private fun String?.toIntOrNullOrDefault(default: Int): Int = this?.toIntOrNull() ?: default

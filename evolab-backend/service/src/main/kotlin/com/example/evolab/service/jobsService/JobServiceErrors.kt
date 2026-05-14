@@ -4,5 +4,7 @@ sealed class JobServiceErrors {
 
     data class JobNotFound(val message: String) : JobServiceErrors()
 
+    data class JobAccessDenied(val message: String) : JobServiceErrors()
+
     data class InvalidJobInput(val message: String) : JobServiceErrors()
 }

@@ -114,9 +114,9 @@ const ProjectDetail: React.FC = () => {
           <h1>Project {id}</h1>
           {job && (
             <span className={`${styles.statusBadge} ${styles[`status${job.status}`] ?? ''}`}>
-              {job.status === 'COMPLETED' && '✅ '}
-              {job.status === 'RUNNING' && '🔄 '}
-              {job.status === 'FAILED' && '❌ '}
+              {job.status === 'COMPLETED'}
+              {job.status === 'RUNNING'}
+              {job.status === 'FAILED'}
               {job.status}
             </span>
           )}
@@ -149,7 +149,7 @@ const ProjectDetail: React.FC = () => {
           transition={{ duration: 0.4 }}
         >
           <div className={styles.finalResultLeft}>
-            <span className={styles.finalResultIcon}>🏆</span>
+            <span className={styles.finalResultIcon}></span>
             <div>
               <p className={styles.finalResultTitle}>Final Result</p>
               <p className={styles.finalResultSub}>

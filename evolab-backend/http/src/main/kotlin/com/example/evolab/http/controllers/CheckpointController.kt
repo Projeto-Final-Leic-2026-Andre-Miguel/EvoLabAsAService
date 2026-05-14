@@ -129,8 +129,8 @@ class CheckpointController(
     }
 
     @GetMapping("/api/checkpoints")
-    fun getAllCheckpoints(): ResponseEntity<*> {
-        val result = checkpointService.getAllCheckpoints()
+    fun getAllCheckpoints(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
+        val result = checkpointService.getAllCheckpoints(authenticatedUser.user.id)
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
             is Failure -> mapServiceErrors(result.value)
@@ -140,8 +140,9 @@ class CheckpointController(
     @DeleteMapping("/api/checkpoints/{id}")
     fun deleteCheckpoint(
         @PathVariable id: Int,
+        authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> {
-        val result = checkpointService.deleteCheckpoint(id)
+        val result = checkpointService.deleteCheckpoint(id, authenticatedUser.user.id)
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.NO_CONTENT).build<Unit>()
             is Failure -> mapServiceErrors(result.value)

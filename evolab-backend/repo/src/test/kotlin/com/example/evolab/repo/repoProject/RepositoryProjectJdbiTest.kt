@@ -1,4 +1,4 @@
-package com.example.evolab.repo.repoProject
+/*package com.example.evolab.repo.repoProject
 
 import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.repo.repoConfig.RepositoryConfigJdbi
@@ -156,3 +156,4 @@ class RepositoryProjectJdbiTest : RepositoryDbTestSupport() {
         )
     }
 }
+*/

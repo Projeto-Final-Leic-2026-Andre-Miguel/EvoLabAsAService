@@ -28,7 +28,7 @@ interface MetricService {
         userId: Int,
     ): Either<MetricServiceErrors, Metric>
 
-    fun getAllMetrics(): Either<MetricServiceErrors, List<Metric>>
+    fun getAllMetrics(userId: Int): Either<MetricServiceErrors, List<Metric>>
 
-    fun deleteMetric(metricId: Int): Either<MetricServiceErrors, Int>
+    fun deleteMetric(metricId: Int, userId: Int): Either<MetricServiceErrors, Int>
 }

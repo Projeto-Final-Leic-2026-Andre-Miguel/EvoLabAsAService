@@ -119,3 +119,96 @@
   background-color: #f8f9fa;
   color: #007bff;
 }
+
+.topBarContainer {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 0.95rem clamp(1rem, 4vw, 3rem);
+  background: rgba(5, 6, 8, 0.9);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(18px);
+}
+
+.logo a {
+  color: var(--text-main);
+  font-size: 1.35rem;
+  letter-spacing: 0;
+}
+
+.logo a::before {
+  content: "";
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.6rem;
+  border-radius: 999px;
+  background: var(--primary-color);
+  box-shadow: 0 0 22px rgba(45, 212, 191, 0.65);
+}
+
+.navLinks {
+  gap: clamp(0.75rem, 2.4vw, 1.8rem);
+}
+
+.navLinks a {
+  color: var(--text-soft);
+  font-size: 0.94rem;
+}
+
+.navLinks a:hover {
+  color: var(--primary-color);
+}
+
+.signInBtn {
+  background: var(--primary-color);
+  color: #06100e;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(45, 212, 191, 0.2);
+}
+
+.signInBtn:hover {
+  background: var(--primary-hover);
+}
+
+.welcomeText {
+  color: var(--text-soft);
+}
+
+.welcomeText:hover {
+  color: var(--primary-color);
+}
+
+.dropdownMenu {
+  background: var(--surface-2);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+}
+
+.profileBtn {
+  color: var(--text-soft);
+  border-bottom-color: var(--border-color);
+}
+
+.profileBtn:hover {
+  background: rgba(45, 212, 191, 0.08);
+  color: var(--primary-color);
+}
+
+.logoutBtn:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+@media (max-width: 760px) {
+  .topBarContainer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .navLinks {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}

@@ -35,6 +35,7 @@ object OpenEvolveYamlRenderer {
         config.llm.timeout?.let { lines.add("  timeout: $it") }
         config.llm.retries?.let { lines.add("  retries: $it") }
         config.llm.retryDelay?.let { lines.add("  retry_delay: $it") }
+        config.llm.reasoningEffort?.let { lines.add("  reasoning_effort: \"$it\"") }
 
         lines.add("prompt:")
         lines.add("  system_message: |")

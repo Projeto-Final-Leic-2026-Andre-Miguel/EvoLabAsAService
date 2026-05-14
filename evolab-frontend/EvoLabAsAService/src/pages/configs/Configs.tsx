@@ -62,7 +62,7 @@ const sortedStringify = (params: Record<string, string>): string => {
 };
 
 const OPENAI_MODELS = ['gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-3.5-turbo', 'o1-mini', 'o1-preview'];
-const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-preview-04-17', 'gemini-2.5-pro-preview-05-06', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
 const CUSTOM_MODEL_SENTINEL = '__custom__';
 const MODEL_NAME_REGEX = /^[a-zA-Z0-9._\-/]+$/;
@@ -390,7 +390,7 @@ const Configs: React.FC = () => {
           </p>
         </div>
         <button className={styles.createBtn} onClick={() => handleOpenModal()}>
-          <span>➕</span> New Config
+          <span>+</span> New Config
         </button>
       </div>
 
@@ -402,7 +402,7 @@ const Configs: React.FC = () => {
 
       {credentials.length > 0 && validCredentialsCount === 0 && (
         <div className={styles.warningAlert}>
-          <span>⚠️</span>
+          <span>!</span>
           <span><strong>Notice:</strong> You don't have any validated LLM Credentials. You won't be able to run projects successfully.</span>
         </div>
       )}
@@ -637,7 +637,7 @@ const Configs: React.FC = () => {
                         >
                           <option value="" disabled>-- Select {provider === 'OPENAI' ? 'OpenAI' : 'Gemini'} Model --</option>
                           {list.map(m => <option key={m} value={m}>{m}</option>)}
-                          <option disabled>──────────</option>
+                          <option disabled>----------</option>
                           <option value={CUSTOM_MODEL_SENTINEL}>Custom model...</option>
                         </select>
                         {isCustomModel && (
@@ -705,7 +705,7 @@ const Configs: React.FC = () => {
                   className={styles.toggleAdvancedBtn}
                   onClick={() => setShowAdvancedParams(prev => !prev)}
                 >
-                  {showAdvancedParams ? '▲ Hide Advanced Parameters' : '▼  Advanced Parameters'}
+                  {showAdvancedParams ? 'Hide Advanced Parameters' : 'Advanced Parameters'}
                 </button>
 
                 {showAdvancedParams && (

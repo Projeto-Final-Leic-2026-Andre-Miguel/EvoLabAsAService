@@ -138,3 +138,64 @@
 .link:hover {
     color: #0056b3;
 }
+
+.authContainer {
+    background: transparent;
+}
+
+.authCard {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+}
+
+.authCard h2 {
+    color: var(--text-main);
+}
+
+.inputLabel,
+.loginPrompt,
+.divider {
+    color: var(--text-muted);
+}
+
+.inputLabel input {
+    background: #080b0f;
+    border-color: var(--border-color);
+    color: var(--text-main);
+}
+
+.inputLabel input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.14);
+}
+
+.submitBtn {
+    background: var(--primary-color);
+    color: #06100e;
+    border-radius: 8px;
+}
+
+.submitBtn:hover:not(:disabled) {
+    background: var(--primary-hover);
+}
+
+.googleBtn {
+    background: var(--surface-2);
+    border-color: var(--border-color);
+    color: var(--text-soft);
+    border-radius: 8px;
+}
+
+.googleBtn:hover {
+    background: var(--surface-3);
+}
+
+.link {
+    color: var(--primary-color);
+}
+
+.link:hover {
+    color: var(--primary-hover);
+}

@@ -33,7 +33,7 @@ interface CheckpointService {
         userId: Int,
     ): Either<CheckpointServiceErrors, Checkpoint>
 
-    fun getAllCheckpoints(): Either<CheckpointServiceErrors, List<Checkpoint>>
+    fun getAllCheckpoints(userId: Int): Either<CheckpointServiceErrors, List<Checkpoint>>
 
-    fun deleteCheckpoint(checkpointId: Int): Either<CheckpointServiceErrors, Int>
+    fun deleteCheckpoint(checkpointId: Int, userId: Int): Either<CheckpointServiceErrors, Int>
 }

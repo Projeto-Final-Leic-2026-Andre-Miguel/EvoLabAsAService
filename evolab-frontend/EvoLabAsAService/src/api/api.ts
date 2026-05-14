@@ -13,6 +13,23 @@ export function onResult<T>(result: RequestResult<T>, onSuccess: (result: Succes
     }
 }
 
+function readCookie(name: string): string | undefined {
+    if (typeof document === "undefined") {
+        return undefined;
+    }
+
+    const prefix = `${name}=`;
+    return document.cookie
+        .split(";")
+        .map((cookie) => cookie.trim())
+        .find((cookie) => cookie.startsWith(prefix))
+        ?.slice(prefix.length);
+}
+
+function isUnsafeMethod(method: string | undefined): boolean {
+    return !["GET", "HEAD", "OPTIONS", "TRACE"].includes((method ?? "GET").toUpperCase());
+}
+
 class ApiError extends Error {
     status: number;
     constructor(status: number, message: string) {
@@ -23,13 +40,21 @@ class ApiError extends Error {
 
 export async function request<T>(url: string, options?: RequestInit): Promise<RequestResult<T>> {
     try {
+        const headers = new Headers(options?.headers);
+        const csrfToken = readCookie("XSRF-TOKEN");
+
+        if (csrfToken && isUnsafeMethod(options?.method) && !headers.has("X-XSRF-TOKEN")) {
+            headers.set("X-XSRF-TOKEN", decodeURIComponent(csrfToken));
+        }
+
         const response = await fetch(url, {
             credentials: "include",
-            ...options
+            ...options,
+            headers,
         });
         if (!response.ok) {
             const errorBody = await response.json().catch(() => ({}));
-            const errorMessage = errorBody.title || errorBody.detail || response.statusText;
+            const errorMessage = errorBody.detail || errorBody.title || response.statusText;
             return {
                 type: "Failure",
                 data: null,

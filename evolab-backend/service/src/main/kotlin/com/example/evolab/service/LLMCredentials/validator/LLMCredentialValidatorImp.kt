@@ -87,30 +87,51 @@ class LLMCredentialValidatorImp(
 
 
     override suspend fun validateLocalModelApiKey(port: Int, apiKey: String, modelName: String?): Either<LLMValidatorErrors, Boolean> {
-        val url = "http://localhost:$port/v1/models"
-        
-        return try {
-            val response = client.get(url) {
-                if (apiKey.isNotBlank() && apiKey != "dummy") {
-                    header("Authorization", "Bearer $apiKey")
-                }
-            }
+        val urls =
+            listOf(
+                "http://localhost:$port/v1/models",
+                "http://127.0.0.1:$port/v1/models",
+                "http://host.docker.internal:$port/v1/models",
+            )
 
-            when (response.status) {
-                HttpStatusCode.OK -> {
-                    if (modelName != null && modelName.isNotBlank()) {
-                        val body = response.bodyAsText()
-                        if (!body.contains(modelName)) {
-                            return failure(LLMValidatorErrors.InvalidLLM("Model '$modelName' not found on local instance."))
-                        }
+        val failures = mutableListOf<String>()
+        var unauthorized = false
+
+        for (url in urls) {
+            try {
+                val response = client.get(url) {
+                    if (apiKey.isNotBlank() && apiKey != "dummy") {
+                        header("Authorization", "Bearer $apiKey")
                     }
-                    success(true)
                 }
-                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> failure(LLMValidatorErrors.InvalidAPIKey("Invalid local model API key specified"))
-                else -> failure(LLMValidatorErrors.InvalidLLM("Local model check failed with status: ${response.status}"))
+
+                when (response.status) {
+                    HttpStatusCode.OK -> {
+                        if (modelName != null && modelName.isNotBlank()) {
+                            val body = response.bodyAsText()
+                            if (!body.contains(modelName)) {
+                                failures += "$url: model '$modelName' not found"
+                                continue
+                            }
+                        }
+                        return success(true)
+                    }
+                    HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> {
+                        unauthorized = true
+                        failures += "$url: ${response.status}"
+                    }
+                    else -> failures += "$url: ${response.status}"
+                }
+            } catch (e: Exception) {
+                failures += "$url: ${e.message ?: e::class.simpleName ?: "unreachable"}"
             }
-        } catch (e: Exception) {
-            failure(LLMValidatorErrors.UnknownError("Could not reach local model endpoint on port $port. Please ensure the port is correct and the service is running."))
+        }
+
+        val details = failures.joinToString("; ")
+        return if (unauthorized) {
+            failure(LLMValidatorErrors.InvalidAPIKey("Local model endpoint rejected the configured API key. Tried: $details"))
+        } else {
+            failure(LLMValidatorErrors.InvalidLLM("Could not validate local model on port $port. Tried: $details"))
         }
     }
 

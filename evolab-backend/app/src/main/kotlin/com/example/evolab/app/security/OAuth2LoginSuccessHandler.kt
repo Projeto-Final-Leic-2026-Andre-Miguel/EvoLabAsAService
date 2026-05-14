@@ -1,6 +1,7 @@
 package com.example.evolab.app.security
 
 import com.example.evolab.domain.user.AuthProvider
+import com.example.evolab.http.CookieSecurity
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.tokenService.TokenService
 import jakarta.servlet.http.HttpServletRequest
@@ -55,7 +56,7 @@ class OAuth2LoginSuccessHandler(
         val cookie =
             ResponseCookie.from(RequestTokenProcessor.COOKIE_NAME, tokenResult.value.tokenValue)
                 .httpOnly(true)
-                .secure(false)
+                .secure(CookieSecurity.shouldUseSecureCookie(request))
                 .path("/")
                 .maxAge(RequestTokenProcessor.COOKIE_MAX_AGE.toLong())
                 .sameSite("Lax")

@@ -151,13 +151,34 @@ class MetricServiceImp(
             }
         }
 
-    override fun getAllMetrics(): Either<MetricServiceErrors, List<Metric>> =
+    override fun getAllMetrics(userId: Int): Either<MetricServiceErrors, List<Metric>> =
         trxManager.run {
-            success(repoMetrics.findAll())
+            val ownedProjectIds = repoProjects.findAllByUserId(userId).map { it.id }.toSet()
+            val ownedJobIds = repoJobs.findAll().filter { it.projectId in ownedProjectIds }.map { it.id }.toSet()
+            success(repoMetrics.findAll().filter { it.jobId in ownedJobIds })
         }
 
-    override fun deleteMetric(metricId: Int): Either<MetricServiceErrors, Int> =
+    override fun deleteMetric(metricId: Int, userId: Int): Either<MetricServiceErrors, Int> =
         trxManager.run {
+            try {
+                val metric = repoMetrics.findById(metricId)
+                    ?: return@run failure(MetricServiceErrors.MetricNotFound("Metric with id '$metricId' was not found"))
+
+                ensureOwnedJob(metric.jobId, userId) ?: return@run failureJobNotFound(metric.jobId)
+            } catch (e: MetricAccessDeniedException) {
+                return@run failure(
+                    MetricServiceErrors.MetricAccessDenied(
+                        "User with id '${e.userId}' cannot access metrics for job with id '${e.jobId}'",
+                    ),
+                )
+            } catch (e: MissingProjectException) {
+                return@run failure(
+                    MetricServiceErrors.ProjectNotFound(
+                        "Project with id '${e.projectId}' was not found for job '${e.jobId}'",
+                    ),
+                )
+            }
+
             val deleted = repoMetrics.deleteById(metricId)
             if (!deleted) return@run failure(MetricServiceErrors.MetricNotFound("Metric with id '$metricId' was not found"))
             success(metricId)

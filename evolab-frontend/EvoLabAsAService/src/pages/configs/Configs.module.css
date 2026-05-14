@@ -490,3 +490,125 @@
 .docLink a:hover {
   text-decoration: underline;
 }
+
+.container {
+  max-width: 1240px;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.header {
+  align-items: flex-end;
+}
+
+.title,
+.configIdText,
+.modalTitle,
+.detailValue {
+  color: var(--text-main);
+}
+
+.subtitle,
+.detailLabel,
+.helperText,
+.labelHint,
+.paramField label {
+  color: var(--text-muted);
+}
+
+.createBtn,
+.saveBtn {
+  background: var(--primary-color);
+  color: #06100e;
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(45, 212, 191, 0.18);
+}
+
+.createBtn:hover,
+.saveBtn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.card,
+.modal {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--surface-1);
+  border-color: var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.card:hover {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
+}
+
+.cardHeader,
+.modalActions,
+.advancedParamsPanel,
+.paramSection {
+  border-color: var(--border-color);
+}
+
+.cardDetails,
+.detailRow {
+  color: var(--text-soft);
+}
+
+.modelBadge {
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--primary-color);
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  border-radius: 999px;
+}
+
+.jsonBox,
+.toggleAdvancedBtn,
+.actionBtn,
+.cancelBtn,
+.advancedParamsPanel {
+  background: var(--surface-2);
+  border-color: var(--border-color);
+  color: var(--text-soft);
+}
+
+.toggleAdvancedBtn:hover,
+.actionBtn:hover,
+.cancelBtn:hover {
+  background: var(--surface-3);
+}
+
+.formGroup label {
+  color: var(--text-soft);
+}
+
+.formGroup input,
+.formGroup textarea,
+.formGroup select,
+.paramField input[type="text"],
+.paramField input[type="number"],
+.paramField textarea {
+  background: #080b0f;
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus,
+.formGroup select:focus,
+.paramField input:focus,
+.paramField textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.14);
+}
+
+.modalOverlay {
+  background: rgba(0, 0, 0, 0.66);
+}
+
+.closeBtn:hover {
+  background: var(--surface-2);
+}
+
+.docLink a,
+.editBtn {
+  color: var(--primary-color);
+}

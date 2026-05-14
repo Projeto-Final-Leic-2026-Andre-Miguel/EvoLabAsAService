@@ -14,6 +14,10 @@ object OpenEvolveConfigValidator {
         if (config.llm.models.any { it.name.isBlank() || it.weight <= 0.0 }) {
             return ConfigError.InvalidOpenEvolveConfig("llm.models must have non-empty names and positive weights")
         }
+        val reasoningEffort = config.llm.reasoningEffort?.trim()?.lowercase()
+        if (reasoningEffort != null && reasoningEffort !in setOf("none", "minimal", "low", "medium", "high")) {
+            return ConfigError.InvalidOpenEvolveConfig("llm.reasoning_effort must be one of: none, minimal, low, medium, high")
+        }
 
         val apiKey = config.llm.apiKey?.trim()
         if (!apiKey.isNullOrEmpty() && !apiKey.matches(Regex("""\$\{[A-Z0-9_]+}"""))) {

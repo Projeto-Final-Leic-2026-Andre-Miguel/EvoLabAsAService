@@ -43,6 +43,7 @@ object OpenEvolveConfigParser {
             timeout = (this["timeout"] as? Number)?.toInt(),
             retries = (this["retries"] as? Number)?.toInt(),
             retryDelay = (this["retry_delay"] as? Number)?.toDouble(),
+            reasoningEffort = this["reasoning_effort"] as? String,
         )
     }
 

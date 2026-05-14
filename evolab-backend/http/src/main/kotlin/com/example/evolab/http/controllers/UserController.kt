@@ -1,6 +1,7 @@
 package com.example.evolab.http.controllers
 
 import com.example.evolab.domain.user.AuthenticatedUser
+import com.example.evolab.http.CookieSecurity
 import com.example.evolab.http.model.user.CreateLocalUserInput
 import com.example.evolab.http.model.user.CreateOAuthUserInput
 import com.example.evolab.http.model.user.CreateTokenInput
@@ -9,6 +10,7 @@ import com.example.evolab.service.auxiliary.Failure
 import com.example.evolab.service.auxiliary.Success
 import com.example.evolab.service.tokenService.TokenError
 import com.example.evolab.service.tokenService.TokenService
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.ResponseCookie
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
+import pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor
 import pt.isel.service.userService.UserAuthService
 import pt.isel.service.userService.UserError
 
@@ -60,21 +63,22 @@ class UserController(
 	@PostMapping("/api/users/token")
 	fun createToken(
         @RequestBody input: CreateTokenInput,
+		request: HttpServletRequest,
 	): ResponseEntity<*> {
 		return when (val tokenInfo = tokenService.createToken(input.email, input.password)) {
 			is Success -> {
-				val cookie = ResponseCookie.from(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_NAME, tokenInfo.value.tokenValue)
+				val cookie = ResponseCookie.from(RequestTokenProcessor.COOKIE_NAME, tokenInfo.value.tokenValue)
 					.httpOnly(true)
-					.secure(false)
+					.secure(CookieSecurity.shouldUseSecureCookie(request))
 					.path("/")
-					.maxAge(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_MAX_AGE.toLong())
+					.maxAge(RequestTokenProcessor.COOKIE_MAX_AGE.toLong())
 					.sameSite("Lax")
 					.build()
 
 				ResponseEntity
 					.status(HttpStatus.OK)
 					.header(HttpHeaders.SET_COOKIE, cookie.toString())
-					.body(mapOf("tokenValue" to tokenInfo.value.tokenValue))
+					.build<Unit>()
 			}
 
 			is Failure -> {
@@ -103,14 +107,15 @@ class UserController(
 	}
 
 	@PostMapping("/api/logout")
-	fun logout(user: AuthenticatedUser): ResponseEntity<*> {
+	fun logout(user: AuthenticatedUser, request: HttpServletRequest): ResponseEntity<*> {
 		return when (tokenService.revokeToken(user.token)) {
 			is Success -> {
-				val clearCookie = ResponseCookie.from(pt.isel.http.argumentResolverandInterceptor.RequestTokenProcessor.COOKIE_NAME, "")
+				val clearCookie = ResponseCookie.from(RequestTokenProcessor.COOKIE_NAME, "")
 					.httpOnly(true)
-					.secure(false)
+					.secure(CookieSecurity.shouldUseSecureCookie(request))
 					.path("/")
 					.maxAge(0)
+					.sameSite("Lax")
 					.build()
 
 				ResponseEntity
@@ -125,7 +130,12 @@ class UserController(
 	@DeleteMapping("/api/users/{id}")
 	fun deleteUser(
 		@PathVariable id: Int,
+		authenticatedUser: AuthenticatedUser,
 	): ResponseEntity<*> {
+		if (authenticatedUser.user.id != id) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Unit>()
+		}
+
 		return when (val result = userService.deleteUser(id)) {
 			is Success -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
 		 is Failure ->
@@ -138,11 +148,10 @@ class UserController(
 	}
 
 	@GetMapping("/api/users")
-	fun getAllUsers(): ResponseEntity<*> {
-		val users = userService.getAllUsers()
+	fun getAllUsers(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
 		return ResponseEntity
 			.status(HttpStatus.OK)
-			.body(users)
+			.body(listOf(authenticatedUser.user))
 	}
 
 	@GetMapping("/api/me")

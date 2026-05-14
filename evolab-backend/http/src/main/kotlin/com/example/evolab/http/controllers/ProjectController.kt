@@ -63,8 +63,8 @@ class ProjectController(
     }
 
     @GetMapping
-    fun getAllProjects(): ResponseEntity<*> {
-        val result = projectService.getAllProjects()
+    fun getAllProjects(authenticatedUser: AuthenticatedUser): ResponseEntity<*> {
+        val result = projectService.getAllProjectsFromUser(authenticatedUser.user.id)
 
         return when (result) {
             is Success -> ResponseEntity.status(HttpStatus.OK).body(result.value)
@@ -111,15 +111,16 @@ class ProjectController(
             is Failure -> mapServiceErrors(result.value)
         }
 
-    // Worker lifecycle updates should not depend on project ownership from the API caller.
     @PutMapping("/{id}/status")
     fun updateProjectStatus(
         @PathVariable id: Int,
         @RequestBody input: UpdateProjectStatusInput,
+        authenticatedUser: AuthenticatedUser,
     ): ResponseEntity<*> {
         val result: Either<ProjectServiceErrors, Project> =
             projectService.updateProjectStatus(
                 projectId = id,
+                userId = authenticatedUser.user.id,
                 newStatus = input.status,
             )
 

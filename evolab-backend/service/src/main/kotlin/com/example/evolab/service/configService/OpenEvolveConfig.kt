@@ -29,6 +29,7 @@ data class LlmConfig(
     val timeout: Int?,
     val retries: Int?,
     val retryDelay: Double?,
+    val reasoningEffort: String?,
 )
 
 data class LlmModelWeight(
