@@ -16,8 +16,8 @@ services:
 
   backend:
     build:
-      context: ./evolab-backend/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: evolab-backend/Dockerfile
     container_name: evolab-backend
     depends_on:
       - db
