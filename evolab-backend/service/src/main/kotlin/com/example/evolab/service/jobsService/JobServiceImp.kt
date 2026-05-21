@@ -35,6 +35,7 @@ class JobServiceImp(
                 executionLogs = executionLogs,
                 failureReason = failureReason,
             )
+            registerTerminalOutcomeIfNeeded(projectId, previousStatus = null, newStatus = status)
             success(id)
         }
 
@@ -62,6 +63,7 @@ class JobServiceImp(
                 executionLogs = executionLogs,
                 failureReason = failureReason,
             )
+            registerTerminalOutcomeIfNeeded(projectId, previousStatus = null, newStatus = status)
             success(id)
         }
 
@@ -122,7 +124,9 @@ class JobServiceImp(
 
     override fun saveJob(job: Job): Either<JobServiceErrors, Job> =
         trxManager.run {
+            val previousStatus = repoJobs.findById(job.id)?.status
             repoJobs.save(job)
+            registerTerminalOutcomeIfNeeded(job.projectId, previousStatus, job.status)
             success(job)
         }
 
@@ -155,5 +159,17 @@ class JobServiceImp(
         }
 
         return null
+    }
+
+    private fun com.example.evolab.repo.transactions.Transaction.registerTerminalOutcomeIfNeeded(
+        projectId: Int,
+        previousStatus: EvolutionStatus?,
+        newStatus: EvolutionStatus,
+    ) {
+        if (newStatus != EvolutionStatus.COMPLETED && newStatus != EvolutionStatus.FAILED) return
+        if (previousStatus == EvolutionStatus.COMPLETED || previousStatus == EvolutionStatus.FAILED) return
+
+        val project = repoProjects.findById(projectId) ?: return
+        repoStatistics.incrementProjectOutcome(project.userId, newStatus)
     }
 }

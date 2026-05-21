@@ -1,4 +1,4 @@
-export type LLM = "OPENAI" | "GEMINI" | "LOCAL_MODEL";
+export type LLM = "OPENAI" | "GEMINI" | "ANTHROPIC" | "LOCAL_MODEL";
 export interface LLMCredentials {
     id: number;
     userId: number;

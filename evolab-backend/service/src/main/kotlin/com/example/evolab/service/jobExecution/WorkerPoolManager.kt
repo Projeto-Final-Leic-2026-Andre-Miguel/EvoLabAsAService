@@ -47,7 +47,7 @@ class WorkerPoolManager(
     private val poolSize: Int = WORKERS,
 ) {
     private val logger = LoggerFactory.getLogger(WorkerPoolManager::class.java)
-    private val poolScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val poolScope = CoroutineScope(Dispatchers.IO + SupervisorJob()) // a utilização do SupervisorJob permite que se um worker falhar, os outros continuem a funcionar normalmente, e o poolScope pode ser cancelado para desligar todos os workers de forma coordenada.
 
     /**
      * O PostConstruct garante que esta corrotina arranca mal o backend(Service) fique operacional.
@@ -71,7 +71,7 @@ class WorkerPoolManager(
 
             try {
 
-                val projectFromQueue = jobQueue.dequeue() // waits until there´s an available project to process
+                val projectFromQueue = jobQueue.dequeue() // suspends until there´s an available project to process
 
                 currentProjectId = projectFromQueue.id
 

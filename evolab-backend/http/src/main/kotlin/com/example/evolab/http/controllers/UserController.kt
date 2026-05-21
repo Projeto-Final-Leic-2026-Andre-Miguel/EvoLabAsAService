@@ -110,17 +110,9 @@ class UserController(
 	fun logout(user: AuthenticatedUser, request: HttpServletRequest): ResponseEntity<*> {
 		return when (tokenService.revokeToken(user.token)) {
 			is Success -> {
-				val clearCookie = ResponseCookie.from(RequestTokenProcessor.COOKIE_NAME, "")
-					.httpOnly(true)
-					.secure(CookieSecurity.shouldUseSecureCookie(request))
-					.path("/")
-					.maxAge(0)
-					.sameSite("Lax")
-					.build()
-
 				ResponseEntity
 					.status(HttpStatus.OK)
-					.header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+					.header(HttpHeaders.SET_COOKIE, clearAuthCookie(request).toString())
 					.build<Unit>()
 			}
 		 is Failure -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<Unit>()
@@ -131,13 +123,18 @@ class UserController(
 	fun deleteUser(
 		@PathVariable id: Int,
 		authenticatedUser: AuthenticatedUser,
+		request: HttpServletRequest,
 	): ResponseEntity<*> {
 		if (authenticatedUser.user.id != id) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build<Unit>()
 		}
 
 		return when (val result = userService.deleteUser(id)) {
-			is Success -> ResponseEntity.status(HttpStatus.OK).build<Unit>()
+			is Success ->
+				ResponseEntity
+					.status(HttpStatus.OK)
+					.header(HttpHeaders.SET_COOKIE, clearAuthCookie(request).toString())
+					.build<Unit>()
 		 is Failure ->
 				when (result.value) {
 					UserError.UserNotFound -> ResponseEntity.status(HttpStatus.NOT_FOUND).build<Unit>()
@@ -168,4 +165,13 @@ class UserController(
 			)
 		)
 	}
+
+	private fun clearAuthCookie(request: HttpServletRequest): ResponseCookie =
+		ResponseCookie.from(RequestTokenProcessor.COOKIE_NAME, "")
+			.httpOnly(true)
+			.secure(CookieSecurity.shouldUseSecureCookie(request))
+			.path("/")
+			.maxAge(0)
+			.sameSite("Lax")
+			.build()
 }

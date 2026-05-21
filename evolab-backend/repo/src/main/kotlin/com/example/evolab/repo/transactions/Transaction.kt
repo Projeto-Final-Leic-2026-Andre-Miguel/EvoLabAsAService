@@ -6,6 +6,7 @@ import com.example.evolab.repo.repoJobs.RepositoryJobs
 import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
 import com.example.evolab.repo.repoMetrics.RepositoryMetrics
 import com.example.evolab.repo.repoProject.RepositoryProject
+import com.example.evolab.repo.repoStatistics.RepositoryStatistics
 import com.example.evolab.repo.repoToken.RepositoryToken
 import com.example.evolab.repo.repoUser.RepositoryUser
 
@@ -25,6 +26,7 @@ interface Transaction {
     val repoMetrics: RepositoryMetrics
     val repoCheckpoints: RepositoryCheckpoints
     val repoTokens: RepositoryToken
+    val repoStatistics: RepositoryStatistics
 
     fun rollback()
 }

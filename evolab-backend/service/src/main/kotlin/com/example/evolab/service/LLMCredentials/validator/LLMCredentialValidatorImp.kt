@@ -9,8 +9,12 @@ import com.example.evolab.service.auxiliary.success
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import jakarta.inject.Named
 
 
@@ -23,11 +27,48 @@ class LLMCredentialValidatorImp(
     companion object {
         private const val GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
         private const val OPENAI_ENDPOINT = "https://api.openai.com/v1/models"
+        private const val ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages"
+        private const val ANTHROPIC_VERSION = "2023-06-01"
 
 
         private const val GEMINI_KEY_PREFIX = "AIza"
         private const val OPENAI_KEY_PREFIX = "sk-"
+        private const val ANTHROPIC_KEY_PREFIX = "sk-ant-"
 
+    }
+
+    private suspend fun anthropicKeyValidator(apiKey: String): Either<LLMValidatorErrors, Boolean> {
+        if (!validateKeyFormat(apiKey, ANTHROPIC_KEY_PREFIX)) {
+            return failure(LLMValidatorErrors.InvalidKeyFormat("Anthropic API key must start with '$ANTHROPIC_KEY_PREFIX'"))
+        }
+
+        return try {
+            val response = client.post(ANTHROPIC_ENDPOINT) {
+                header("x-api-key", apiKey)
+                header("anthropic-version", ANTHROPIC_VERSION)
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "model": "claude-3-haiku-20240307",
+                      "max_tokens": 1,
+                      "messages": [
+                        { "role": "user", "content": "Hello world!" }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+            }
+
+            when (response.status) {
+                HttpStatusCode.OK -> success(true)
+                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden -> failure(LLMValidatorErrors.InvalidAPIKey("Invalid Anthropic API key"))
+                HttpStatusCode.BadRequest -> failure(LLMValidatorErrors.InvalidAPIKey("Anthropic API key could not be validated"))
+                else -> failure(LLMValidatorErrors.InvalidLLM("InvalidLLM specified for validation"))
+            }
+        } catch (e: Exception) {
+            failure(LLMValidatorErrors.UnknownError("Network error occurred while validating Anthropic API key: ${e.message}"))
+        }
     }
 
 
@@ -147,6 +188,7 @@ class LLMCredentialValidatorImp(
             when (llm) {
                 LLM.OPENAI -> openAiKeyValidator(normalizedApiKey)
                 LLM.GEMINI -> geminiKeyValidator(normalizedApiKey)
+                LLM.ANTHROPIC -> anthropicKeyValidator(normalizedApiKey)
                 LLM.LOCAL_MODEL -> failure(LLMValidatorErrors.InvalidLLM("Local models must be validated using validateLocalModelApiKey"))
             }
 

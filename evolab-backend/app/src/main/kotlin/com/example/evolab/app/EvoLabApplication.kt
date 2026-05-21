@@ -7,6 +7,8 @@ import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
 import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentialsJdbi
 import com.example.evolab.repo.repoProject.RepositoryProject
 import com.example.evolab.repo.repoProject.RepositoryProjectJdbi
+import com.example.evolab.repo.repoStatistics.RepositoryStatistics
+import com.example.evolab.repo.repoStatistics.RepositoryStatisticsJdbi
 import com.example.evolab.repo.repoToken.RepositoryToken
 import com.example.evolab.repo.repoToken.RepositoryTokenJdbi
 import com.example.evolab.repo.repoUser.RepositoryUser
@@ -71,6 +73,9 @@ class EvoLabApplication {
 
     @Bean
     fun repositoryLLMCredentials(jdbi: Jdbi): RepositoryLLMCredentials = RepositoryLLMCredentialsJdbi(jdbi.open())
+
+    @Bean
+    fun repositoryStatistics(jdbi: Jdbi): RepositoryStatistics = RepositoryStatisticsJdbi(jdbi.open())
 
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()

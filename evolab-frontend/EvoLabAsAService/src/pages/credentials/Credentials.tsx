@@ -10,6 +10,7 @@ import { ErrorDescriptions } from "../../utils/errorsDescriptions";
 const PROVIDER_INFO: Record<LLM, { icon: string, bgClass: string, label: string }> = {
     OPENAI: { icon: "O", bgClass: styles.bgOpenAI, label: "OpenAI" },
     GEMINI: { icon: "G", bgClass: styles.bgGemini, label: "Google Gemini" },
+    ANTHROPIC: { icon: "A", bgClass: styles.bgAnthropic, label: "Anthropic Claude" },
     LOCAL_MODEL: { icon: "L", bgClass: styles.bgOllama, label: "Local Model" },
 };
 
@@ -293,6 +294,7 @@ export function Credentials() {
                                 >
                                     <option value="OPENAI">OpenAI</option>
                                     <option value="GEMINI">Google Gemini</option>
+                                    <option value="ANTHROPIC">Anthropic Claude</option>
                                     <option value="LOCAL_MODEL">Local Model (Ollama)</option>
                                 </select>
                             </div>

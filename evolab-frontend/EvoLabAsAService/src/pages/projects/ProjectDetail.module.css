@@ -393,8 +393,8 @@
   border-radius: 14px;
   padding: 1.5rem;
   width: 90%;
-  max-width: 560px;
-  max-height: 80vh;
+  max-width: 980px;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 25px 50px rgba(0,0,0,0.4);
@@ -431,17 +431,48 @@
 }
 
 .codeBlock {
-  background: #1e293b;
-  color: #a5f3fc;
+  background: #09111f;
+  color: #dbeafe;
+  border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
-  padding: 1rem;
+  padding: 0.75rem 0;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.85rem;
   line-height: 1.6;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   margin: 0;
   flex: 1;
 }
+
+.codeLine {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0 1rem 0 0;
+}
+
+.codeLine:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.lineNumber {
+  color: #64748b;
+  text-align: right;
+  user-select: none;
+}
+
+.lineContent {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.codeKeyword { color: #93c5fd; font-weight: 700; }
+.codeString { color: #86efac; }
+.codeComment { color: #94a3b8; font-style: italic; }
+.codeNumber { color: #fbbf24; }
+.codeLiteral { color: #f0abfc; font-weight: 700; }
 
 .container {
   max-width: 1240px;

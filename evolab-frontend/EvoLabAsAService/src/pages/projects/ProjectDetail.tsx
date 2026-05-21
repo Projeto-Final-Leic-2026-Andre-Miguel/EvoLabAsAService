@@ -34,6 +34,40 @@ interface Checkpoint {
 }
 
 const BAR_MAX_HEIGHT = 160;
+const CODE_TOKEN_REGEX = /(#.*$|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\b(?:def|class|return|if|elif|else|for|while|try|except|finally|import|from|as|with|in|is|and|or|not|None|True|False|lambda|yield|break|continue|pass|raise)\b|\b\d+(?:\.\d+)?\b)/gm;
+const PYTHON_KEYWORDS = new Set([
+  'def', 'class', 'return', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally',
+  'import', 'from', 'as', 'with', 'in', 'is', 'and', 'or', 'not', 'lambda', 'yield', 'break',
+  'continue', 'pass', 'raise',
+]);
+
+function tokenClass(token: string): string {
+  if (token.startsWith('#')) return styles.codeComment;
+  if (token.startsWith('"') || token.startsWith("'")) return styles.codeString;
+  if (/^\d/.test(token)) return styles.codeNumber;
+  if (token === 'True' || token === 'False' || token === 'None') return styles.codeLiteral;
+  if (PYTHON_KEYWORDS.has(token)) return styles.codeKeyword;
+  return '';
+}
+
+function renderHighlightedCode(code: string) {
+  return code.split('\n').map((line, lineIndex) => {
+    const parts = line.split(CODE_TOKEN_REGEX).filter(part => part !== '');
+    return (
+      <div className={styles.codeLine} key={`${lineIndex}-${line}`}>
+        <span className={styles.lineNumber}>{lineIndex + 1}</span>
+        <span className={styles.lineContent}>
+          {parts.length === 0 ? ' ' : parts.map((part, partIndex) => {
+            const className = tokenClass(part);
+            return className
+              ? <span className={className} key={`${lineIndex}-${partIndex}`}>{part}</span>
+              : <React.Fragment key={`${lineIndex}-${partIndex}`}>{part}</React.Fragment>;
+          })}
+        </span>
+      </div>
+    );
+  });
+}
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -301,7 +335,7 @@ const ProjectDetail: React.FC = () => {
                 <h3>🏆 Final Best Solution</h3>
                 <button className={styles.closeBtn} onClick={() => setShowFinalSolution(false)}>×</button>
               </div>
-              <pre className={styles.codeBlock}>{job.bestSolution}</pre>
+              <div className={styles.codeBlock}>{renderHighlightedCode(job.bestSolution)}</div>
             </motion.div>
           </motion.div>
         )}
@@ -328,7 +362,7 @@ const ProjectDetail: React.FC = () => {
                 <h3>Checkpoint — Iteration #{selectedCheckpoint.iteration}</h3>
                 <button className={styles.closeBtn} onClick={() => setSelectedCheckpoint(null)}>×</button>
               </div>
-              <pre className={styles.codeBlock}>{selectedCheckpoint.solution}</pre>
+              <div className={styles.codeBlock}>{renderHighlightedCode(selectedCheckpoint.solution)}</div>
             </motion.div>
           </motion.div>
         )}

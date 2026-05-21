@@ -46,6 +46,7 @@ class LLMCredentialsServiceImp(
             val apiKeyEncrypted = encryptionService.encrypt(apiKey)
 
             val created = repoLLmCredentials.createLLMCredential(userId, llm, apiKeyEncrypted)
+            repoStatistics.incrementCredentialsCreated(userId)
             success(created)
         }
     }
@@ -69,6 +70,7 @@ class LLMCredentialsServiceImp(
             }
             val apiKeyEncrypted = if (apiKey.isNotBlank()) encryptionService.encrypt(apiKey) else ""
             val created = repoLLmCredentials.createLocalModelCredential(userId, apiKeyEncrypted, port, modelName ?: "unknown")
+            repoStatistics.incrementCredentialsCreated(userId)
             success(created)
         }
     }

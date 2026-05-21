@@ -61,23 +61,73 @@ const sortedStringify = (params: Record<string, string>): string => {
   return JSON.stringify(sorted);
 };
 
-const OPENAI_MODELS = ['gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-3.5-turbo', 'o1-mini', 'o1-preview'];
+const OPENAI_MODELS = ['gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o1-mini', 'o1-preview'];
 const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const ANTHROPIC_MODELS = ['claude-3-haiku-20240307', 'claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-7-sonnet-20250219'];
 
 const CUSTOM_MODEL_SENTINEL = '__custom__';
 const MODEL_NAME_REGEX = /^[a-zA-Z0-9._\-/]+$/;
+const HIDDEN_ADDITIONAL_PARAMS = new Set(['llm.api_base']);
+
+const PARAM_DESCRIPTIONS: Record<string, string> = {
+  'llm.temperature': 'Controls creativity. Lower values are more deterministic; higher values explore more varied solutions.',
+  'llm.top_p': 'Limits token sampling to the most likely cumulative probability mass.',
+  'llm.max_tokens': 'Maximum number of tokens the model can produce per response.',
+  'llm.timeout': 'Maximum wait time for each model request, in seconds.',
+  'llm.retries': 'Number of retry attempts after transient model request failures.',
+  'prompt.num_top_programs': 'How many of the best current programs are shown to the model.',
+  'prompt.num_diverse_programs': 'How many diverse programs are included to preserve exploration.',
+  'prompt.include_artifacts': 'Includes generated artifacts in prompts when available.',
+  'prompt.system_message': 'System instruction that guides the model during evolution.',
+  'database.population_size': 'Number of candidate programs kept in the active population.',
+  'database.archive_size': 'Number of historical candidates retained for reuse.',
+  'database.num_islands': 'Splits evolution into semi-independent populations.',
+  'database.migration_interval': 'How often candidates move between islands.',
+  'database.migration_rate': 'Fraction of candidates exchanged during migration.',
+  'database.elite_selection_ratio': 'Share of top performers preserved between generations.',
+  'database.exploration_ratio': 'Budget share spent trying novel candidate directions.',
+  'database.exploitation_ratio': 'Budget share spent improving known strong candidates.',
+  'database.feature_bins': 'Number of buckets used to organize behavioral diversity.',
+  'database.feature_dimensions': 'Feature names used to measure diversity, separated by commas.',
+  'evaluator.timeout': 'Maximum runtime for evaluating a candidate solution.',
+  'evaluator.max_retries': 'Retry attempts when candidate evaluation fails transiently.',
+  'evaluator.parallel_evaluations': 'Number of candidate evaluations that may run concurrently.',
+  'evaluator.cascade_evaluation': 'Runs cheaper checks first before more expensive evaluation stages.',
+  'evaluator.cascade_threshold_1': 'Minimum score needed to pass the first cascade stage.',
+  'evaluator.cascade_threshold_2': 'Minimum score needed to pass the second cascade stage.',
+  'evaluator.cascade_threshold_3': 'Minimum score needed to pass the final cascade stage.',
+  'diff_based_evolution': 'Evolves patches/diffs instead of full programs where supported.',
+};
 
 function isPredefinedModel(llm: LLM | undefined, value: string): boolean {
   if (!llm || !value) return false;
   if (llm === 'OPENAI') return OPENAI_MODELS.includes(value);
   if (llm === 'GEMINI') return GEMINI_MODELS.includes(value);
+  if (llm === 'ANTHROPIC') return ANTHROPIC_MODELS.includes(value);
   return true;
 }
 
 function placeholderForProvider(llm: LLM | undefined): string {
   if (llm === 'OPENAI') return 'e.g., gpt-4.1-mini';
   if (llm === 'GEMINI') return 'e.g., gemini-2.5-pro';
+  if (llm === 'ANTHROPIC') return 'e.g., claude-3-5-sonnet-20241022';
   return 'e.g., model-id';
+}
+
+function visibleAdditionalParams(params: Record<string, string>): Record<string, string> {
+  return Object.entries(params).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (!HIDDEN_ADDITIONAL_PARAMS.has(key)) acc[key] = value;
+    return acc;
+  }, {});
+}
+
+function ParamLabel({ paramKey, children }: { paramKey: string; children: React.ReactNode }) {
+  return (
+    <span className={styles.paramLabel}>
+      <span>{children}</span>
+      <span className={styles.helpBadge} title={PARAM_DESCRIPTIONS[paramKey] || 'Advanced OpenEvolve parameter.'}>?</span>
+    </span>
+  );
 }
 
 const Configs: React.FC = () => {
@@ -110,10 +160,14 @@ const Configs: React.FC = () => {
     let active = true;
 
     if (!editingConfig && selectedCredential) {
-      if (selectedCredential.llm === 'OPENAI' || selectedCredential.llm === 'GEMINI') {
-        const list = selectedCredential.llm === 'OPENAI' ? OPENAI_MODELS : GEMINI_MODELS;
+      if (selectedCredential.llm === 'OPENAI' || selectedCredential.llm === 'GEMINI' || selectedCredential.llm === 'ANTHROPIC') {
+        const list =
+          selectedCredential.llm === 'OPENAI'
+            ? OPENAI_MODELS
+            : selectedCredential.llm === 'GEMINI'
+              ? GEMINI_MODELS
+              : ANTHROPIC_MODELS;
         if (!modelName) {
-          setModelName(list[0]);
           setIsCustomModel(false);
           setModelInputHint(null);
           setModelInputError(null);
@@ -209,7 +263,7 @@ const Configs: React.FC = () => {
       setEditingConfig(null);
       setProjectId('');
       setLlmCredentialsId('');
-      setModelName('gpt-4');
+      setModelName('');
       setMaxIter(10);
       setCheckPointInterval(5);
       setAdvancedParams(defaultAdvancedParams());
@@ -243,6 +297,14 @@ const Configs: React.FC = () => {
       setModelInputHint(null);
       setModelInputError(null);
     }
+  };
+
+  const handleCredentialChange = (value: string) => {
+    setLlmCredentialsId(value);
+    setModelName('');
+    setIsCustomModel(false);
+    setModelInputHint(null);
+    setModelInputError(null);
   };
 
   const handleCustomModelChange = (raw: string) => {
@@ -306,7 +368,7 @@ const Configs: React.FC = () => {
           finalModelName === editingConfig.modelName &&
           maxIter === editingConfig.maxIter &&
           checkPointInterval === editingConfig.checkPointInterval &&
-          sortedStringify(params) === sortedStringify(editingConfig.additionalParams);
+          sortedStringify(params) === sortedStringify(visibleAdditionalParams(editingConfig.additionalParams));
 
         if (unchanged) {
           handleCloseModal();
@@ -441,10 +503,10 @@ const Configs: React.FC = () => {
                   <strong>{config.checkPointInterval}</strong>
                 </div>
                 
-                {Object.entries(config.additionalParams).length > 0 && (
+                {Object.entries(visibleAdditionalParams(config.additionalParams)).length > 0 && (
                   <div style={{ marginTop: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Additional Params:</span>
-                    {Object.entries(config.additionalParams).map(([key, value]) => (
+                    {Object.entries(visibleAdditionalParams(config.additionalParams)).map(([key, value]) => (
                       <div key={key} className={styles.detailRow} style={{ marginTop: '0.25rem' }}>
                         <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{key}</span>
                         <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>{value}</span>
@@ -533,12 +595,12 @@ const Configs: React.FC = () => {
                   <span className={styles.detailLabel}>Created At</span>
                   <span className={styles.detailValue}>{new Date(viewingConfig.createdAt).toLocaleString()}</span>
                 </div>
-                {Object.entries(viewingConfig.additionalParams).length > 0 && (
+                {Object.entries(visibleAdditionalParams(viewingConfig.additionalParams)).length > 0 && (
                   <>
                     <div className={styles.detailRow}>
                       <span className={styles.detailLabel} style={{ fontWeight: 700 }}>Additional Parameters</span>
                     </div>
-                    {Object.entries(viewingConfig.additionalParams).map(([key, value]) => (
+                    {Object.entries(visibleAdditionalParams(viewingConfig.additionalParams)).map(([key, value]) => (
                       <div key={key} className={styles.detailRow}>
                         <span className={styles.detailLabel}>{key}</span>
                         <span className={styles.detailValue}>{value}</span>
@@ -576,11 +638,6 @@ const Configs: React.FC = () => {
 
               {!editingConfig && (
                 <>
-                  <div className={styles.warningAlert}>
-                    <span></span>
-                    <span>Credentials and Project Links are irreversible once created. To change them, you must create a new Configuration.</span>
-                  </div>
-
                   <div className={styles.formGroup}>
                     <label>
                       LLM Credential
@@ -588,7 +645,7 @@ const Configs: React.FC = () => {
                     </label>
                     <select 
                       value={llmCredentialsId}
-                      onChange={e => setLlmCredentialsId(e.target.value)}
+                      onChange={e => handleCredentialChange(e.target.value)}
                     >
                       <option value="">-- Select Validated Credential --</option>
                       {credentials.map(c => (
@@ -613,6 +670,8 @@ const Configs: React.FC = () => {
                       ? 'OPENAI'
                       : editingConfig && GEMINI_MODELS.includes(editingConfig.modelName)
                       ? 'GEMINI'
+                      : editingConfig && ANTHROPIC_MODELS.includes(editingConfig.modelName)
+                      ? 'ANTHROPIC'
                       : undefined);
 
                   if (provider === 'LOCAL_MODEL') {
@@ -626,16 +685,22 @@ const Configs: React.FC = () => {
                     );
                   }
 
-                  if (provider === 'OPENAI' || provider === 'GEMINI') {
-                    const list = provider === 'OPENAI' ? OPENAI_MODELS : GEMINI_MODELS;
+                  if (provider === 'OPENAI' || provider === 'GEMINI' || provider === 'ANTHROPIC') {
+                    const list =
+                      provider === 'OPENAI'
+                        ? OPENAI_MODELS
+                        : provider === 'GEMINI'
+                          ? GEMINI_MODELS
+                          : ANTHROPIC_MODELS;
                     const selectValue = isCustomModel ? CUSTOM_MODEL_SENTINEL : modelName;
+                    const providerLabel = provider === 'OPENAI' ? 'OpenAI' : provider === 'GEMINI' ? 'Gemini' : 'Anthropic';
                     return (
                       <>
                         <select
                           value={selectValue}
                           onChange={e => handleModelSelectChange(e.target.value)}
                         >
-                          <option value="" disabled>-- Select {provider === 'OPENAI' ? 'OpenAI' : 'Gemini'} Model --</option>
+                          <option value="" disabled>-- Select {providerLabel} Model (e.g. {placeholderForProvider(provider).replace('e.g., ', '')}) --</option>
                           {list.map(m => <option key={m} value={m}>{m}</option>)}
                           <option disabled>----------</option>
                           <option value={CUSTOM_MODEL_SENTINEL}>Custom model...</option>
@@ -652,7 +717,7 @@ const Configs: React.FC = () => {
                               autoFocus
                             />
                             <span className={styles.helperText}>
-                              Must match the exact model id used by the {provider === 'OPENAI' ? 'OpenAI' : 'Gemini'} API.
+                              Must match the exact model id used by the {providerLabel} API.
                             </span>
                             {modelInputHint && (
                               <span className={styles.helperTextSuccess}>{modelInputHint}</span>
@@ -671,7 +736,7 @@ const Configs: React.FC = () => {
                       type="text"
                       value={modelName}
                       onChange={e => setModelName(e.target.value)}
-                      placeholder="e.g., gpt-4, gemini-pro"
+                      placeholder="e.g., gpt-4.1-mini, gemini-2.5-pro, claude-3-5-sonnet-20241022"
                     />
                   );
                 })()}
@@ -714,23 +779,23 @@ const Configs: React.FC = () => {
                       <h4 className={styles.paramSectionTitle}>LLM</h4>
                       <div className={styles.paramGrid}>
                         <div className={styles.paramField}>
-                          <label>Temperature</label>
+                          <label><ParamLabel paramKey="llm.temperature">Temperature</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.7" value={advancedParams['llm.temperature']} onChange={e => setAdvancedParams(p => ({...p, 'llm.temperature': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Top P</label>
+                          <label><ParamLabel paramKey="llm.top_p">Top P</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.95" value={advancedParams['llm.top_p']} onChange={e => setAdvancedParams(p => ({...p, 'llm.top_p': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Max Tokens</label>
+                          <label><ParamLabel paramKey="llm.max_tokens">Max Tokens</ParamLabel></label>
                           <input type="number" placeholder="4096" value={advancedParams['llm.max_tokens']} onChange={e => setAdvancedParams(p => ({...p, 'llm.max_tokens': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Timeout (s)</label>
+                          <label><ParamLabel paramKey="llm.timeout">Timeout (s)</ParamLabel></label>
                           <input type="number" placeholder="60" value={advancedParams['llm.timeout']} onChange={e => setAdvancedParams(p => ({...p, 'llm.timeout': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Retries</label>
+                          <label><ParamLabel paramKey="llm.retries">Retries</ParamLabel></label>
                           <input type="number" placeholder="3" value={advancedParams['llm.retries']} onChange={e => setAdvancedParams(p => ({...p, 'llm.retries': e.target.value}))} />
                         </div>
                       </div>
@@ -740,20 +805,20 @@ const Configs: React.FC = () => {
                       <h4 className={styles.paramSectionTitle}>Prompt</h4>
                       <div className={styles.paramGrid}>
                         <div className={styles.paramField}>
-                          <label>Num Top Programs</label>
+                          <label><ParamLabel paramKey="prompt.num_top_programs">Num Top Programs</ParamLabel></label>
                           <input type="number" placeholder="3" value={advancedParams['prompt.num_top_programs']} onChange={e => setAdvancedParams(p => ({...p, 'prompt.num_top_programs': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Num Diverse Programs</label>
+                          <label><ParamLabel paramKey="prompt.num_diverse_programs">Num Diverse Programs</ParamLabel></label>
                           <input type="number" placeholder="2" value={advancedParams['prompt.num_diverse_programs']} onChange={e => setAdvancedParams(p => ({...p, 'prompt.num_diverse_programs': e.target.value}))} />
                         </div>
                         <div className={`${styles.paramField} ${styles.paramFieldCheckbox}`}>
-                          <label>Include Artifacts</label>
+                          <label><ParamLabel paramKey="prompt.include_artifacts">Include Artifacts</ParamLabel></label>
                           <input type="checkbox" checked={advancedParams['prompt.include_artifacts'] === 'true'} onChange={e => setAdvancedParams(p => ({...p, 'prompt.include_artifacts': e.target.checked ? 'true' : 'false'}))} />
                         </div>
                       </div>
                       <div className={styles.paramField} style={{ marginTop: '0.5rem' }}>
-                        <label>System Message</label>
+                        <label><ParamLabel paramKey="prompt.system_message">System Message</ParamLabel></label>
                         <textarea placeholder="You are an OpenEvolve assistant..." value={advancedParams['prompt.system_message']} onChange={e => setAdvancedParams(p => ({...p, 'prompt.system_message': e.target.value}))} style={{ minHeight: '60px' }} />
                       </div>
                     </div>
@@ -762,44 +827,44 @@ const Configs: React.FC = () => {
                       <h4 className={styles.paramSectionTitle}>Database</h4>
                       <div className={styles.paramGrid}>
                         <div className={styles.paramField}>
-                          <label>Population Size</label>
+                          <label><ParamLabel paramKey="database.population_size">Population Size</ParamLabel></label>
                           <input type="number" placeholder="100" value={advancedParams['database.population_size']} onChange={e => setAdvancedParams(p => ({...p, 'database.population_size': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Archive Size</label>
+                          <label><ParamLabel paramKey="database.archive_size">Archive Size</ParamLabel></label>
                           <input type="number" placeholder="50" value={advancedParams['database.archive_size']} onChange={e => setAdvancedParams(p => ({...p, 'database.archive_size': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Num Islands</label>
+                          <label><ParamLabel paramKey="database.num_islands">Num Islands</ParamLabel></label>
                           <input type="number" placeholder="4" value={advancedParams['database.num_islands']} onChange={e => setAdvancedParams(p => ({...p, 'database.num_islands': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Migration Interval</label>
+                          <label><ParamLabel paramKey="database.migration_interval">Migration Interval</ParamLabel></label>
                           <input type="number" placeholder="10" value={advancedParams['database.migration_interval']} onChange={e => setAdvancedParams(p => ({...p, 'database.migration_interval': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Migration Rate</label>
+                          <label><ParamLabel paramKey="database.migration_rate">Migration Rate</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.1" value={advancedParams['database.migration_rate']} onChange={e => setAdvancedParams(p => ({...p, 'database.migration_rate': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Elite Selection Ratio</label>
+                          <label><ParamLabel paramKey="database.elite_selection_ratio">Elite Selection Ratio</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.1" value={advancedParams['database.elite_selection_ratio']} onChange={e => setAdvancedParams(p => ({...p, 'database.elite_selection_ratio': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Exploration Ratio</label>
+                          <label><ParamLabel paramKey="database.exploration_ratio">Exploration Ratio</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.2" value={advancedParams['database.exploration_ratio']} onChange={e => setAdvancedParams(p => ({...p, 'database.exploration_ratio': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Exploitation Ratio</label>
+                          <label><ParamLabel paramKey="database.exploitation_ratio">Exploitation Ratio</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.7" value={advancedParams['database.exploitation_ratio']} onChange={e => setAdvancedParams(p => ({...p, 'database.exploitation_ratio': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Feature Bins</label>
+                          <label><ParamLabel paramKey="database.feature_bins">Feature Bins</ParamLabel></label>
                           <input type="number" placeholder="10" value={advancedParams['database.feature_bins']} onChange={e => setAdvancedParams(p => ({...p, 'database.feature_bins': e.target.value}))} />
                         </div>
                       </div>
                       <div className={styles.paramField} style={{ marginTop: '0.5rem' }}>
-                        <label>Feature Dimensions (comma-separated)</label>
+                        <label><ParamLabel paramKey="database.feature_dimensions">Feature Dimensions (comma-separated)</ParamLabel></label>
                         <input type="text" placeholder="complexity,diversity" value={advancedParams['database.feature_dimensions']} onChange={e => setAdvancedParams(p => ({...p, 'database.feature_dimensions': e.target.value}))} />
                       </div>
                     </div>
@@ -808,31 +873,31 @@ const Configs: React.FC = () => {
                       <h4 className={styles.paramSectionTitle}>Evaluator</h4>
                       <div className={styles.paramGrid}>
                         <div className={styles.paramField}>
-                          <label>Timeout (s)</label>
+                          <label><ParamLabel paramKey="evaluator.timeout">Timeout (s)</ParamLabel></label>
                           <input type="number" placeholder="300" value={advancedParams['evaluator.timeout']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.timeout': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Max Retries</label>
+                          <label><ParamLabel paramKey="evaluator.max_retries">Max Retries</ParamLabel></label>
                           <input type="number" placeholder="3" value={advancedParams['evaluator.max_retries']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.max_retries': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Parallel Evaluations</label>
+                          <label><ParamLabel paramKey="evaluator.parallel_evaluations">Parallel Evaluations</ParamLabel></label>
                           <input type="number" placeholder="4" value={advancedParams['evaluator.parallel_evaluations']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.parallel_evaluations': e.target.value}))} />
                         </div>
                         <div className={`${styles.paramField} ${styles.paramFieldCheckbox}`}>
-                          <label>Cascade Evaluation</label>
+                          <label><ParamLabel paramKey="evaluator.cascade_evaluation">Cascade Evaluation</ParamLabel></label>
                           <input type="checkbox" checked={advancedParams['evaluator.cascade_evaluation'] === 'true'} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_evaluation': e.target.checked ? 'true' : 'false'}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Cascade Threshold 1</label>
+                          <label><ParamLabel paramKey="evaluator.cascade_threshold_1">Cascade Threshold 1</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.5" value={advancedParams['evaluator.cascade_threshold_1']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_threshold_1': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Cascade Threshold 2</label>
+                          <label><ParamLabel paramKey="evaluator.cascade_threshold_2">Cascade Threshold 2</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.75" value={advancedParams['evaluator.cascade_threshold_2']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_threshold_2': e.target.value}))} />
                         </div>
                         <div className={styles.paramField}>
-                          <label>Cascade Threshold 3</label>
+                          <label><ParamLabel paramKey="evaluator.cascade_threshold_3">Cascade Threshold 3</ParamLabel></label>
                           <input type="number" step="0.01" placeholder="0.9" value={advancedParams['evaluator.cascade_threshold_3']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_threshold_3': e.target.value}))} />
                         </div>
                       </div>
@@ -842,7 +907,7 @@ const Configs: React.FC = () => {
                       <h4 className={styles.paramSectionTitle}>General</h4>
                       <div className={styles.paramGrid}>
                         <div className={`${styles.paramField} ${styles.paramFieldCheckbox}`}>
-                          <label>Diff-Based Evolution</label>
+                          <label><ParamLabel paramKey="diff_based_evolution">Diff-Based Evolution</ParamLabel></label>
                           <input type="checkbox" checked={advancedParams['diff_based_evolution'] === 'true'} onChange={e => setAdvancedParams(p => ({...p, 'diff_based_evolution': e.target.checked ? 'true' : 'false'}))} />
                         </div>
                       </div>

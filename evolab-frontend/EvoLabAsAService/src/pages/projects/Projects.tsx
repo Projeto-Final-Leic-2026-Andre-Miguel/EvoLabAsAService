@@ -353,11 +353,6 @@ const Projects: React.FC = () => {
                 <button className={styles.closeBtn} onClick={handleCloseModal}>×</button>
               </div>
 
-              <div className={styles.warningAlert}>
-                <span>!</span>
-                <span><strong>Notice:</strong> Before starting the experimentation, make sure your credential is valid, otherwise it will fail.</span>
-              </div>
-
               <div className={styles.formGroup}>
                 <label>Name</label>
                 <input 

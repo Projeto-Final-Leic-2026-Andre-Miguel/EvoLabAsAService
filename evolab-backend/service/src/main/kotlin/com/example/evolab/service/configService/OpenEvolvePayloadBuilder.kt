@@ -6,6 +6,7 @@ import com.example.evolab.domain.config.Config
 object OpenEvolvePayloadBuilder {
     private const val OPENAI_API_BASE = "https://api.openai.com/v1"
     private const val GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    private const val ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 
     fun build(
         config: Config,
@@ -109,6 +110,7 @@ object OpenEvolvePayloadBuilder {
         return when (llm) {
             LLM.OPENAI -> OPENAI_API_BASE
             LLM.GEMINI -> GEMINI_API_BASE
+            LLM.ANTHROPIC -> ANTHROPIC_API_BASE
             LLM.LOCAL_MODEL -> throw IllegalStateException("llm.api_base is required when provider is LOCAL_MODEL")
         }
     }
@@ -119,18 +121,23 @@ object OpenEvolvePayloadBuilder {
     ) {
         val normalizedModel = modelName.trim().lowercase()
         val modelLooksGemini = normalizedModel.startsWith("gemini")
+        val modelLooksAnthropic = normalizedModel.startsWith("claude")
         val modelLooksOpenAi =
             normalizedModel.startsWith("gpt") ||
                 normalizedModel.startsWith("o1") ||
                 normalizedModel.startsWith("o3") ||
                 normalizedModel.startsWith("o4")
 
-        if (llm == LLM.GEMINI && modelLooksOpenAi) {
-            throw IllegalStateException("Config model '$modelName' is OpenAI-like but credential provider is GEMINI")
+        if (llm == LLM.GEMINI && (modelLooksOpenAi || modelLooksAnthropic)) {
+            throw IllegalStateException("Config model '$modelName' does not match credential provider GEMINI")
         }
 
-        if (llm == LLM.OPENAI && modelLooksGemini) {
-            throw IllegalStateException("Config model '$modelName' is Gemini-like but credential provider is OPENAI")
+        if (llm == LLM.OPENAI && (modelLooksGemini || modelLooksAnthropic)) {
+            throw IllegalStateException("Config model '$modelName' does not match credential provider OPENAI")
+        }
+
+        if (llm == LLM.ANTHROPIC && (modelLooksOpenAi || modelLooksGemini)) {
+            throw IllegalStateException("Config model '$modelName' does not match credential provider ANTHROPIC")
         }
     }
 

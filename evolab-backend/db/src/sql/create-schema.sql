@@ -7,7 +7,7 @@ CREATE TYPE job_status AS ENUM ('CREATED', 'QUEUED', 'RUNNING', 'COMPLETED', 'FA
 
 CREATE TYPE worker_status AS ENUM ('IDLE', 'BUSY', 'OFFLINE');
 
-CREATE TYPE llm_provider AS ENUM ('OPENAI', 'GEMINI', 'LOCAL_MODEL');  -- Adicionar outros LLMS se necessário
+CREATE TYPE llm_provider AS ENUM ('OPENAI', 'GEMINI', 'ANTHROPIC', 'LOCAL_MODEL');  -- Adicionar outros LLMS se necessário
 
 
 CREATE TABLE users (
@@ -101,6 +101,20 @@ CREATE TABLE checkpoints (
                              created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE user_statistics (
+                                 user_id                    INTEGER     PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                                 projects_created           INTEGER     NOT NULL DEFAULT 0,
+                                 projects_executed          INTEGER     NOT NULL DEFAULT 0,
+                                 projects_succeeded         INTEGER     NOT NULL DEFAULT 0,
+                                 projects_failed            INTEGER     NOT NULL DEFAULT 0,
+                                 credentials_created        INTEGER     NOT NULL DEFAULT 0,
+                                 configs_created            INTEGER     NOT NULL DEFAULT 0,
+                                 last_project_id            INTEGER     REFERENCES projects(id) ON DELETE SET NULL,
+                                 last_project_name          VARCHAR(255),
+                                 last_project_created_at    TIMESTAMPTZ,
+                                 updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 
 CREATE INDEX idx_tokens_user_id ON tokens(user_id);
 CREATE INDEX idx_llm_credentials_user_id  ON llm_credentials(user_id);
@@ -109,3 +123,4 @@ CREATE INDEX idx_jobs_project_id          ON jobs(project_id);
 --CREATE INDEX idx_jobs_worker_id           ON jobs(worker_id);
 CREATE INDEX idx_metrics_job_id           ON metrics(job_id);
 CREATE INDEX idx_checkpoints_job_id       ON checkpoints(job_id);
+CREATE INDEX idx_user_statistics_user_id  ON user_statistics(user_id);

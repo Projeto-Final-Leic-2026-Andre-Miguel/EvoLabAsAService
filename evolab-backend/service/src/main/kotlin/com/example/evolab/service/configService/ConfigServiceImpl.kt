@@ -6,6 +6,7 @@ import com.example.evolab.domain.evolution.EvolutionStatus
 import com.example.evolab.repo.repoConfig.RepositoryConfig
 import com.example.evolab.repo.repoLLMCredentials.RepositoryLLMCredentials
 import com.example.evolab.repo.repoProject.RepositoryProject
+import com.example.evolab.repo.repoStatistics.RepositoryStatistics
 import com.example.evolab.service.auxiliary.Either
 import com.example.evolab.service.auxiliary.failure
 import com.example.evolab.service.auxiliary.success
@@ -19,6 +20,7 @@ class ConfigServiceImpl(
     private val repoConfig: RepositoryConfig,
     private val repoProject: RepositoryProject,
     private val repoLLMCredentials: RepositoryLLMCredentials,
+    private val repoStatistics: RepositoryStatistics,
 ) : ConfigService {
     companion object {
         private val logger = LoggerFactory.getLogger(ConfigServiceImpl::class.java)
@@ -83,6 +85,8 @@ class ConfigServiceImpl(
             if (project != null) {
                 repoProject.save(project.copy(configId = created.id))
             }
+
+            repoStatistics.incrementConfigsCreated(userId)
 
             return success(created)
         }

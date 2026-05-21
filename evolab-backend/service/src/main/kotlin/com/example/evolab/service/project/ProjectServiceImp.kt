@@ -41,16 +41,22 @@ class ProjectServiceImp(
                 )
             }
 
-            success(
-                repoProjects.createProject(
-                    userId = userId,
-                    name = name,
-                    description = description,
-                    configId = configId,
-                    initialProgram = initialProgram,
-                    evaluatorCode = evaluatorCode,
-                ),
+            val created = repoProjects.createProject(
+                userId = userId,
+                name = name,
+                description = description,
+                configId = configId,
+                initialProgram = initialProgram,
+                evaluatorCode = evaluatorCode,
             )
+            repoStatistics.incrementProjectsCreated(
+                userId = userId,
+                projectId = created.id,
+                projectName = created.name,
+                projectCreatedAt = created.createdAt,
+            )
+
+            success(created)
         }
 
     override fun updateProjectDetails(
@@ -167,6 +173,7 @@ class ProjectServiceImp(
             when (val enqueueResult = jobQueue.enqueue(queuedProject)) {
                 is Success -> {
                     repoProjects.save(queuedProject)
+                    repoStatistics.incrementProjectsExecuted(userId)
                     success(queuedProject)
                 }
 

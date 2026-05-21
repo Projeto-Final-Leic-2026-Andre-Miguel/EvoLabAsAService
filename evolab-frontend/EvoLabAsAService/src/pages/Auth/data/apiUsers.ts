@@ -59,12 +59,9 @@ export const apiUsers = {
         });
     },
 
-    deleteUser(id: number, token: string): Promise<RequestResult<void>> {
+    deleteUser(id: number): Promise<RequestResult<void>> {
         return request<void>(`${API_BASE_URL}/users/${id}`, {
-            method: "DELETE",
-            headers: {
-                "Authorization": `Bearer ${token}`
-            }
+            method: "DELETE"
         });
     },
     
