@@ -5,8 +5,8 @@ import {
 } from "react-router-dom"
 import { Layout } from '../components/layout/Layout'
 import { Home } from '../pages/home/Home'
-import {Register} from "../pages/Auth/Register.tsx";
-import {Login} from "../pages/Auth/Login.tsx";
+import {Register} from "../pages/auth/Register.tsx";
+import {Login} from "../pages/auth/Login.tsx";
 import {AuthProvider} from "../contexts/AuthContext";
 import {Profile} from "../pages/profile/Profile";
 import { ProtectedRoute } from './ProtectRoute.tsx'
