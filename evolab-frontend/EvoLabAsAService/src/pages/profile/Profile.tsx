@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Profile.module.css";
 import { motion } from "framer-motion";
 import { request } from "../../api/api";
-import { apiUsers } from "../auth/data/apiUsers";
+import { apiUsers } from "../Auth/data/apiUsers";
 import { clearAuthCookies } from "../../utils/authCookies";
 
 interface UserStatistics {
