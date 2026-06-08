@@ -49,9 +49,27 @@ class ConfigController(
                 )
         ) {
             is Success -> {
+                val config = result.value
+                val projectId =
+                    when (val projectsResult = projectService.getAllProjectsFromUser(authenticatedUser.user.id)) {
+                        is Success -> projectsResult.value.firstOrNull { it.configId == config.id }?.id
+                        is Failure -> null
+                    }
+                val output =
+                    UserConfigOutput(
+                        configId = config.id,
+                        projectId = projectId,
+                        userId = config.userId,
+                        llmCredentialsId = config.llmCredentialsId,
+                        modelName = config.modelName,
+                        maxIter = config.maxIter,
+                        checkPointInterval = config.checkPointInterval,
+                        additionalParams = config.additionalParams,
+                        createdAt = config.createdAt,
+                    )
                 ResponseEntity.status(HttpStatus.CREATED)
-                    .header("Location", "/api/configs/${result.value.id}")
-                    .body(result.value)
+                    .header("Location", "/api/configs/${config.id}")
+                    .body(output)
             }
 
             is Failure -> mapServiceErrors(result.value)
