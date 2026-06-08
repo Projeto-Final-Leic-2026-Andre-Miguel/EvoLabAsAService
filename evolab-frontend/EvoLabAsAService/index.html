@@ -9,6 +9,9 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/routes/index.tsx"></script>
-    <script src="http://evolab.ddns.net:8000/static/embed.js"></script>
+    <script>
+      window.EVOLAB_CHATBOT_API_URL = "/chatbot";
+    </script>
+    <script src="/chatbot/static/embed.js"></script>
   </body>
 </html>
