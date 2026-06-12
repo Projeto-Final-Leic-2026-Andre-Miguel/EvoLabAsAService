@@ -5,6 +5,11 @@ import { request } from '../../api/api';
 import styles from './ProjectDetail.module.css';
 import { getErrorMessage } from '../../utils/errorsDescriptions';
 import { usePolling } from '../../hooks/usePolling';
+import { apiProjects } from './apiProjects';
+import { Alert } from '../../components/ui/Alert';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { Modal } from '../../components/ui/Modal';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 interface Job {
   id: number;
@@ -76,13 +81,20 @@ const ProjectDetail: React.FC = () => {
   const projectId = Number(id);
 
   const fetchDetail = useCallback(async () => {
-    const jobsRes = await request<Job[]>(`/api/projects/${projectId}/jobs`);
+    const [projectRes, jobsRes] = await Promise.all([
+      apiProjects.getById(projectId),
+      request<Job[]>(`/api/projects/${projectId}/jobs`),
+    ]);
+    if (projectRes.type === 'Failure') {
+      throw new Error(getErrorMessage(projectRes.error));
+    }
     if (jobsRes.type === 'Failure') {
-      throw new Error(getErrorMessage(jobsRes.error?.message || 'unknown-error'));
+      throw new Error(getErrorMessage(jobsRes.error));
     }
     const jobs = jobsRes.data ?? [];
     if (jobs.length === 0) {
       return {
+        project: projectRes.data,
         job: null,
         metrics: [],
         checkpoints: [],
@@ -97,6 +109,7 @@ const ProjectDetail: React.FC = () => {
       request<Checkpoint[]>(`/api/jobs/${latestJob.id}/checkpoints`),
     ]);
     return {
+      project: projectRes.data,
       job: latestJob,
       metrics: metricsRes.type === 'Success' && metricsRes.data
         ? metricsRes.data.sort((a, b) => a.iteration - b.iteration)
@@ -115,6 +128,7 @@ const ProjectDetail: React.FC = () => {
   );
 
   const job = detail?.job ?? null;
+  const project = detail?.project ?? null;
   const metrics = detail?.metrics ?? [];
   const checkpoints = detail?.checkpoints ?? [];
   const hasRunHistory = detail?.hasRunHistory ?? true;
@@ -122,15 +136,12 @@ const ProjectDetail: React.FC = () => {
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | null>(null);
   const [showFinalSolution, setShowFinalSolution] = useState(false);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+  usePageTitle(project?.name ?? 'Project');
 
   const maxScore = metrics.length > 0 ? Math.max(...metrics.map(m => m.fitnessScore)) : 1;
 
   if (isLoading) {
-    return (
-      <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <span>Loading...</span>
-      </div>
-    );
+    return <LoadingSpinner label="Loading project details" />;
   }
 
   return (
@@ -145,7 +156,7 @@ const ProjectDetail: React.FC = () => {
           ← Back
         </button>
         <div className={styles.pageTitle}>
-          <h1>Project {id}</h1>
+          <h1>{project?.name ?? `Project ${id}`}</h1>
           {job && (
             <span className={`${styles.statusBadge} ${styles[`status${job.status}`] ?? ''}`}>
               {job.status === 'COMPLETED'}
@@ -158,21 +169,19 @@ const ProjectDetail: React.FC = () => {
       </div>
 
       {error && (
-        <div style={{ color: '#ef4444', background: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-          {error}
-        </div>
+        <Alert variant="error">{error}</Alert>
       )}
 
       {!hasRunHistory && (
-        <div style={{ color: '#334155', background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+        <Alert variant="info">
           This project has no run history yet. Start the project from the Projects page to begin.
-        </div>
+        </Alert>
       )}
 
       {job?.failureReason && (
-        <div style={{ color: '#991b1b', background: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+        <Alert variant="error" title="Failure reason">
           <strong>Failure reason:</strong> {job.failureReason}
-        </div>
+        </Alert>
       )}
 
       {job?.bestSolution && (
@@ -317,54 +326,26 @@ const ProjectDetail: React.FC = () => {
       {/* ── Final solution modal ── */}
       <AnimatePresence>
         {showFinalSolution && job?.bestSolution && (
-          <motion.div
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowFinalSolution(false)}
-          >
-            <motion.div
-              className={styles.modal}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 30 }}
-              onClick={e => e.stopPropagation()}
-            >
+          <Modal onClose={() => setShowFinalSolution(false)} ariaLabelledBy="final-solution-title" className={styles.modal}>
               <div className={styles.modalHeader}>
-                <h3>🏆 Final Best Solution</h3>
-                <button className={styles.closeBtn} onClick={() => setShowFinalSolution(false)}>×</button>
+                <h3 id="final-solution-title">Final Best Solution</h3>
+                <button className={styles.closeBtn} onClick={() => setShowFinalSolution(false)} aria-label="Close modal">×</button>
               </div>
               <div className={styles.codeBlock}>{renderHighlightedCode(job.bestSolution)}</div>
-            </motion.div>
-          </motion.div>
+          </Modal>
         )}
       </AnimatePresence>
 
       {/* ── Checkpoint solution modal ── */}
       <AnimatePresence>
         {selectedCheckpoint && (
-          <motion.div
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedCheckpoint(null)}
-          >
-            <motion.div
-              className={styles.modal}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 30 }}
-              onClick={e => e.stopPropagation()}
-            >
+          <Modal onClose={() => setSelectedCheckpoint(null)} ariaLabelledBy="checkpoint-solution-title" className={styles.modal}>
               <div className={styles.modalHeader}>
-                <h3>Checkpoint — Iteration #{selectedCheckpoint.iteration}</h3>
-                <button className={styles.closeBtn} onClick={() => setSelectedCheckpoint(null)}>×</button>
+                <h3 id="checkpoint-solution-title">Checkpoint — Iteration #{selectedCheckpoint.iteration}</h3>
+                <button className={styles.closeBtn} onClick={() => setSelectedCheckpoint(null)} aria-label="Close modal">×</button>
               </div>
               <div className={styles.codeBlock}>{renderHighlightedCode(selectedCheckpoint.solution)}</div>
-            </motion.div>
-          </motion.div>
+          </Modal>
         )}
       </AnimatePresence>
     </motion.div>

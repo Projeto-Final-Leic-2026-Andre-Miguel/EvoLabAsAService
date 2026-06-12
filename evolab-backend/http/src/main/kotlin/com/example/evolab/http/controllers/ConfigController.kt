@@ -224,13 +224,17 @@ class ConfigController(
             is ConfigError.ProjectNotFound -> Problem.ProjectNotFound.response(HttpStatus.NOT_FOUND)
             is ConfigError.AccessDenied -> Problem.ConfigAccessDenied.response(HttpStatus.FORBIDDEN)
             is ConfigError.ProjectNotEditable -> Problem.InvalidProjectStatus.response(HttpStatus.CONFLICT)
-            is ConfigError.InvalidModelName,
-            is ConfigError.InvalidMaxIterations,
-            is ConfigError.InvalidCheckpointInterval,
-            -> Problem.InvalidProjectInput.response(HttpStatus.BAD_REQUEST)
+            is ConfigError.InvalidModelName ->
+                Problem.InvalidConfigInput.withDetail("Model name cannot be blank").response(HttpStatus.BAD_REQUEST)
+
+            is ConfigError.InvalidMaxIterations ->
+                Problem.InvalidConfigInput.withDetail("Max iterations must be greater than 0").response(HttpStatus.BAD_REQUEST)
+
+            is ConfigError.InvalidCheckpointInterval ->
+                Problem.InvalidConfigInput.withDetail("Checkpoint interval must be greater than 0").response(HttpStatus.BAD_REQUEST)
 
             is ConfigError.InvalidOpenEvolveConfig ->
-                Problem.InvalidProjectInput.withDetail(error.reason).response(HttpStatus.BAD_REQUEST)
+                Problem.InvalidConfigInput.withDetail(error.reason).response(HttpStatus.BAD_REQUEST)
 
             is ConfigError.ErrorDeletingConfig,
             is ConfigError.ErrorCreatingTemporaryConfigFile,

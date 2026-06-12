@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import styles from './Configs.module.css';
 import { apiConfigs, type Config, type CreateConfigInput, type UpdateConfigInput } from './apiConfigs';
 import { apiCredentials } from '../credentials/apiCredentials';
 import type { LLM, LLMCredentials } from '../../types/credentials';
 import { useValidCredentials } from '../../contexts/ValidCredentialsContext';
 import { getErrorMessage } from '../../utils/errorsDescriptions';
+import { apiProjects, type Project } from '../projects/apiProjects';
+import { Alert } from '../../components/ui/Alert';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { Modal } from '../../components/ui/Modal';
+import { getCredentialLabel } from '../../utils/credentialLabels';
+import { useToast } from '../../hooks/useToast';
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { validateConfigValues } from '../../utils/configValidation';
 
 const defaultAdvancedParams = (): Record<string, string> => ({
   'llm.temperature': '',
@@ -130,9 +140,57 @@ function ParamLabel({ paramKey, children }: { paramKey: string; children: React.
   );
 }
 
+type NumericParamFieldProps = {
+  paramKey: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  error?: string;
+  min?: number;
+  max?: number;
+  step?: string;
+  onChange: (value: string) => void;
+};
+
+function NumericParamField({
+  paramKey,
+  label,
+  placeholder,
+  value,
+  error,
+  min,
+  max,
+  step,
+  onChange,
+}: NumericParamFieldProps) {
+  const errorId = `${paramKey}-error`;
+
+  return (
+    <div className={styles.paramField}>
+      <label><ParamLabel paramKey={paramKey}>{label}</ParamLabel></label>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        placeholder={placeholder}
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        className={error ? styles.errorInput : undefined}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
+      />
+      {error && <span className={styles.inputErrorMsg} id={errorId}>{error}</span>}
+    </div>
+  );
+}
+
 const Configs: React.FC = () => {
+  usePageTitle('Configuration');
+  const { showSuccess } = useToast();
   const [configs, setConfigs] = useState<Config[]>([]);
   const [credentials, setCredentials] = useState<LLMCredentials[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -143,6 +201,8 @@ const Configs: React.FC = () => {
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
   const [viewingConfig, setViewingConfig] = useState<Config | null>(null);
   const [saving, setSaving] = useState(false);
+  const [configToDelete, setConfigToDelete] = useState<Config | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Form State
   const [projectId, setProjectId] = useState<string>('');
@@ -204,6 +264,11 @@ const Configs: React.FC = () => {
   const [checkPointInterval, setCheckPointInterval] = useState<number>(5);
   const [showAdvancedParams, setShowAdvancedParams] = useState<boolean>(false);
   const [advancedParams, setAdvancedParams] = useState<Record<string, string>>(defaultAdvancedParams());
+  const configValidationErrors = validateConfigValues(maxIter, checkPointInterval, advancedParams);
+  const hasConfigValidationErrors = Object.keys(configValidationErrors).length > 0;
+  const updateAdvancedParam = (key: string, value: string) => {
+    setAdvancedParams(previous => ({ ...previous, [key]: value }));
+  };
 
   useEffect(() => {
     fetchData();
@@ -213,15 +278,16 @@ const Configs: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [configsRes, credsRes] = await Promise.all([
+      const [configsRes, credsRes, projectsRes] = await Promise.all([
         apiConfigs.getAllMyConfigs(),
-        apiCredentials.getAll()
+        apiCredentials.getAll(),
+        apiProjects.getAll(),
       ]);
 
       if (configsRes.type === "Success" && configsRes.data) {
         setConfigs(configsRes.data);
       } else if (configsRes.type === "Failure") {
-        setErrorMessage(configsRes.error?.message || 'Failed to fetch configs.');
+        setErrorMessage(getErrorMessage(configsRes.error));
       }
 
       if (credsRes.type === "Success" && credsRes.data) {
@@ -232,6 +298,12 @@ const Configs: React.FC = () => {
              validateCredential(cred.id).catch(e => console.error('[Configs] validateCredential failed for id', cred.id, e));
           }
         }
+      }
+
+      if (projectsRes.type === "Success" && projectsRes.data) {
+        setProjects(projectsRes.data);
+      } else if (projectsRes.type === "Failure") {
+        setErrorMessage(getErrorMessage(projectsRes.error));
       }
     } catch (error) {
       console.error(error);
@@ -328,8 +400,17 @@ const Configs: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const params = buildAdditionalParams(advancedParams);
+
+    if (hasConfigValidationErrors) {
+      setModalError('Fix the highlighted configuration values before saving.');
+      if (Object.keys(configValidationErrors).some(key => key.includes('.'))) {
+        setShowAdvancedParams(true);
+      }
+      return;
+    }
 
     if (!llmCredentialsId && !editingConfig) {
       setModalError('You must select valid LLM Credentials to create a configuration.');
@@ -380,8 +461,9 @@ const Configs: React.FC = () => {
         if (res.type === "Success" && res.data) {
           setConfigs(prev => prev.map(c => c.configId === editingConfig.configId ? res.data! : c));
           handleCloseModal();
+          showSuccess('Configuration updated successfully.');
         } else if (res.type === "Failure") {
-          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
+          setModalError(getErrorMessage(res.error));
         }
       } else {
         const payload: CreateConfigInput = {
@@ -397,39 +479,43 @@ const Configs: React.FC = () => {
         if (res.type === "Success" && res.data) {
           setConfigs(prev => [...prev, res.data!]);
           handleCloseModal();
+          showSuccess('Configuration created successfully.');
         } else if (res.type === "Failure") {
-          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
+          setModalError(getErrorMessage(res.error));
         }
       }
     } catch (error) {
       console.error(error);
-      setModalError(getErrorMessage('unknown-error'));
+      setModalError(getErrorMessage());
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
+    setDeletingId(id);
     setErrorMessage(null);
     try {
       const res = await apiConfigs.delete(id);
       if (res.type === 'Success') {
         setConfigs(prev => prev.filter(c => c.configId !== id));
+        setConfigToDelete(null);
+        showSuccess('Configuration deleted successfully.');
       } else {
-        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
+        setConfigToDelete(null);
+        setErrorMessage(getErrorMessage(res.error));
       }
     } catch (error) {
+      setConfigToDelete(null);
       console.error(error);
       setErrorMessage('Failed to delete the configuration.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
   if (isLoading) {
-    return (
-      <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <span>Loading Configurations...</span>
-      </div>
-    );
+    return <LoadingSpinner label="Loading configurations" />;
   }
 
   const validCredentialsCount = credentials.filter(c => validCredentialsMap[c.id]).length;
@@ -457,16 +543,13 @@ const Configs: React.FC = () => {
       </div>
 
       {errorMessage && (
-        <div className={styles.errorBanner}>
-          <strong>Error:</strong> {errorMessage}
-        </div>
+        <Alert variant="error">{errorMessage}</Alert>
       )}
 
       {credentials.length > 0 && validCredentialsCount === 0 && (
-        <div className={styles.warningAlert}>
-          <span>!</span>
-          <span><strong>Notice:</strong> You don't have any validated LLM Credentials. You won't be able to run projects successfully.</span>
-        </div>
+        <Alert variant="warning" title="Notice">
+          You don't have any validated LLM Credentials. You won't be able to run projects successfully.
+        </Alert>
       )}
 
       <div className={styles.grid}>
@@ -481,18 +564,26 @@ const Configs: React.FC = () => {
               onClick={() => setViewingConfig(config)}
             >
               <div className={styles.cardHeader}>
-                <h3 className={styles.configIdText}>Config {config.configId}</h3>
-                <span className={styles.modelBadge}>{config.modelName}</span>
+                <h3 className={styles.configIdText}>{config.modelName}</h3>
+                <span className={styles.modelBadge}>Config #{config.configId}</span>
               </div>
 
               <div className={styles.cardDetails}>
                 <div className={styles.detailRow}>
-                  <span>Linked Project ID:</span>
-                  <strong>{config.projectId ?? 'Unassigned'}</strong>
+                  <span>Linked Project:</span>
+                  <strong>
+                    {config.projectId
+                      ? projects.find(project => project.id === config.projectId)?.name ?? `Project #${config.projectId}`
+                      : 'Unassigned'}
+                  </strong>
                 </div>
                 <div className={styles.detailRow}>
-                  <span>Credentials ID:</span>
-                  <strong>{config.llmCredentialsId}</strong>
+                  <span>Credential:</span>
+                  <strong>
+                    {credentials.find(credential => credential.id === config.llmCredentialsId)
+                      ? getCredentialLabel(credentials.find(credential => credential.id === config.llmCredentialsId)!)
+                      : `Credential #${config.llmCredentialsId}`}
+                  </strong>
                 </div>
                 <div className={styles.detailRow}>
                   <span>Max Iterations:</span>
@@ -530,7 +621,7 @@ const Configs: React.FC = () => {
                   className={`${styles.actionBtn} ${styles.deleteBtn}`} 
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(config.configId);
+                    setConfigToDelete(config);
                   }}
                 >
                   <span>Delete</span>
@@ -541,29 +632,24 @@ const Configs: React.FC = () => {
         </AnimatePresence>
 
         {configs.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-            No configurations found. Create one to get started.
+          <div className={styles.emptyState}>
+            {credentials.length === 0 ? (
+              <>
+                <strong>Add an LLM credential before creating a configuration.</strong>
+                <Link to="/credentials">Go to Credentials</Link>
+              </>
+            ) : (
+              <span>No configurations found. Create one to get started.</span>
+            )}
           </div>
         )}
       </div>
 
-      <AnimatePresence>
-        {viewingConfig && (
-          <motion.div
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className={styles.modal}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 30 }}
-            >
+      {viewingConfig && (
+        <Modal onClose={() => setViewingConfig(null)} ariaLabelledBy="config-details-title" className={styles.modal}>
               <div className={styles.modalHeader}>
-                <h2 className={styles.modalTitle}>Configuration Details</h2>
-                <button className={styles.closeBtn} onClick={() => setViewingConfig(null)}>×</button>
+                <h2 className={styles.modalTitle} id="config-details-title">Configuration Details</h2>
+                <button type="button" className={styles.closeBtn} onClick={() => setViewingConfig(null)} aria-label="Close modal">×</button>
               </div>
 
               <div className={styles.detailGrid}>
@@ -576,12 +662,20 @@ const Configs: React.FC = () => {
                   <span className={styles.detailValue}>{viewingConfig.modelName}</span>
                 </div>
                 <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>LLM Credentials ID</span>
-                  <span className={styles.detailValue}>{viewingConfig.llmCredentialsId}</span>
+                  <span className={styles.detailLabel}>LLM Credential</span>
+                  <span className={styles.detailValue}>
+                    {credentials.find(credential => credential.id === viewingConfig.llmCredentialsId)
+                      ? getCredentialLabel(credentials.find(credential => credential.id === viewingConfig.llmCredentialsId)!)
+                      : `Credential #${viewingConfig.llmCredentialsId}`}
+                  </span>
                 </div>
                 <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Linked Project ID</span>
-                  <span className={styles.detailValue}>{viewingConfig.projectId ?? 'Unassigned'}</span>
+                  <span className={styles.detailLabel}>Linked Project</span>
+                  <span className={styles.detailValue}>
+                    {viewingConfig.projectId
+                      ? projects.find(project => project.id === viewingConfig.projectId)?.name ?? `Project #${viewingConfig.projectId}`
+                      : 'Unassigned'}
+                  </span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Max Iterations</span>
@@ -609,31 +703,18 @@ const Configs: React.FC = () => {
                   </>
                 )}
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </Modal>
+      )}
 
       {/* Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div 
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className={styles.modal}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 30 }}
-            >
+      {isModalOpen && (
+        <Modal onClose={handleCloseModal} ariaLabelledBy="config-modal-title" className={styles.modal}>
+          <form onSubmit={handleSave}>
               <div className={styles.modalHeader}>
-                <h2 className={styles.modalTitle}>
+                <h2 className={styles.modalTitle} id="config-modal-title">
                   {editingConfig ? 'Edit Configuration' : 'Create Configuration'}
                 </h2>
-                <button className={styles.closeBtn} onClick={handleCloseModal}>×</button>
+                <button type="button" className={styles.closeBtn} onClick={handleCloseModal} aria-label="Close modal">×</button>
               </div>
 
               {!editingConfig && (
@@ -647,10 +728,10 @@ const Configs: React.FC = () => {
                       value={llmCredentialsId}
                       onChange={e => handleCredentialChange(e.target.value)}
                     >
-                      <option value="">-- Select Validated Credential --</option>
+                      <option value="">Select a credential</option>
                       {credentials.map(c => (
                         <option key={c.id} value={c.id} disabled={!validCredentialsMap[c.id]}>
-                          {c.id} - {c.llm} {validCredentialsMap[c.id] ? '(Valid)' : '(Invalid)'}
+                          {getCredentialLabel(c)} {validCredentialsMap[c.id] ? '(Valid)' : '(Invalid)'}
                         </option>
                       ))}
                     </select>
@@ -700,9 +781,8 @@ const Configs: React.FC = () => {
                           value={selectValue}
                           onChange={e => handleModelSelectChange(e.target.value)}
                         >
-                          <option value="" disabled>-- Select {providerLabel} Model (e.g. {placeholderForProvider(provider).replace('e.g., ', '')}) --</option>
+                          <option value="" disabled>Select a {providerLabel} model</option>
                           {list.map(m => <option key={m} value={m}>{m}</option>)}
-                          <option disabled>----------</option>
                           <option value={CUSTOM_MODEL_SENTINEL}>Custom model...</option>
                         </select>
                         {isCustomModel && (
@@ -749,7 +829,12 @@ const Configs: React.FC = () => {
                   min={1}
                   value={maxIter}
                   onChange={e => setMaxIter(Number(e.target.value))}
+                  className={configValidationErrors.maxIter ? styles.errorInput : undefined}
+                  aria-invalid={Boolean(configValidationErrors.maxIter)}
                 />
+                {configValidationErrors.maxIter && (
+                  <span className={styles.inputErrorMsg}>{configValidationErrors.maxIter}</span>
+                )}
                 <span className={styles.helperText}>Maximum evolutionary generations before stalling.</span>
               </div>
 
@@ -760,7 +845,12 @@ const Configs: React.FC = () => {
                   min={1}
                   value={checkPointInterval}
                   onChange={e => setCheckPointInterval(Number(e.target.value))}
+                  className={configValidationErrors.checkPointInterval ? styles.errorInput : undefined}
+                  aria-invalid={Boolean(configValidationErrors.checkPointInterval)}
                 />
+                {configValidationErrors.checkPointInterval && (
+                  <span className={styles.inputErrorMsg}>{configValidationErrors.checkPointInterval}</span>
+                )}
                 <span className={styles.helperText}>Save progress every X iterations.</span>
               </div>
 
@@ -778,40 +868,78 @@ const Configs: React.FC = () => {
                     <div className={styles.paramSection}>
                       <h4 className={styles.paramSectionTitle}>LLM</h4>
                       <div className={styles.paramGrid}>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="llm.temperature">Temperature</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.7" value={advancedParams['llm.temperature']} onChange={e => setAdvancedParams(p => ({...p, 'llm.temperature': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="llm.top_p">Top P</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.95" value={advancedParams['llm.top_p']} onChange={e => setAdvancedParams(p => ({...p, 'llm.top_p': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="llm.max_tokens">Max Tokens</ParamLabel></label>
-                          <input type="number" placeholder="4096" value={advancedParams['llm.max_tokens']} onChange={e => setAdvancedParams(p => ({...p, 'llm.max_tokens': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="llm.timeout">Timeout (s)</ParamLabel></label>
-                          <input type="number" placeholder="60" value={advancedParams['llm.timeout']} onChange={e => setAdvancedParams(p => ({...p, 'llm.timeout': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="llm.retries">Retries</ParamLabel></label>
-                          <input type="number" placeholder="3" value={advancedParams['llm.retries']} onChange={e => setAdvancedParams(p => ({...p, 'llm.retries': e.target.value}))} />
-                        </div>
+                        <NumericParamField
+                          paramKey="llm.temperature"
+                          label="Temperature"
+                          placeholder="0.7"
+                          value={advancedParams['llm.temperature']}
+                          error={configValidationErrors['llm.temperature']}
+                          min={0}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('llm.temperature', value)}
+                        />
+                        <NumericParamField
+                          paramKey="llm.top_p"
+                          label="Top P"
+                          placeholder="0.95"
+                          value={advancedParams['llm.top_p']}
+                          error={configValidationErrors['llm.top_p']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('llm.top_p', value)}
+                        />
+                        <NumericParamField
+                          paramKey="llm.max_tokens"
+                          label="Max Tokens"
+                          placeholder="4096"
+                          value={advancedParams['llm.max_tokens']}
+                          error={configValidationErrors['llm.max_tokens']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('llm.max_tokens', value)}
+                        />
+                        <NumericParamField
+                          paramKey="llm.timeout"
+                          label="Timeout (s)"
+                          placeholder="60"
+                          value={advancedParams['llm.timeout']}
+                          error={configValidationErrors['llm.timeout']}
+                          min={0}
+                          onChange={value => updateAdvancedParam('llm.timeout', value)}
+                        />
+                        <NumericParamField
+                          paramKey="llm.retries"
+                          label="Retries"
+                          placeholder="3"
+                          value={advancedParams['llm.retries']}
+                          error={configValidationErrors['llm.retries']}
+                          min={0}
+                          onChange={value => updateAdvancedParam('llm.retries', value)}
+                        />
                       </div>
                     </div>
 
                     <div className={styles.paramSection}>
                       <h4 className={styles.paramSectionTitle}>Prompt</h4>
                       <div className={styles.paramGrid}>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="prompt.num_top_programs">Num Top Programs</ParamLabel></label>
-                          <input type="number" placeholder="3" value={advancedParams['prompt.num_top_programs']} onChange={e => setAdvancedParams(p => ({...p, 'prompt.num_top_programs': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="prompt.num_diverse_programs">Num Diverse Programs</ParamLabel></label>
-                          <input type="number" placeholder="2" value={advancedParams['prompt.num_diverse_programs']} onChange={e => setAdvancedParams(p => ({...p, 'prompt.num_diverse_programs': e.target.value}))} />
-                        </div>
+                        <NumericParamField
+                          paramKey="prompt.num_top_programs"
+                          label="Num Top Programs"
+                          placeholder="3"
+                          value={advancedParams['prompt.num_top_programs']}
+                          error={configValidationErrors['prompt.num_top_programs']}
+                          min={0}
+                          onChange={value => updateAdvancedParam('prompt.num_top_programs', value)}
+                        />
+                        <NumericParamField
+                          paramKey="prompt.num_diverse_programs"
+                          label="Num Diverse Programs"
+                          placeholder="2"
+                          value={advancedParams['prompt.num_diverse_programs']}
+                          error={configValidationErrors['prompt.num_diverse_programs']}
+                          min={0}
+                          onChange={value => updateAdvancedParam('prompt.num_diverse_programs', value)}
+                        />
                         <div className={`${styles.paramField} ${styles.paramFieldCheckbox}`}>
                           <label><ParamLabel paramKey="prompt.include_artifacts">Include Artifacts</ParamLabel></label>
                           <input type="checkbox" checked={advancedParams['prompt.include_artifacts'] === 'true'} onChange={e => setAdvancedParams(p => ({...p, 'prompt.include_artifacts': e.target.checked ? 'true' : 'false'}))} />
@@ -826,42 +954,95 @@ const Configs: React.FC = () => {
                     <div className={styles.paramSection}>
                       <h4 className={styles.paramSectionTitle}>Database</h4>
                       <div className={styles.paramGrid}>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.population_size">Population Size</ParamLabel></label>
-                          <input type="number" placeholder="100" value={advancedParams['database.population_size']} onChange={e => setAdvancedParams(p => ({...p, 'database.population_size': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.archive_size">Archive Size</ParamLabel></label>
-                          <input type="number" placeholder="50" value={advancedParams['database.archive_size']} onChange={e => setAdvancedParams(p => ({...p, 'database.archive_size': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.num_islands">Num Islands</ParamLabel></label>
-                          <input type="number" placeholder="4" value={advancedParams['database.num_islands']} onChange={e => setAdvancedParams(p => ({...p, 'database.num_islands': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.migration_interval">Migration Interval</ParamLabel></label>
-                          <input type="number" placeholder="10" value={advancedParams['database.migration_interval']} onChange={e => setAdvancedParams(p => ({...p, 'database.migration_interval': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.migration_rate">Migration Rate</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.1" value={advancedParams['database.migration_rate']} onChange={e => setAdvancedParams(p => ({...p, 'database.migration_rate': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.elite_selection_ratio">Elite Selection Ratio</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.1" value={advancedParams['database.elite_selection_ratio']} onChange={e => setAdvancedParams(p => ({...p, 'database.elite_selection_ratio': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.exploration_ratio">Exploration Ratio</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.2" value={advancedParams['database.exploration_ratio']} onChange={e => setAdvancedParams(p => ({...p, 'database.exploration_ratio': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.exploitation_ratio">Exploitation Ratio</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.7" value={advancedParams['database.exploitation_ratio']} onChange={e => setAdvancedParams(p => ({...p, 'database.exploitation_ratio': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="database.feature_bins">Feature Bins</ParamLabel></label>
-                          <input type="number" placeholder="10" value={advancedParams['database.feature_bins']} onChange={e => setAdvancedParams(p => ({...p, 'database.feature_bins': e.target.value}))} />
-                        </div>
+                        <NumericParamField
+                          paramKey="database.population_size"
+                          label="Population Size"
+                          placeholder="100"
+                          value={advancedParams['database.population_size']}
+                          error={configValidationErrors['database.population_size']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('database.population_size', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.archive_size"
+                          label="Archive Size"
+                          placeholder="50"
+                          value={advancedParams['database.archive_size']}
+                          error={configValidationErrors['database.archive_size']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('database.archive_size', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.num_islands"
+                          label="Num Islands"
+                          placeholder="4"
+                          value={advancedParams['database.num_islands']}
+                          error={configValidationErrors['database.num_islands']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('database.num_islands', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.migration_interval"
+                          label="Migration Interval"
+                          placeholder="10"
+                          value={advancedParams['database.migration_interval']}
+                          error={configValidationErrors['database.migration_interval']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('database.migration_interval', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.migration_rate"
+                          label="Migration Rate"
+                          placeholder="0.1"
+                          value={advancedParams['database.migration_rate']}
+                          error={configValidationErrors['database.migration_rate']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('database.migration_rate', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.elite_selection_ratio"
+                          label="Elite Selection Ratio"
+                          placeholder="0.1"
+                          value={advancedParams['database.elite_selection_ratio']}
+                          error={configValidationErrors['database.elite_selection_ratio']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('database.elite_selection_ratio', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.exploration_ratio"
+                          label="Exploration Ratio"
+                          placeholder="0.2"
+                          value={advancedParams['database.exploration_ratio']}
+                          error={configValidationErrors['database.exploration_ratio']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('database.exploration_ratio', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.exploitation_ratio"
+                          label="Exploitation Ratio"
+                          placeholder="0.7"
+                          value={advancedParams['database.exploitation_ratio']}
+                          error={configValidationErrors['database.exploitation_ratio']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('database.exploitation_ratio', value)}
+                        />
+                        <NumericParamField
+                          paramKey="database.feature_bins"
+                          label="Feature Bins"
+                          placeholder="10"
+                          value={advancedParams['database.feature_bins']}
+                          error={configValidationErrors['database.feature_bins']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('database.feature_bins', value)}
+                        />
                       </div>
                       <div className={styles.paramField} style={{ marginTop: '0.5rem' }}>
                         <label><ParamLabel paramKey="database.feature_dimensions">Feature Dimensions (comma-separated)</ParamLabel></label>
@@ -872,34 +1053,70 @@ const Configs: React.FC = () => {
                     <div className={styles.paramSection}>
                       <h4 className={styles.paramSectionTitle}>Evaluator</h4>
                       <div className={styles.paramGrid}>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="evaluator.timeout">Timeout (s)</ParamLabel></label>
-                          <input type="number" placeholder="300" value={advancedParams['evaluator.timeout']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.timeout': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="evaluator.max_retries">Max Retries</ParamLabel></label>
-                          <input type="number" placeholder="3" value={advancedParams['evaluator.max_retries']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.max_retries': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="evaluator.parallel_evaluations">Parallel Evaluations</ParamLabel></label>
-                          <input type="number" placeholder="4" value={advancedParams['evaluator.parallel_evaluations']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.parallel_evaluations': e.target.value}))} />
-                        </div>
+                        <NumericParamField
+                          paramKey="evaluator.timeout"
+                          label="Timeout (s)"
+                          placeholder="300"
+                          value={advancedParams['evaluator.timeout']}
+                          error={configValidationErrors['evaluator.timeout']}
+                          min={1}
+                          onChange={value => updateAdvancedParam('evaluator.timeout', value)}
+                        />
+                        <NumericParamField
+                          paramKey="evaluator.max_retries"
+                          label="Max Retries"
+                          placeholder="3"
+                          value={advancedParams['evaluator.max_retries']}
+                          error={configValidationErrors['evaluator.max_retries']}
+                          min={0}
+                          onChange={value => updateAdvancedParam('evaluator.max_retries', value)}
+                        />
+                        <NumericParamField
+                          paramKey="evaluator.parallel_evaluations"
+                          label="Parallel Evaluations"
+                          placeholder="4"
+                          value={advancedParams['evaluator.parallel_evaluations']}
+                          error={configValidationErrors['evaluator.parallel_evaluations']}
+                          min={0}
+                          onChange={value => updateAdvancedParam('evaluator.parallel_evaluations', value)}
+                        />
                         <div className={`${styles.paramField} ${styles.paramFieldCheckbox}`}>
                           <label><ParamLabel paramKey="evaluator.cascade_evaluation">Cascade Evaluation</ParamLabel></label>
                           <input type="checkbox" checked={advancedParams['evaluator.cascade_evaluation'] === 'true'} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_evaluation': e.target.checked ? 'true' : 'false'}))} />
                         </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="evaluator.cascade_threshold_1">Cascade Threshold 1</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.5" value={advancedParams['evaluator.cascade_threshold_1']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_threshold_1': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="evaluator.cascade_threshold_2">Cascade Threshold 2</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.75" value={advancedParams['evaluator.cascade_threshold_2']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_threshold_2': e.target.value}))} />
-                        </div>
-                        <div className={styles.paramField}>
-                          <label><ParamLabel paramKey="evaluator.cascade_threshold_3">Cascade Threshold 3</ParamLabel></label>
-                          <input type="number" step="0.01" placeholder="0.9" value={advancedParams['evaluator.cascade_threshold_3']} onChange={e => setAdvancedParams(p => ({...p, 'evaluator.cascade_threshold_3': e.target.value}))} />
-                        </div>
+                        <NumericParamField
+                          paramKey="evaluator.cascade_threshold_1"
+                          label="Cascade Threshold 1"
+                          placeholder="0.5"
+                          value={advancedParams['evaluator.cascade_threshold_1']}
+                          error={configValidationErrors['evaluator.cascade_threshold_1']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('evaluator.cascade_threshold_1', value)}
+                        />
+                        <NumericParamField
+                          paramKey="evaluator.cascade_threshold_2"
+                          label="Cascade Threshold 2"
+                          placeholder="0.75"
+                          value={advancedParams['evaluator.cascade_threshold_2']}
+                          error={configValidationErrors['evaluator.cascade_threshold_2']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('evaluator.cascade_threshold_2', value)}
+                        />
+                        <NumericParamField
+                          paramKey="evaluator.cascade_threshold_3"
+                          label="Cascade Threshold 3"
+                          placeholder="0.9"
+                          value={advancedParams['evaluator.cascade_threshold_3']}
+                          error={configValidationErrors['evaluator.cascade_threshold_3']}
+                          min={0}
+                          max={1}
+                          step="0.01"
+                          onChange={value => updateAdvancedParam('evaluator.cascade_threshold_3', value)}
+                        />
                       </div>
                     </div>
 
@@ -917,28 +1134,38 @@ const Configs: React.FC = () => {
               </div>
 
               {modalError && (
-                <div className={styles.errorBanner}>
-                  <strong>Error:</strong> {modalError}
-                </div>
+                <Alert variant="error">{modalError}</Alert>
               )}
 
               <div className={styles.modalActions}>
-                <button className={styles.cancelBtn} onClick={handleCloseModal} disabled={saving}>
+                <button type="button" className={styles.cancelBtn} onClick={handleCloseModal} disabled={saving}>
                   Cancel
                 </button>
                 <button 
+                  type="submit"
                   className={styles.saveBtn} 
-                  onClick={handleSave} 
-                  disabled={saving || (!editingConfig && !llmCredentialsId) || !modelName}
+                  disabled={saving || (!editingConfig && !llmCredentialsId) || !modelName || hasConfigValidationErrors}
                 >
                   {saving ? <span> Saving...</span> : 'Save Configuration'}
                 </button>
               </div>
 
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </form>
+        </Modal>
+      )}
+
+      <ConfirmDialog
+        isOpen={configToDelete !== null}
+        title="Delete configuration?"
+        message={`Delete "${configToDelete?.modelName ?? 'this configuration'}" permanently? Projects using it may need another configuration.`}
+        isConfirming={deletingId !== null}
+        onCancel={() => {
+          if (deletingId === null) setConfigToDelete(null);
+        }}
+        onConfirm={() => {
+          if (configToDelete) handleDelete(configToDelete.configId);
+        }}
+      />
     </motion.div>
   );
 };

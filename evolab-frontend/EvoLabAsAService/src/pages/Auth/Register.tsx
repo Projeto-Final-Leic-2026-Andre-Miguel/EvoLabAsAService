@@ -1,9 +1,10 @@
 import React, {useReducer} from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { onResult } from "../../api/api.ts";
 import {apiUsers} from "./data/apiUsers.ts";
 import styles from "./Register.module.css";
 import { getErrorMessage } from "../../utils/errorsDescriptions";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 
 
@@ -53,7 +54,7 @@ const initialState: State = {
 
 
 export function Register() {
-
+    usePageTitle("Register");
     const [state, dispatch] = useReducer(reducer, initialState);
     const navigate = useNavigate();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -78,7 +79,7 @@ export function Register() {
                         ? "An account with this email already exists."
                         : failure.error?.status === 400
                             ? "Your password is too weak. Use at least 8 characters."
-                            : getErrorMessage(failure.error?.message || "unknown-error");
+                            : getErrorMessage(failure.error);
                 dispatch({type: "error", message: msg})
             }
 
@@ -159,7 +160,7 @@ export function Register() {
                     </button>
 
                     <p className={styles.loginPrompt}>
-                        Already have an account? <span onClick={() => navigate("/login")} className={styles.link}>Login</span>
+                        Already have an account? <Link to="/login" className={styles.link}>Login</Link>
                     </p>
                 </div>
             </div>          

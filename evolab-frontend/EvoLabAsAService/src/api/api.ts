@@ -32,9 +32,16 @@ function isUnsafeMethod(method: string | undefined): boolean {
 
 class ApiError extends Error {
     status: number;
-    constructor(status: number, message: string) {
-        super(message);
+    title: string;
+    detail: string | null;
+    key: string;
+
+    constructor(status: number, title = "", detail: string | null = null, fallbackMessage = "") {
+        super(detail || title || fallbackMessage || "An unexpected error occurred.");
         this.status = status;
+        this.title = title;
+        this.detail = detail;
+        this.key = title;
     }
 }
 
@@ -54,11 +61,12 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
         });
         if (!response.ok) {
             const errorBody = await response.json().catch(() => ({}));
-            const errorMessage = errorBody.detail || errorBody.title || response.statusText;
+            const title = typeof errorBody.title === "string" ? errorBody.title : "";
+            const detail = typeof errorBody.detail === "string" ? errorBody.detail : null;
             return {
                 type: "Failure",
                 data: null,
-                error: new ApiError(response.status, errorMessage)
+                error: new ApiError(response.status, title, detail, response.statusText)
             };
         }
         if (response.status === 204) {
@@ -81,7 +89,7 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
         return {
             type: "Failure",
             data: null,
-            error: new ApiError(0, message)
+            error: new ApiError(0, "", message)
         };
     }
 }

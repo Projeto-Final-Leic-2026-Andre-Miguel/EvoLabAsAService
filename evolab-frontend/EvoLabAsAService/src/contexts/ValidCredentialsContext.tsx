@@ -33,6 +33,7 @@ export function ValidCredentialsProvider({ children }: { children: ReactNode }) 
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useValidCredentials() {
     const context = useContext(ValidCredentialsContext);
     if (!context) {

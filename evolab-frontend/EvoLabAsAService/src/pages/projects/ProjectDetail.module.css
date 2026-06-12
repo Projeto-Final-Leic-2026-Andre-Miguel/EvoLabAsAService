@@ -389,6 +389,7 @@
 }
 
 .modal {
+  --modal-max-width: 980px;
   background: #0f172a;
   border-radius: 14px;
   padding: 1.5rem;

@@ -16,6 +16,7 @@ import ProjectDetail from '../pages/projects/ProjectDetail'
 import Configs from '../pages/configs/Configs'
 import {ValidCredentialsProvider} from "../contexts/ValidCredentialsContext.tsx"
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { ToastProvider } from '../contexts/ToastProvider'
 import '../App.css'
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -43,9 +44,11 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <AuthProvider>
     <ValidCredentialsProvider>
-      <ErrorBoundary>
-        <RouterProvider router={router} />
-      </ErrorBoundary>
+      <ToastProvider>
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
+      </ToastProvider>
     </ValidCredentialsProvider>
   </AuthProvider>,
 )
