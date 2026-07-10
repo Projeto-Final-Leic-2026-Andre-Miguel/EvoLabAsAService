@@ -1,11 +1,19 @@
-import React, { useEffect, useReducer } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { motion } from "framer-motion";
 import styles from "./Credentials.module.css";
 import { apiCredentials } from "./apiCredentials";
 import type { LLM, LLMCredentials } from "../../types/credentials";
 import { useAuth } from "../../contexts/AuthContext";
 import { useValidCredentials } from "../../contexts/ValidCredentialsContext";
-import { ErrorDescriptions } from "../../utils/errorsDescriptions";
+import { getErrorMessage } from "../../utils/errorsDescriptions";
+import { Alert } from "../../components/ui/Alert";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import { Modal } from "../../components/ui/Modal";
+import { getCredentialLabel } from "../../utils/credentialLabels";
+import { useToast } from "../../hooks/useToast";
+import { usePageTitle } from "../../hooks/usePageTitle";
+import { apiConfigs } from "../configs/apiConfigs";
 
 const PROVIDER_INFO: Record<LLM, { icon: string, bgClass: string, label: string }> = {
     OPENAI: { icon: "O", bgClass: styles.bgOpenAI, label: "OpenAI" },
@@ -100,33 +108,49 @@ function reducer(state: State, action: Action): State {
 }
 
 export function Credentials() {
+    usePageTitle("Credentials");
     const { user } = useAuth();
     const { validCredentialsMap, validateCredential, setCredentialValidity } = useValidCredentials();
+    const { showSuccess } = useToast();
 
     const [state, dispatch] = useReducer(reducer, initialState);
+    const [credentialToDelete, setCredentialToDelete] = useState<LLMCredentials | null>(null);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [credentialUsage, setCredentialUsage] = useState<Record<number, number[]>>({});
 
-    useEffect(() => {
-        if (user) fetchCredentials();
-    }, [user]);
-
-    const getFriendlyErrorMessage = (errorKey: string, defaultMessage: string = "Ocorreu um erro desconhecido.") => {
-        return ErrorDescriptions[errorKey] || defaultMessage;
-    };
-
-    const fetchCredentials = async () => {
+    async function fetchCredentials() {
         dispatch({ type: "FETCH_START" });
-        const result = await apiCredentials.getAll();
-        if (result.type === "Success") {
-            result.data.forEach(c => {
+        const [credentialsResult, configsResult] = await Promise.all([
+            apiCredentials.getAll(),
+            apiConfigs.getAllMyConfigs(),
+        ]);
+
+        if (configsResult.type === "Success") {
+            const usage = configsResult.data.reduce<Record<number, number[]>>((acc, config) => {
+                (acc[config.llmCredentialsId] ??= []).push(config.configId);
+                return acc;
+            }, {});
+            setCredentialUsage(usage);
+        } else {
+            setCredentialUsage({});
+        }
+
+        if (credentialsResult.type === "Success") {
+            credentialsResult.data.forEach(c => {
                 if (validCredentialsMap[c.id] === undefined) {
                     setCredentialValidity(c.id, true);
                 }
             });
-            dispatch({ type: "FETCH_SUCCESS", payload: result.data });
+            dispatch({ type: "FETCH_SUCCESS", payload: credentialsResult.data });
         } else {
-            dispatch({ type: "FETCH_SUCCESS", payload: [] }); // or handle fetch error
+            dispatch({ type: "FETCH_SUCCESS", payload: [] });
+            dispatch({ type: "SET_ERROR", payload: getErrorMessage(credentialsResult.error) });
         }
-    };
+    }
+
+    useEffect(() => {
+        if (user) fetchCredentials();
+    }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -137,13 +161,14 @@ export function Credentials() {
             if (res.type === "Success") {
                 setCredentialValidity(res.data.id, true);
                 dispatch({ type: "SUBMIT_SUCCESS_UPDATE", payload: res.data });
+                showSuccess("Credential updated successfully.");
             } else {
-                dispatch({ type: "SUBMIT_ERROR", payload: getFriendlyErrorMessage(res.error.message, "Erro ao atualizar credencial.") });
+                dispatch({ type: "SUBMIT_ERROR", payload: getErrorMessage(res.error) });
             }
         } else if (state.provider === "LOCAL_MODEL") {
             const portNumber = parseInt(state.port, 10);
             if (isNaN(portNumber)) {
-                dispatch({ type: "SUBMIT_ERROR", payload: "O porto deve ser um número válido." });
+                dispatch({ type: "SUBMIT_ERROR", payload: "The port must be a valid number." });
                 return;
             }
             const res = await apiCredentials.createLocalModel({
@@ -155,36 +180,45 @@ export function Credentials() {
             if (res.type === "Success") {
                 setCredentialValidity(res.data.id, true);
                 dispatch({ type: "SUBMIT_SUCCESS_CREATE", payload: res.data });
+                showSuccess("Local credential created successfully.");
             } else {
-                dispatch({ type: "SUBMIT_ERROR", payload: getFriendlyErrorMessage(res.error.message, "Erro ao criar credencial local.") });
+                dispatch({ type: "SUBMIT_ERROR", payload: getErrorMessage(res.error) });
             }
         } else {
             const res = await apiCredentials.create({ llm: state.provider, apiKey: state.apiKey });
             if (res.type === "Success") {
                 setCredentialValidity(res.data.id, true);
                 dispatch({ type: "SUBMIT_SUCCESS_CREATE", payload: res.data });
+                showSuccess("Credential created successfully.");
             } else {
-                dispatch({ type: "SUBMIT_ERROR", payload: getFriendlyErrorMessage(res.error.message, "Erro ao criar credencial.") });
+                dispatch({ type: "SUBMIT_ERROR", payload: getErrorMessage(res.error) });
             }
         }
     };
 
     const handleDelete = async (id: number) => {
+        setDeletingId(id);
         const res = await apiCredentials.delete(id);
-        if (res.type === "Success" || res.error?.status === 0 || res.error?.status === 200 || !res.error) {
+        if (res.type === "Success") {
             dispatch({ type: "DELETE_SUCCESS", payload: id });
+            setCredentialToDelete(null);
+            showSuccess("Credential deleted successfully.");
         } else {
-            dispatch({ type: "SET_ERROR", payload: "This credential cannot be deleted because it is linked to a configuration. Delete all associated configurations and projects first." });
+            setCredentialToDelete(null);
+            dispatch({ type: "SET_ERROR", payload: getErrorMessage(res.error) });
             setTimeout(() => dispatch({ type: "SET_ERROR", payload: null }), 5000);
         }
+        setDeletingId(null);
     };
 
     const handleValidate = async (id: number) => {
         dispatch({ type: "SET_VALIDATING", payload: id });
         const valid = await validateCredential(id);
         if (valid === null) {
-            dispatch({ type: "SET_ERROR", payload: "Falha ao validar credencial com o servidor." });
+            dispatch({ type: "SET_ERROR", payload: "Failed to validate the credential with the server." });
             setTimeout(() => dispatch({ type: "SET_ERROR", payload: null }), 5000);
+        } else {
+            showSuccess("Credential validation completed.");
         }
         dispatch({ type: "SET_VALIDATING", payload: null });
     };
@@ -194,6 +228,10 @@ export function Credentials() {
         const n = Number(createdAt);
         return !isNaN(n) ? new Date(n * 1000).toLocaleDateString() : new Date(createdAt).toLocaleDateString();
     };
+
+    const editingCredential = state.editId
+        ? state.credentials.find(credential => credential.id === state.editId) ?? null
+        : null;
 
     return (
         <div className={styles.container}>
@@ -205,17 +243,17 @@ export function Credentials() {
             </div>
             
             {state.errorMessage && !state.isModalOpen && (
-                <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '8px', marginBottom: '1rem' }}>
-                    {state.errorMessage}
-                </div>
+                <Alert variant="error">{state.errorMessage}</Alert>
             )}
 
             {state.isLoading ? (
-                <div>Loading credentials...</div>
+                <LoadingSpinner label="Loading credentials" />
             ) : (
                 <div className={styles.grid}>
                     {state.credentials.map(cred => {
                         const info = PROVIDER_INFO[cred.llm] || PROVIDER_INFO["OPENAI"];
+                        const configIds = credentialUsage[cred.id] ?? [];
+                        const deleteDisabled = configIds.length > 0;
                         return (
                             <motion.div 
                                 className={styles.card} 
@@ -227,14 +265,20 @@ export function Credentials() {
                                     <div className={`${styles.providerIcon} ${info?.bgClass || styles.bgOllama}`}>
                                         {info?.icon || "?"}
                                     </div>
-                                    <h3 className={styles.providerName}>{info?.label || cred.llm}</h3>
+                                    <h3 className={styles.providerName}>{getCredentialLabel(cred)}</h3>
 
                                     {state.validatingId === cred.id ? (
                                         <span className={`${styles.statusBadge} ${styles.statusNormal}`}>
                                             Validating...
                                         </span>
                                     ) : validCredentialsMap[cred.id] ? (
-                                        <span className={`${styles.statusBadge} ${styles.statusValid}`}>Valid</span>
+                                        <span
+                                            className={`${styles.statusBadge} ${styles.statusValid}`}
+                                            title="Valid credential"
+                                            aria-label="Valid credential"
+                                        >
+                                            ✓
+                                        </span>
                                     ) : (
                                         <span className={`${styles.statusBadge} ${styles.statusInvalid}`}>Invalid</span>
                                     )}
@@ -251,7 +295,12 @@ export function Credentials() {
                                     <button onClick={() => dispatch({ type: "OPEN_MODAL_EDIT", payload: cred })} className={`${styles.actionBtn} ${styles.updateBtn}`}>
                                         Update
                                     </button>
-                                    <button onClick={() => handleDelete(cred.id)} className={`${styles.actionBtn} ${styles.deleteBtn}`}>
+                                    <button
+                                        onClick={() => setCredentialToDelete(cred)}
+                                        className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                                        disabled={deleteDisabled}
+                                        title={deleteDisabled ? `In use by configuration #${configIds[0]} \u2014 delete it first.` : "Delete credential"}
+                                    >
                                         Delete
                                     </button>
                                 </div>
@@ -260,7 +309,7 @@ export function Credentials() {
                     })}
 
                     {state.credentials.length === 0 && (
-                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+                            <div className={styles.emptyState}>
                                 No credentials found. Create one to get started.
                             </div>
                             )}
@@ -269,28 +318,49 @@ export function Credentials() {
             )}
 
             {state.isModalOpen && (
-                <div className={styles.overlay}>
-                    <motion.div 
-                        className={styles.modal}
-                        initial={{ opacity: 0, y: -50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <h2>{state.editId ? "Update Credential" : "New Credential"}</h2>
+                <Modal
+                    onClose={() => dispatch({ type: "CLOSE_MODAL" })}
+                    ariaLabelledBy="credential-modal-title"
+                    className={styles.modal}
+                >
+                        <div className={styles.modalHeader}>
+                            <h2 id="credential-modal-title">
+                                {editingCredential ? `Update ${getCredentialLabel(editingCredential)}` : "New Credential"}
+                            </h2>
+                            <button
+                                type="button"
+                                className={styles.closeBtn}
+                                onClick={() => dispatch({ type: "CLOSE_MODAL" })}
+                                aria-label="Close modal"
+                            >
+                                ×
+                            </button>
+                        </div>
                         {state.errorMessage && (
-                            <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                                {state.errorMessage}
-                            </div>
-
-                            
+                            <Alert variant="error">{state.errorMessage}</Alert>
                         )}
                         <form onSubmit={handleSave}>
+                            {state.editId ? (
+                                <div className={styles.formGroup}>
+                                    <label>API Key</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="Enter a new secret key"
+                                        value={state.apiKey}
+                                        onChange={e => dispatch({ type: "SET_API_KEY", payload: e.target.value })}
+                                        className={styles.inputField}
+                                    />
+                                    <span className={styles.helperText}>Enter a new key to replace the current one.</span>
+                                </div>
+                            ) : (
+                            <>
                             <div className={styles.formGroup}>
                                 <label>Provider</label>
                                 <select
                                     value={state.provider}
                                     onChange={e => dispatch({ type: "SET_PROVIDER", payload: e.target.value as LLM })}
                                     className={styles.inputField}
-                                    disabled={!!state.editId}
                                 >
                                     <option value="OPENAI">OpenAI</option>
                                     <option value="GEMINI">Google Gemini</option>
@@ -324,7 +394,7 @@ export function Credentials() {
                                         />
                                     </div>
                                     <div className={styles.formGroup}>
-                                        <label>API Key <span style={{ fontWeight: "normal", opacity: 0.6 }}>(opcional)</span></label>
+                                        <label>API Key <span className={styles.optionalLabel}>(optional)</span></label>
                                         <input
                                             type="password"
                                             placeholder="Leave Empty if not needed"
@@ -347,6 +417,8 @@ export function Credentials() {
                                     />
                                 </div>
                             )}
+                            </>
+                            )}
 
                             <div className={styles.modalActions}>
                                 <button type="button" onClick={() => dispatch({ type: "CLOSE_MODAL" })} className={styles.cancelBtn}>
@@ -357,9 +429,21 @@ export function Credentials() {
                                 </button>
                             </div>
                         </form>
-                    </motion.div>
-                </div>
+                </Modal>
             )}
+
+            <ConfirmDialog
+                isOpen={credentialToDelete !== null}
+                title="Delete credential?"
+                message={`Delete ${credentialToDelete ? getCredentialLabel(credentialToDelete) : "this credential"} permanently?`}
+                isConfirming={deletingId !== null}
+                onCancel={() => {
+                    if (deletingId === null) setCredentialToDelete(null);
+                }}
+                onConfirm={() => {
+                    if (credentialToDelete) handleDelete(credentialToDelete.id);
+                }}
+            />
         </div>
     );
 }

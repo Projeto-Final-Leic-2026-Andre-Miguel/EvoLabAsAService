@@ -32,6 +32,9 @@ export const apiProjects = {
   getAll: (): Promise<RequestResult<Project[]>> => {
     return request('/api/projects/me', { method: 'GET' });
   },
+  getById: (id: number): Promise<RequestResult<Project>> => {
+    return request(`/api/projects/${id}`, { method: 'GET' });
+  },
   create: (data: CreateProjectInput): Promise<RequestResult<Project>> => {
     return request('/api/projects', {
       method: 'POST',

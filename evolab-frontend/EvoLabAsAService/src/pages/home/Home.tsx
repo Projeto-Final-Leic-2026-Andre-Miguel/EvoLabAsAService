@@ -2,8 +2,10 @@ import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import styles from './Home.module.css';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 export function Home() {
+  usePageTitle('Home');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,7 +32,7 @@ export function Home() {
     
     // Simulate sending an email by opening the user's default email client
     const mailtoLink = `mailto:suporte@evolab.com?subject=${encodeURIComponent(formState.subject)}&body=${encodeURIComponent(
-      `Assunto: ${formState.subject}\n\nMensagem ou Dúvida:\n${formState.description}\n\nEnviado por: ${formState.email}`
+      `Subject: ${formState.subject}\n\nMessage or question:\n${formState.description}\n\nSent by: ${formState.email}`
     )}`;
     window.location.href = mailtoLink;
     
@@ -93,7 +95,7 @@ export function Home() {
                   <h4>Miguel Pinto</h4>
                   <div className={styles.socialLinks}>
                     <a href="https://www.linkedin.com/in/miguel-morais-pinto/" target="_blank" rel="noreferrer" title="LinkedIn"> LinkedIn</a>
-                    <a href="https://github.com/" target="_blank" rel="noreferrer" title="GitHub">GitHub</a>
+                    <a href="https://github.com/MiguelMPinto" target="_blank" rel="noreferrer" title="GitHub">GitHub</a>
                   </div>
                 </div>
               </div>
@@ -118,7 +120,7 @@ export function Home() {
                 <label>Subject</label>
                 <input 
                   type="text" 
-                  placeholder="Dúvida ou Sugestão" 
+                  placeholder="Question or suggestion"
                   value={formState.subject}
                   onChange={(e) => setFormState({...formState, subject: e.target.value})}
                   required

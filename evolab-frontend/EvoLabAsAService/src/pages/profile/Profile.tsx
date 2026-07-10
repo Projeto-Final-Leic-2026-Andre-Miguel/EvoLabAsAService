@@ -6,6 +6,10 @@ import { motion } from "framer-motion";
 import { request } from "../../api/api";
 import { apiUsers } from "../Auth/data/apiUsers";
 import { clearAuthCookies } from "../../utils/authCookies";
+import { Alert } from "../../components/ui/Alert";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 interface UserStatistics {
     userId: number;
@@ -36,11 +40,13 @@ const emptyStats: UserStatistics = {
 };
 
 export function Profile() {
+    usePageTitle("Profile");
     const { user, isLoading, reload } = useAuth();
     const navigate = useNavigate();
     const [statistics, setStatistics] = useState<UserStatistics | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -57,7 +63,7 @@ export function Profile() {
     }, [user]);
 
     if (isLoading) {
-        return <div className={styles.loadingContainer}>Loading Profile...</div>;
+        return <LoadingSpinner label="Loading profile" />;
     }
 
     if (!user) {
@@ -73,19 +79,18 @@ export function Profile() {
     };
 
     const handleDeleteAccount = async () => {
-        const confirmed = window.confirm("Delete your account permanently? This removes your projects, credentials and configurations.");
-        if (!confirmed) return;
-
         setIsDeleting(true);
         setDeleteError(null);
         const result = await apiUsers.deleteUser(user.id);
         if (result.type === "Success") {
+            setIsDeleteDialogOpen(false);
             clearAuthCookies();
             reload();
             navigate("/");
         } else {
             setDeleteError(result.error?.message || "Could not delete account.");
             setIsDeleting(false);
+            setIsDeleteDialogOpen(false);
         }
     };
 
@@ -180,14 +185,25 @@ export function Profile() {
                             <h3>Delete Account</h3>
                             <p>This action permanently removes your account and data.</p>
                         </div>
-                        <button className={styles.deleteAccountBtn} onClick={handleDeleteAccount} disabled={isDeleting}>
+                        <button className={styles.deleteAccountBtn} onClick={() => setIsDeleteDialogOpen(true)} disabled={isDeleting}>
                             {isDeleting ? "Deleting..." : "Delete Account"}
                         </button>
                     </div>
 
-                    {deleteError && <div className={styles.deleteError}>{deleteError}</div>}
+                    {deleteError && <Alert variant="error">{deleteError}</Alert>}
                 </div>
             </motion.div>
+            <ConfirmDialog
+                isOpen={isDeleteDialogOpen}
+                title="Delete account?"
+                message="Delete your account permanently? This removes your projects, credentials and configurations."
+                confirmLabel="Delete Account"
+                isConfirming={isDeleting}
+                onCancel={() => {
+                    if (!isDeleting) setIsDeleteDialogOpen(false);
+                }}
+                onConfirm={handleDeleteAccount}
+            />
         </div>
     );
 }

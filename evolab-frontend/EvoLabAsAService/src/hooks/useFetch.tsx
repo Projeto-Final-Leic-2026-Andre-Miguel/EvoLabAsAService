@@ -49,7 +49,7 @@ const firstState = { type: "begin" } as const;
 export function useFetch<T>(
     url: string | undefined,
     options?: UseFetchOptions,
-    dependency?: any
+    dependency?: unknown
 ): State<T> {
     const [state, dispatch] = useReducer(reducer<T>, firstState as State<T>);
 

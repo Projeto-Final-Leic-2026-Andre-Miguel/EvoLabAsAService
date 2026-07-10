@@ -1,16 +1,27 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiProjects, type Project, type CreateProjectInput, type UpdateProjectDetailsInput } from './apiProjects';
 import { apiConfigs } from '../configs/apiConfigs';
 import styles from './Projects.module.css';
 import { getErrorMessage } from '../../utils/errorsDescriptions';
 import { usePolling } from '../../hooks/usePolling';
+import { Alert } from '../../components/ui/Alert';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { Modal } from '../../components/ui/Modal';
+import { useToast } from '../../hooks/useToast';
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { getMissingProjectRequirements } from '../../utils/projectReadiness';
 
 const Projects: React.FC = () => {
+  usePageTitle('Projects');
   const navigate = useNavigate();
+  const { showSuccess } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Form states
   const [formData, setFormData] = useState<CreateProjectInput>({
@@ -37,10 +48,10 @@ const Projects: React.FC = () => {
       apiConfigs.getAllMyConfigs()
     ]);
     if (projectsResult.type === 'Failure') {
-      throw new Error(getErrorMessage(projectsResult.error?.message || 'unknown-error'));
+      throw new Error(getErrorMessage(projectsResult.error));
     }
     if (configsResult.type === 'Failure') {
-      setConfigsError(getErrorMessage(configsResult.error?.message || 'unknown-error'));
+      setConfigsError(getErrorMessage(configsResult.error));
     } else {
       setConfigsError(null);
     }
@@ -93,7 +104,8 @@ const Projects: React.FC = () => {
     setModalError(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setSaving(true);
     setModalError(null);
     try {
@@ -109,38 +121,47 @@ const Projects: React.FC = () => {
         if (res.type === "Success" && res.data) {
           refresh();
           handleCloseModal();
+          showSuccess('Project updated successfully.');
         } else if (res.type === "Failure") {
-          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
+          setModalError(getErrorMessage(res.error));
         }
       } else {
         const res = await apiProjects.create(formData);
         if (res.type === "Success" && res.data) {
           refresh();
           handleCloseModal();
+          showSuccess('Project created successfully.');
         } else if (res.type === "Failure") {
-          setModalError(getErrorMessage(res.error?.message || 'unknown-error'));
+          setModalError(getErrorMessage(res.error));
         }
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      setModalError(getErrorMessage('unknown-error'));
+      setModalError(getErrorMessage());
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
+    setDeletingId(id);
     setErrorMessage(null);
     try {
       const res = await apiProjects.delete(id);
       if (res.type === "Success") {
         refresh();
+        setProjectToDelete(null);
+        showSuccess('Project deleted successfully.');
       } else {
-        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
+        setProjectToDelete(null);
+        setErrorMessage(getErrorMessage(res.error));
       }
     } catch (error) {
+      setProjectToDelete(null);
       console.error('Failed to delete project:', error);
-      setErrorMessage(getErrorMessage('unknown-error'));
+      setErrorMessage(getErrorMessage());
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -152,11 +173,11 @@ const Projects: React.FC = () => {
       if (res.type === "Success") {
         refresh();
       } else {
-        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
+        setErrorMessage(getErrorMessage(res.error));
       }
     } catch (error) {
       console.error('Error starting project:', error);
-      setErrorMessage(getErrorMessage('unknown-error'));
+      setErrorMessage(getErrorMessage());
     } finally {
       setStartingId(null);
     }
@@ -170,10 +191,10 @@ const Projects: React.FC = () => {
       if (res.type === "Success" && res.data) {
         refresh();
       } else if (res.type === "Failure") {
-        setErrorMessage(getErrorMessage(res.error?.message || 'unknown-error'));
+        setErrorMessage(getErrorMessage(res.error));
       }
     } catch {
-      setErrorMessage(getErrorMessage('unknown-error'));
+      setErrorMessage(getErrorMessage());
     } finally {
       setRestartingId(null);
     }
@@ -191,11 +212,7 @@ const Projects: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <span>Loading...</span>
-      </div>
-    );
+    return <LoadingSpinner label="Loading projects" />;
   }
 
   return (
@@ -216,26 +233,29 @@ const Projects: React.FC = () => {
       </div>
 
       {errorMessage && (
-        <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-          <strong>Error:</strong> {errorMessage}
-        </div>
+        <Alert variant="error">{errorMessage}</Alert>
       )}
 
       {pollingError && (
-        <div style={{ color: '#92400e', backgroundColor: '#fffbeb', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-          <strong>Warning:</strong> {pollingError}
-        </div>
+        <Alert variant="warning">{pollingError}</Alert>
       )}
 
       {configsError && (
-        <div style={{ color: '#92400e', backgroundColor: '#fffbeb', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-          <strong>Warning:</strong> Configurations are unavailable: {configsError}
-        </div>
+        <Alert variant="warning">Configurations are unavailable: {configsError}</Alert>
       )}
 
       <div className={styles.grid}>
         <AnimatePresence>
-          {projects.map((project) => (
+          {projects.map((project) => {
+            const missingRequirements = getMissingProjectRequirements(project);
+            const isAlreadyActive = project.status === 'RUNNING' || project.status === 'QUEUED';
+            const startTitle = missingRequirements.length > 0
+              ? `Missing: ${missingRequirements.join(', ')}`
+              : isAlreadyActive
+                ? `Project is ${project.status.toLowerCase()}.`
+                : 'Start Experimentation';
+
+            return (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -259,8 +279,12 @@ const Projects: React.FC = () => {
 
               <div className={styles.cardDetails}>
                 <div className={styles.detailRow}>
-                  <span>Config ID:</span>
-                  <strong>{project.configId || 'None'}</strong>
+                  <span>Configuration:</span>
+                  <strong>
+                    {project.configId
+                      ? configs.find(config => config.configId === project.configId)?.modelName ?? `Config #${project.configId}`
+                      : 'None'}
+                  </strong>
                 </div>
                 <div className={styles.detailRow}>
                   <span>Created:</span>
@@ -282,8 +306,8 @@ const Projects: React.FC = () => {
                     e.stopPropagation();
                     handleStart(project.id);
                   }}
-                  disabled={project.status === 'RUNNING' || project.status === 'QUEUED' || startingId === project.id}
-                  title="Start Experimentation"
+                  disabled={isAlreadyActive || missingRequirements.length > 0 || startingId === project.id}
+                  title={startTitle}
                 >
                   {startingId === project.id ? <span>⏳ Starting</span> : <span>Start</span>}
                 </button>
@@ -314,7 +338,7 @@ const Projects: React.FC = () => {
                   className={`${styles.actionBtn} ${styles.deleteBtn}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(project.id);
+                    setProjectToDelete(project);
                   }}
                   title="Delete Project"
                 >
@@ -322,35 +346,32 @@ const Projects: React.FC = () => {
                 </button>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </AnimatePresence>
         
         {projects.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-            No projects found. Create your first project to get started.
+          <div className={styles.emptyState}>
+            {configs.length === 0 ? (
+              <>
+                <strong>Create a configuration before starting a project.</strong>
+                <Link to="/config">Go to Configuration</Link>
+              </>
+            ) : (
+              <span>No projects found. Create your first project to get started.</span>
+            )}
           </div>
         )}
       </div>
 
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div 
-            className={styles.modalOverlay}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className={styles.modal}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 30 }}
-            >
+      {isModalOpen && (
+        <Modal onClose={handleCloseModal} ariaLabelledBy="project-modal-title" className={styles.modal}>
+          <form onSubmit={handleSave}>
               <div className={styles.modalHeader}>
-                <h2 className={styles.modalTitle}>
+                <h2 className={styles.modalTitle} id="project-modal-title">
                   {editingProject ? 'Edit Project' : 'Create New Project'}
                 </h2>
-                <button className={styles.closeBtn} onClick={handleCloseModal}>×</button>
+                <button type="button" className={styles.closeBtn} onClick={handleCloseModal} aria-label="Close modal">×</button>
               </div>
 
               <div className={styles.formGroup}>
@@ -380,10 +401,10 @@ const Projects: React.FC = () => {
                   value={formData.configId || ''} 
                   onChange={e => setFormData({...formData, configId: e.target.value ? Number(e.target.value) : null})}
                 >
-                  <option value="">-- Select an Existing Config --</option>
+                  <option value="">Select a configuration</option>
                   {configs.map(c => (
                     <option key={c.configId} value={c.configId}>
-                      Config {c.configId} ({c.modelName})
+                      {c.modelName} — {c.maxIter} iterations
                     </option>
                   ))}
                 </select>
@@ -399,6 +420,7 @@ const Projects: React.FC = () => {
                   <input
                     ref={initialProgramFileRef}
                     type="file"
+                    accept=".py"
                     style={{ display: 'none' }}
                     onChange={e => { if (e.target.files?.[0]) handleFileUpload('initialProgram', e.target.files[0]); e.target.value = ''; }}
                   />
@@ -420,6 +442,7 @@ const Projects: React.FC = () => {
                   <input
                     ref={evaluatorCodeFileRef}
                     type="file"
+                    accept=".py"
                     style={{ display: 'none' }}
                     onChange={e => { if (e.target.files?.[0]) handleFileUpload('evaluatorCode', e.target.files[0]); e.target.value = ''; }}
                   />
@@ -429,32 +452,49 @@ const Projects: React.FC = () => {
                   onChange={e => setFormData({...formData, evaluatorCode: e.target.value || null})}
                   placeholder="def evaluate(code):&#10;    return fitness_score"
                 />
-                <span className={styles.helperText}>The Python/Java logic used to evaluate the correctness of the evolved programs.</span>
+                <span className={styles.helperText}>
+                  Define evaluate(...) and return a dict containing 'combined_score'.
+                </span>
+                {!formData.evaluatorCode?.includes('def evaluate(') && (
+                  <Alert variant="warning" title="Heads up">
+                    The evaluator should define an evaluate(...) function returning a dict with 'combined_score'; without it the run will fail.
+                  </Alert>
+                )}
               </div>
 
               {modalError && (
-                <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                  {modalError}
-                </div>
+                <Alert variant="error">{modalError}</Alert>
               )}
 
               <div className={styles.modalActions}>
-                <button className={styles.cancelBtn} onClick={handleCloseModal} disabled={saving}>
+                <button type="button" className={styles.cancelBtn} onClick={handleCloseModal} disabled={saving}>
                   Cancel
                 </button>
                 <button 
+                  type="submit"
                   className={styles.saveBtn} 
-                  onClick={handleSave} 
                   disabled={saving || !formData.name.trim()}
                 >
                   {saving ? <span>⏳ Saving...</span> : 'Save Project'}
                 </button>
               </div>
 
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </form>
+        </Modal>
+      )}
+
+      <ConfirmDialog
+        isOpen={projectToDelete !== null}
+        title="Delete project?"
+        message={`Delete "${projectToDelete?.name ?? 'this project'}" permanently? This action cannot be undone.`}
+        isConfirming={deletingId !== null}
+        onCancel={() => {
+          if (deletingId === null) setProjectToDelete(null);
+        }}
+        onConfirm={() => {
+          if (projectToDelete) handleDelete(projectToDelete.id);
+        }}
+      />
     </motion.div>
   );
 };

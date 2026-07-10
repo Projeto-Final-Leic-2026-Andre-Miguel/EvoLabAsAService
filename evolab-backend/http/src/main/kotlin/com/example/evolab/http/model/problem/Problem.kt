@@ -58,6 +58,8 @@ sealed class Problem(
 
     data object InvalidProjectInput : Problem(URI("$PROBLEM_URI_PATH/invalid-project-input"))
 
+    data object InvalidConfigInput : Problem(URI("$PROBLEM_URI_PATH/invalid-config-input"))
+
     data object NotProjectOwner : Problem(URI("$PROBLEM_URI_PATH/not-project-owner"))
 
     data object ConfigAccessDenied : Problem(URI("$PROBLEM_URI_PATH/config-access-denied"))

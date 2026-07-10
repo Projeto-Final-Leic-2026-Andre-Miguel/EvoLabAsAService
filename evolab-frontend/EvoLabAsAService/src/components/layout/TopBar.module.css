@@ -82,7 +82,7 @@
   z-index: 100;
 }
 
-.userProfileContainer:hover .dropdownMenu {
+.dropdownMenuOpen {
   display: block;
 }
 
@@ -161,6 +161,13 @@
   color: var(--primary-color);
 }
 
+.navLinks a.activeNavLink {
+  color: var(--primary-color);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.45rem;
+}
+
 .signInBtn {
   background: var(--primary-color);
   color: #06100e;
@@ -174,6 +181,9 @@
 
 .welcomeText {
   color: var(--text-soft);
+  background: none;
+  border: 0;
+  font: inherit;
 }
 
 .welcomeText:hover {

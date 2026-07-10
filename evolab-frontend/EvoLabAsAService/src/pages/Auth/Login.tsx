@@ -1,10 +1,11 @@
 import React, { useReducer } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { onResult } from "../../api/api";
 import { apiUsers } from "./data/apiUsers";
 import styles from "./Login.module.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { getErrorMessage } from "../../utils/errorsDescriptions";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 type Stage = "editing" | "posting" | "success" | "failed";
 
@@ -42,6 +43,7 @@ const initialState: State = {
 };
 
 export function Login() {
+    usePageTitle("Sign in");
     const [state, dispatch] = useReducer(reducer, initialState);
     const navigate = useNavigate();
     const { reload } = useAuth(); // Importa o reload do authContext
@@ -65,7 +67,7 @@ export function Login() {
                 const message =
                     failure.error?.status === 401
                         ? "Invalid email or password. Please try again."
-                        : getErrorMessage(failure.error?.message || "unknown-error");
+                        : getErrorMessage(failure.error);
                 dispatch({ type: "error", message });
             }
         );
@@ -133,7 +135,7 @@ export function Login() {
                 </button>
 
                 <p className={styles.loginPrompt}>
-                    Don't have an account? <span onClick={() => navigate("/register")} className={styles.link}>Register through here</span>
+                    Don't have an account? <Link to="/register" className={styles.link}>Register through here</Link>
                 </p>
             </div>
         </div>
