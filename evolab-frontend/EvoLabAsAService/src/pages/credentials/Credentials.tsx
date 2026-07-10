@@ -22,6 +22,9 @@ const PROVIDER_INFO: Record<LLM, { icon: string, bgClass: string, label: string 
     LOCAL_MODEL: { icon: "L", bgClass: styles.bgOllama, label: "Local Model" },
 };
 
+const LOCAL_MODEL_UNAVAILABLE_MESSAGE =
+    "Local Llama models are not available in this deployment. Use OpenAI, Gemini or Anthropic instead.";
+
 type State = {
     credentials: LLMCredentials[];
     isLoading: boolean;
@@ -166,24 +169,7 @@ export function Credentials() {
                 dispatch({ type: "SUBMIT_ERROR", payload: getErrorMessage(res.error) });
             }
         } else if (state.provider === "LOCAL_MODEL") {
-            const portNumber = parseInt(state.port, 10);
-            if (isNaN(portNumber)) {
-                dispatch({ type: "SUBMIT_ERROR", payload: "The port must be a valid number." });
-                return;
-            }
-            const res = await apiCredentials.createLocalModel({
-                llm: "LOCAL_MODEL",
-                apiKey: state.apiKey,
-                port: portNumber,
-                modelName: state.modelName,
-            });
-            if (res.type === "Success") {
-                setCredentialValidity(res.data.id, true);
-                dispatch({ type: "SUBMIT_SUCCESS_CREATE", payload: res.data });
-                showSuccess("Local credential created successfully.");
-            } else {
-                dispatch({ type: "SUBMIT_ERROR", payload: getErrorMessage(res.error) });
-            }
+            dispatch({ type: "SUBMIT_ERROR", payload: LOCAL_MODEL_UNAVAILABLE_MESSAGE });
         } else {
             const res = await apiCredentials.create({ llm: state.provider, apiKey: state.apiKey });
             if (res.type === "Success") {
@@ -424,7 +410,11 @@ export function Credentials() {
                                 <button type="button" onClick={() => dispatch({ type: "CLOSE_MODAL" })} className={styles.cancelBtn}>
                                     Cancel
                                 </button>
-                                <button type="submit" disabled={state.isSubmitting} className={styles.saveBtn}>
+                                <button
+                                    type="submit"
+                                    disabled={state.isSubmitting}
+                                    className={`${styles.saveBtn} ${!state.editId && state.provider === "LOCAL_MODEL" ? styles.unavailableSaveBtn : ""}`}
+                                >
                                     {state.editId ? "Save Changes" : "Create"}
                                 </button>
                             </div>

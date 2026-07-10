@@ -17,6 +17,7 @@ interface Job {
   status: string;
   createdAt: string;
   bestSolution: string | null;
+  executionLogs: string | null;
   failureReason: string | null;
 }
 
@@ -124,7 +125,7 @@ const ProjectDetail: React.FC = () => {
   const { data: detail, isLoading, error } = usePolling(
     fetchDetail,
     4000,
-    (d) => !d.job || d.job.status === 'COMPLETED' || d.job.status === 'FAILED'
+    (d) => !d.job || d.job.status === 'CREATED' || d.job.status === 'COMPLETED' || d.job.status === 'FAILED'
   );
 
   const job = detail?.job ?? null;
@@ -135,10 +136,20 @@ const ProjectDetail: React.FC = () => {
 
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | null>(null);
   const [showFinalSolution, setShowFinalSolution] = useState(false);
+  const [showExecutionLogs, setShowExecutionLogs] = useState(false);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   usePageTitle(project?.name ?? 'Project');
 
   const maxScore = metrics.length > 0 ? Math.max(...metrics.map(m => m.fitnessScore)) : 1;
+  const projectStatus = project?.status ?? job?.status;
+  const executionLogs = job?.executionLogs?.trim() ? job.executionLogs : null;
+  const executionLogLines = executionLogs ? executionLogs.split(/\r?\n/) : [];
+  const executionLogPreview = executionLogLines.slice(-16).join('\n');
+  const hasExecutionLogs = executionLogLines.length > 0;
+  const logsPending = job?.status === 'CREATED' || job?.status === 'QUEUED' || job?.status === 'RUNNING';
+  const logsEmptyMessage = logsPending
+    ? 'Logs will appear after the execution finishes.'
+    : 'No execution logs were captured for this run.';
 
   if (isLoading) {
     return <LoadingSpinner label="Loading project details" />;
@@ -157,12 +168,9 @@ const ProjectDetail: React.FC = () => {
         </button>
         <div className={styles.pageTitle}>
           <h1>{project?.name ?? `Project ${id}`}</h1>
-          {job && (
-            <span className={`${styles.statusBadge} ${styles[`status${job.status}`] ?? ''}`}>
-              {job.status === 'COMPLETED'}
-              {job.status === 'RUNNING'}
-              {job.status === 'FAILED'}
-              {job.status}
+          {projectStatus && (
+            <span className={`${styles.statusBadge} ${styles[`status${projectStatus}`] ?? ''}`}>
+              {projectStatus}
             </span>
           )}
         </div>
@@ -176,6 +184,27 @@ const ProjectDetail: React.FC = () => {
         <Alert variant="info">
           This project has no run history yet. Start the project from the Projects page to begin.
         </Alert>
+      )}
+
+      {project && (
+        <div className={styles.projectDetailsCard}>
+          <div>
+            <p className={styles.detailLabel}>Project name</p>
+            <p className={styles.detailValue}>{project.name}</p>
+          </div>
+          <div className={styles.descriptionBlock}>
+            <p className={styles.detailLabel}>Description</p>
+            <p className={styles.detailValue}>{project.description || 'No description provided.'}</p>
+          </div>
+          <div>
+            <p className={styles.detailLabel}>Configuration</p>
+            <p className={styles.detailValue}>{project.configId ? `Config #${project.configId}` : 'None'}</p>
+          </div>
+          <div>
+            <p className={styles.detailLabel}>Created</p>
+            <p className={styles.detailValue}>{new Date(project.createdAt).toLocaleString()}</p>
+          </div>
+        </div>
       )}
 
       {job?.failureReason && (
@@ -320,6 +349,35 @@ const ProjectDetail: React.FC = () => {
               })}
             </div>
           )}
+
+          {job && (
+            <motion.div
+              className={styles.logsCard}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+            >
+              <div className={styles.logsHeader}>
+                <div>
+                  <h2 className={styles.logsTitle}>Execution Logs</h2>
+                  <p className={styles.logsMeta}>
+                    Job #{job.id} - {hasExecutionLogs
+                      ? `${executionLogLines.length} line${executionLogLines.length !== 1 ? 's' : ''} captured`
+                      : logsEmptyMessage}
+                  </p>
+                </div>
+                <span className={`${styles.logsStatus} ${hasExecutionLogs ? styles.logsStatusAvailable : styles.logsStatusEmpty}`}>
+                  {hasExecutionLogs ? 'Available' : 'No logs yet'}
+                </span>
+              </div>
+              <pre className={`${styles.logsPreview} ${!hasExecutionLogs ? styles.logsPreviewEmpty : ''}`}>
+                {hasExecutionLogs ? executionLogPreview : logsEmptyMessage}
+              </pre>
+              <button className={styles.viewCodeBtn} onClick={() => setShowExecutionLogs(true)}>
+                View full logs
+              </button>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -337,6 +395,22 @@ const ProjectDetail: React.FC = () => {
       </AnimatePresence>
 
       {/* ── Checkpoint solution modal ── */}
+      <AnimatePresence>
+        {showExecutionLogs && job && (
+          <Modal onClose={() => setShowExecutionLogs(false)} ariaLabelledBy="execution-logs-title" className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <h3 id="execution-logs-title">Execution Logs - Job #{job.id}</h3>
+                <button className={styles.closeBtn} onClick={() => setShowExecutionLogs(false)} aria-label="Close modal">Ã—</button>
+              </div>
+              {hasExecutionLogs ? (
+                <pre className={styles.logsModalBody}>{executionLogs}</pre>
+              ) : (
+                <div className={styles.logsModalEmpty}>{logsEmptyMessage}</div>
+              )}
+          </Modal>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {selectedCheckpoint && (
           <Modal onClose={() => setSelectedCheckpoint(null)} ariaLabelledBy="checkpoint-solution-title" className={styles.modal}>

@@ -151,6 +151,10 @@ class ProjectServiceImp(
 
             val updatedProject = project.copy(status = EvolutionStatus.CREATED)
             repoProjects.save(updatedProject)
+            repoJobs.createJob(
+                projectId = projectId,
+                status = EvolutionStatus.CREATED,
+            )
             success(updatedProject)
         }
 

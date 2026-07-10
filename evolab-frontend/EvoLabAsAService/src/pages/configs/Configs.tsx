@@ -71,9 +71,9 @@ const sortedStringify = (params: Record<string, string>): string => {
   return JSON.stringify(sorted);
 };
 
-const OPENAI_MODELS = ['gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o1-mini', 'o1-preview'];
-const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-const ANTHROPIC_MODELS = ['claude-3-haiku-20240307', 'claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-7-sonnet-20250219'];
+const OPENAI_MODELS = ['gpt-4.1-mini', 'gpt-4o-mini', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
+const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash'];
+const ANTHROPIC_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6', 'claude-opus-4-6'];
 
 const CUSTOM_MODEL_SENTINEL = '__custom__';
 const MODEL_NAME_REGEX = /^[a-zA-Z0-9._\-/]+$/;
