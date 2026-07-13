@@ -15,6 +15,8 @@ sealed class ConfigError {
 
     data object InvalidCheckpointInterval : ConfigError()
 
+    data object CheckpointIntervalExceedsMaxIterations : ConfigError()
+
     data class InvalidOpenEvolveConfig(
         val reason: String,
     ) : ConfigError()

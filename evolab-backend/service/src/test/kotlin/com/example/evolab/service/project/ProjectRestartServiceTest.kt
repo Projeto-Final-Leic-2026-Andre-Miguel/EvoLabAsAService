@@ -84,6 +84,69 @@ class ProjectRestartServiceTest {
         assertTrue(jobRepo.findAllByProjectId(project.id).isEmpty())
     }
 
+    @Test
+    fun `delete created project is allowed`() {
+        assertDeleteAllowed(EvolutionStatus.CREATED)
+    }
+
+    @Test
+    fun `delete completed project is allowed`() {
+        assertDeleteAllowed(EvolutionStatus.COMPLETED)
+    }
+
+    @Test
+    fun `delete failed project is allowed`() {
+        assertDeleteAllowed(EvolutionStatus.FAILED)
+    }
+
+    @Test
+    fun `delete queued project is rejected without removing it`() {
+        assertActiveDeleteRejected(EvolutionStatus.QUEUED)
+    }
+
+    @Test
+    fun `delete running project is rejected without removing it`() {
+        assertActiveDeleteRejected(EvolutionStatus.RUNNING)
+    }
+
+    @Test
+    fun `delete project owned by another user remains rejected`() {
+        val projectRepo = InMemoryProjectRepository()
+        val project = projectRepo.seed(userId = 7, status = EvolutionStatus.CREATED)
+        val service = ProjectServiceImp(InMemoryTransactionManager(projectRepo, InMemoryJobRepository()), JobQueue())
+
+        val result = service.deleteProject(project.id, userId = 8)
+
+        assertEquals(
+            ProjectServiceErrors.NotProjectOwner("User with id '8' is not the owner of project with id '${project.id}'"),
+            (result as Either.Left).value,
+        )
+        assertEquals(project, projectRepo.findById(project.id))
+    }
+
+    private fun assertDeleteAllowed(status: EvolutionStatus) {
+        val projectRepo = InMemoryProjectRepository()
+        val project = projectRepo.seed(userId = 7, status = status)
+        val service = ProjectServiceImp(InMemoryTransactionManager(projectRepo, InMemoryJobRepository()), JobQueue())
+
+        assertEquals(project.id, assertRight(service.deleteProject(project.id, userId = 7)))
+        assertNull(projectRepo.findById(project.id))
+    }
+
+    private fun assertActiveDeleteRejected(status: EvolutionStatus) {
+        val projectRepo = InMemoryProjectRepository()
+        val project = projectRepo.seed(userId = 7, status = status)
+        val service = ProjectServiceImp(InMemoryTransactionManager(projectRepo, InMemoryJobRepository()), JobQueue())
+
+        val result = service.deleteProject(project.id, userId = 7)
+
+        assertEquals(
+            ProjectServiceErrors.InvalidProjectStatus("A project with an active execution cannot be deleted."),
+            (result as Either.Left).value,
+        )
+        assertEquals(project, projectRepo.findById(project.id))
+    }
+
     private fun <L, R> assertRight(result: Either<L, R>): R {
         assertTrue(result is Either.Right)
         return result.value

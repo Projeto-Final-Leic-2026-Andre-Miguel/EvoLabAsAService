@@ -27,9 +27,20 @@ const validParams = {
 };
 
 describe('validateConfigValues', () => {
-  it('requires positive iteration values', () => {
+  it('rejects non-positive iteration values', () => {
     expect(validateConfigValues(0, 0, {}).maxIter).toBe('Max iterations must be greater than 0.');
     expect(validateConfigValues(1, 0, {}).checkPointInterval).toBe('Checkpoint interval must be greater than 0.');
+  });
+
+  it('accepts a checkpoint below or equal to the maximum iterations', () => {
+    expect(validateConfigValues(10, 5, {})).toEqual({});
+    expect(validateConfigValues(5, 5, {})).toEqual({});
+  });
+
+  it('rejects a checkpoint greater than the maximum iterations', () => {
+    expect(validateConfigValues(4, 5, {}).checkPointInterval).toBe(
+      'Checkpoint interval cannot be greater than the maximum number of iterations.',
+    );
   });
 
   it('validates ratios and positive sizes', () => {

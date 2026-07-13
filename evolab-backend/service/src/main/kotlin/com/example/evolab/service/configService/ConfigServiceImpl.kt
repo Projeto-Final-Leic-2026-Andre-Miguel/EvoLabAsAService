@@ -53,7 +53,7 @@ class ConfigServiceImpl(
             Pair(modelName, additionalParams)
         }
 
-        validateInput(finalModelName, maxIter, checkPointInterval)?.let { return failure(it) }
+        ConfigInputValidator.validate(finalModelName, maxIter, checkPointInterval)?.let { return failure(it) }
 
             val project =
                 projectId?.let { projectId ->
@@ -128,7 +128,7 @@ class ConfigServiceImpl(
             Pair(modelName, additionalParams)
         }
 
-        validateInput(finalModelName, maxIter, checkPointInterval)?.let { return failure(it) }
+        ConfigInputValidator.validate(finalModelName, maxIter, checkPointInterval)?.let { return failure(it) }
 
         val normalizedParams =
             try {
@@ -196,17 +196,6 @@ class ConfigServiceImpl(
             logger.error("Failed to delete temporary config file: $path", e)
             failure(ConfigError.ErrorCleaningTemporaryConfigFile)
         }
-    }
-
-    private fun validateInput(
-        modelName: String,
-        maxIter: Int,
-        checkPointInterval: Int,
-    ): ConfigError? {
-        if (modelName.isBlank()) return ConfigError.InvalidModelName
-        if (maxIter <= 0) return ConfigError.InvalidMaxIterations
-        if (checkPointInterval <= 0 || checkPointInterval > maxIter) return ConfigError.InvalidCheckpointInterval
-        return null
     }
 
     private fun normalizeAdditionalParams(

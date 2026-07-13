@@ -16,6 +16,13 @@ describe('getErrorMessage', () => {
     })).toBe('Project name cannot be blank');
   });
 
+  it('shows the conflict detail when an active project cannot be deleted', () => {
+    expect(getErrorMessage({
+      title: 'invalid-project-status',
+      detail: 'A project with an active execution cannot be deleted.',
+    })).toBe('A project with an active execution cannot be deleted.');
+  });
+
   it('falls back when neither title nor detail is available', () => {
     expect(getErrorMessage({ title: '', detail: '' })).toBe('An unexpected error occurred. Please try again.');
   });

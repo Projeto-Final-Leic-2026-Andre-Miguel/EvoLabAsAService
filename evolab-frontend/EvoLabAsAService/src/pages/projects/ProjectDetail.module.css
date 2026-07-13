@@ -165,18 +165,26 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: #64748b;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.5rem 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.chartViewport {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .chart {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  height: 180px;
-  padding-bottom: 1.5rem;
+  box-sizing: border-box;
+  height: 200px;
+  min-width: 100%;
+  padding: 42px 0 1.5rem;
   position: relative;
+  width: max-content;
 }
 
 .barWrapper {
@@ -185,6 +193,7 @@
   align-items: center;
   gap: 4px;
   flex: 1;
+  min-width: 24px;
   position: relative;
   cursor: default;
 }
@@ -194,7 +203,7 @@
   background: #818cf8;
   border-radius: 4px 4px 0 0;
   transition: background 0.2s;
-  min-height: 8px;
+  min-height: 0;
 }
 
 .barWrapper:hover .bar {
@@ -238,6 +247,17 @@
   transform: translateX(-50%);
   border: 4px solid transparent;
   border-top-color: #1e293b;
+}
+
+.barWrapper:first-child .tooltip {
+  left: 0;
+  transform: none;
+}
+
+.barWrapper:last-child .tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 /* Metrics table */
@@ -578,6 +598,24 @@
 
 .closeBtn:hover {
   color: #e2e8f0;
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.closeBtn svg {
+  display: block;
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.closeBtn path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
 }
 
 .codeBlock {

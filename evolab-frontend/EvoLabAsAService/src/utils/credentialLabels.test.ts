@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { getCredentialLabel } from './credentialLabels';
 
 describe('getCredentialLabel', () => {
-  it('uses the human-readable provider name and credential id', () => {
-    expect(getCredentialLabel({ id: 5, llm: 'OPENAI' })).toBe('OpenAI credential #5');
-    expect(getCredentialLabel({ id: 8, llm: 'LOCAL_MODEL' })).toBe('Local Model credential #8');
+  it('uses only the human-readable provider name', () => {
+    expect(getCredentialLabel({ llm: 'OPENAI' })).toBe('OpenAI');
+    expect(getCredentialLabel({ llm: 'GEMINI' })).toBe('Gemini');
+    expect(getCredentialLabel({ llm: 'ANTHROPIC' })).toBe('Anthropic');
+    expect(getCredentialLabel({ llm: 'LOCAL_MODEL' })).toBe('Local Model');
   });
 });

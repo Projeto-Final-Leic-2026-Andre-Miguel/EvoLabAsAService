@@ -12,7 +12,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../hooks/useToast';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { getMissingProjectRequirements } from '../../utils/projectReadiness';
+import { getMissingProjectRequirements, getProjectActionPermissions } from '../../utils/projectReadiness';
 
 const Projects: React.FC = () => {
   usePageTitle('Projects');
@@ -248,10 +248,10 @@ const Projects: React.FC = () => {
         <AnimatePresence>
           {projects.map((project) => {
             const missingRequirements = getMissingProjectRequirements(project);
-            const isAlreadyActive = project.status === 'RUNNING' || project.status === 'QUEUED';
+            const actionPermissions = getProjectActionPermissions(project.status);
             const startTitle = missingRequirements.length > 0
               ? `Missing: ${missingRequirements.join(', ')}`
-              : isAlreadyActive
+              : !actionPermissions.start
                 ? `Project is ${project.status.toLowerCase()}.`
                 : 'Start Experimentation';
 
@@ -282,7 +282,7 @@ const Projects: React.FC = () => {
                   <span>Configuration:</span>
                   <strong>
                     {project.configId
-                      ? configs.find(config => config.configId === project.configId)?.modelName ?? `Config #${project.configId}`
+                      ? configs.find(config => config.configId === project.configId)?.modelName ?? 'Unavailable configuration'
                       : 'None'}
                   </strong>
                 </div>
@@ -304,14 +304,15 @@ const Projects: React.FC = () => {
                   className={`${styles.actionBtn} ${styles.startBtn}`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!actionPermissions.start) return;
                     handleStart(project.id);
                   }}
-                  disabled={isAlreadyActive || missingRequirements.length > 0 || startingId === project.id}
+                  disabled={!actionPermissions.start || missingRequirements.length > 0 || startingId === project.id}
                   title={startTitle}
                 >
                   {startingId === project.id ? <span>⏳ Starting</span> : <span>Start</span>}
                 </button>
-                {(project.status === 'COMPLETED' || project.status === 'FAILED') && (
+                {actionPermissions.restart && (
                   <button
                     className={`${styles.actionBtn} ${styles.restartBtn}`}
                     onClick={(e) => {
@@ -328,9 +329,11 @@ const Projects: React.FC = () => {
                   className={`${styles.actionBtn} ${styles.editBtn}`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!actionPermissions.update) return;
                     handleOpenModal(project);
                   }}
-                  title="Edit Project"
+                  disabled={!actionPermissions.update}
+                  title={actionPermissions.update ? 'Edit Project' : 'Project cannot be updated during an active execution.'}
                 >
                   <span>Update</span>
                 </button>
@@ -338,9 +341,11 @@ const Projects: React.FC = () => {
                   className={`${styles.actionBtn} ${styles.deleteBtn}`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!actionPermissions.delete) return;
                     setProjectToDelete(project);
                   }}
-                  title="Delete Project"
+                  disabled={!actionPermissions.delete}
+                  title={actionPermissions.delete ? 'Delete Project' : 'Project cannot be deleted during an active execution.'}
                 >
                   <span>Delete</span>
                 </button>

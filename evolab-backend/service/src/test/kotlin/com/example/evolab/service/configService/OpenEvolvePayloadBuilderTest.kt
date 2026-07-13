@@ -58,6 +58,19 @@ class OpenEvolvePayloadBuilderTest {
     }
 
     @Test
+    fun `o3 mini is accepted as an OpenAI reasoning model configuration`() {
+        val config = config("o3-mini", mapOf("llm.api_base" to "https://api.openai.com/v1"))
+
+        OpenEvolvePayloadBuilder.validateProviderModelConsistency(
+            com.example.evolab.domain.LLMCredentials.LLM.OPENAI,
+            config.modelName,
+        )
+        val llm = OpenEvolvePayloadBuilder.build(config, apiKeyValue = "\${OPENAI_API_KEY}")["llm"] as Map<*, *>
+
+        assertEquals("o3-mini", (llm["models"] as List<*>).first().let { it as Map<*, *> }["name"])
+    }
+
+    @Test
     fun `rendered yaml includes reasoning effort when present`() {
         val payload =
             OpenEvolvePayloadBuilder.build(

@@ -15,6 +15,60 @@ test('shows the authenticated projects list', async ({ page }) => {
   await expect(page.getByText('gpt-4.1-mini')).toBeVisible();
 });
 
+test('keeps fitness bars and tooltips clear of the title on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.route('**/api/projects/31/jobs', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([{
+      id: 41,
+      projectId: 31,
+      status: 'COMPLETED',
+      createdAt: '2026-01-06T00:00:00Z',
+      completedAt: '2026-01-06T00:01:00Z',
+      bestFitness: 100,
+      bestSolution: 'return 1',
+      executionLogs: 'complete',
+    }]),
+  }));
+  await page.route('**/api/jobs/41/metrics', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([
+      { id: 51, jobId: 41, iteration: 1, fitnessScore: -1, executionTime: 1, createdAt: '2026-01-06T00:00:10Z' },
+      { id: 52, jobId: 41, iteration: 2, fitnessScore: 0, executionTime: 1, createdAt: '2026-01-06T00:00:20Z' },
+      { id: 53, jobId: 41, iteration: 3, fitnessScore: 0.5, executionTime: 1, createdAt: '2026-01-06T00:00:30Z' },
+      { id: 54, jobId: 41, iteration: 4, fitnessScore: 100, executionTime: 1, createdAt: '2026-01-06T00:00:40Z' },
+    ]),
+  }));
+  await page.route('**/api/jobs/41/checkpoints', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: '[]',
+  }));
+
+  await page.goto('/projects/31');
+
+  const title = page.getByText('Fitness Score per Iteration', { exact: true });
+  const maximumBarWrapper = title.locator('..').getByText('#4', { exact: true }).locator('..');
+  await expect(title).toBeVisible();
+  await expect(maximumBarWrapper).toBeVisible();
+
+  const titleBox = await title.boundingBox();
+  const maximumBarBox = await maximumBarWrapper.locator('div').last().boundingBox();
+  expect(titleBox).not.toBeNull();
+  expect(maximumBarBox).not.toBeNull();
+  expect(maximumBarBox!.y).toBeGreaterThan(titleBox!.y + titleBox!.height);
+
+  await maximumBarWrapper.hover();
+  const tooltip = maximumBarWrapper.getByText('10000.0%', { exact: true }).locator('..');
+  await expect(tooltip).toBeVisible();
+  const tooltipBox = await tooltip.boundingBox();
+  expect(tooltipBox).not.toBeNull();
+  expect(tooltipBox!.x).toBeGreaterThanOrEqual(0);
+  expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(360);
+});
+
 test('creates a project through the modal and posts the expected payload', async ({ page }) => {
   let createdPayload: unknown;
   await page.route('**/api/projects', async route => {

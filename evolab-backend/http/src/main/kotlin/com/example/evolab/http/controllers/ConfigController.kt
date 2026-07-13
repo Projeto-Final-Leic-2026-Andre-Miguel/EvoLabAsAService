@@ -233,6 +233,11 @@ class ConfigController(
             is ConfigError.InvalidCheckpointInterval ->
                 Problem.InvalidConfigInput.withDetail("Checkpoint interval must be greater than 0").response(HttpStatus.BAD_REQUEST)
 
+            is ConfigError.CheckpointIntervalExceedsMaxIterations ->
+                Problem.InvalidConfigInput
+                    .withDetail("Checkpoint interval cannot be greater than the maximum number of iterations.")
+                    .response(HttpStatus.BAD_REQUEST)
+
             is ConfigError.InvalidOpenEvolveConfig ->
                 Problem.InvalidConfigInput.withDetail(error.reason).response(HttpStatus.BAD_REQUEST)
 

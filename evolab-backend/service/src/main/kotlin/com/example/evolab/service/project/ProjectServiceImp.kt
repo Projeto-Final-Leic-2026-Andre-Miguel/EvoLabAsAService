@@ -216,6 +216,14 @@ class ProjectServiceImp(
 
             validateOwnership(project, userId)?.let { return@run it }
 
+            if (project.status == EvolutionStatus.QUEUED || project.status == EvolutionStatus.RUNNING) {
+                return@run failure(
+                    ProjectServiceErrors.InvalidProjectStatus(
+                        "A project with an active execution cannot be deleted.",
+                    ),
+                )
+            }
+
             val deleted = repoProjects.deleteById(projectId)
             if (!deleted) return@run failureNotFound(projectId)
 

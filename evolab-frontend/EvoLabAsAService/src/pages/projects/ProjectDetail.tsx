@@ -10,6 +10,7 @@ import { Alert } from '../../components/ui/Alert';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { Modal } from '../../components/ui/Modal';
 import { usePageTitle } from '../../hooks/usePageTitle';
+import { getFitnessBarHeight, getFitnessScaleMax } from '../../utils/fitnessChart';
 
 interface Job {
   id: number;
@@ -39,7 +40,6 @@ interface Checkpoint {
   createdAt: string;
 }
 
-const BAR_MAX_HEIGHT = 160;
 const CODE_TOKEN_REGEX = /(#.*$|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\b(?:def|class|return|if|elif|else|for|while|try|except|finally|import|from|as|with|in|is|and|or|not|None|True|False|lambda|yield|break|continue|pass|raise)\b|\b\d+(?:\.\d+)?\b)/gm;
 const PYTHON_KEYWORDS = new Set([
   'def', 'class', 'return', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally',
@@ -140,7 +140,7 @@ const ProjectDetail: React.FC = () => {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   usePageTitle(project?.name ?? 'Project');
 
-  const maxScore = metrics.length > 0 ? Math.max(...metrics.map(m => m.fitnessScore)) : 1;
+  const maxScore = getFitnessScaleMax(metrics.map(metric => metric.fitnessScore));
   const projectStatus = project?.status ?? job?.status;
   const executionLogs = job?.executionLogs?.trim() ? job.executionLogs : null;
   const executionLogLines = executionLogs ? executionLogs.split(/\r?\n/) : [];
@@ -198,7 +198,7 @@ const ProjectDetail: React.FC = () => {
           </div>
           <div>
             <p className={styles.detailLabel}>Configuration</p>
-            <p className={styles.detailValue}>{project.configId ? `Config #${project.configId}` : 'None'}</p>
+            <p className={styles.detailValue}>{project.configId ? 'Config' : 'None'}</p>
           </div>
           <div>
             <p className={styles.detailLabel}>Created</p>
@@ -251,33 +251,35 @@ const ProjectDetail: React.FC = () => {
             <>
               <div className={styles.card}>
                 <p className={styles.chartLabel}>Fitness Score per Iteration</p>
-                <div className={styles.chart}>
-                  {metrics.map((m) => {
-                    const height = Math.max(8, (m.fitnessScore / maxScore) * BAR_MAX_HEIGHT);
-                    const isHovered = hoveredBar === m.id;
-                    return (
-                      <div
-                        key={m.id}
-                        className={styles.barWrapper}
-                        onMouseEnter={() => setHoveredBar(m.id)}
-                        onMouseLeave={() => setHoveredBar(null)}
-                      >
-                        {isHovered && (
-                          <div className={styles.tooltip}>
-                            <strong>{(m.fitnessScore * 100).toFixed(1)}%</strong>
-                            {m.executionTime != null && <span>{m.executionTime}s</span>}
-                          </div>
-                        )}
-                        <motion.div
-                          className={`${styles.bar} ${m.fitnessScore === maxScore ? styles.barBest : ''}`}
-                          initial={{ height: 0 }}
-                          animate={{ height }}
-                          transition={{ duration: 0.5, delay: m.iteration * 0.04 }}
-                        />
-                        <span className={styles.barLabel}>#{m.iteration}</span>
-                      </div>
-                    );
-                  })}
+                <div className={styles.chartViewport}>
+                  <div className={styles.chart}>
+                    {metrics.map((m) => {
+                      const height = getFitnessBarHeight(m.fitnessScore, maxScore);
+                      const isHovered = hoveredBar === m.id;
+                      return (
+                        <div
+                          key={m.id}
+                          className={styles.barWrapper}
+                          onMouseEnter={() => setHoveredBar(m.id)}
+                          onMouseLeave={() => setHoveredBar(null)}
+                        >
+                          {isHovered && (
+                            <div className={styles.tooltip}>
+                              <strong>{(m.fitnessScore * 100).toFixed(1)}%</strong>
+                              {m.executionTime != null && <span>{m.executionTime}s</span>}
+                            </div>
+                          )}
+                          <motion.div
+                            className={`${styles.bar} ${maxScore > 0 && m.fitnessScore === maxScore ? styles.barBest : ''}`}
+                            initial={{ height: 0 }}
+                            animate={{ height }}
+                            transition={{ duration: 0.5, delay: m.iteration * 0.04 }}
+                          />
+                          <span className={styles.barLabel}>#{m.iteration}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -315,7 +317,7 @@ const ProjectDetail: React.FC = () => {
             <div className={styles.checkpointList}>
               {checkpoints.map((cp) => {
                 const metric = metrics.find(m => m.id === cp.metricsId);
-                const isBest = metric != null && metric.fitnessScore === maxScore;
+                const isBest = metric != null && maxScore > 0 && metric.fitnessScore === maxScore;
                 return (
                   <motion.div
                     key={cp.id}
@@ -400,7 +402,11 @@ const ProjectDetail: React.FC = () => {
           <Modal onClose={() => setShowExecutionLogs(false)} ariaLabelledBy="execution-logs-title" className={styles.modal}>
               <div className={styles.modalHeader}>
                 <h3 id="execution-logs-title">Execution Logs - Job #{job.id}</h3>
-                <button className={styles.closeBtn} onClick={() => setShowExecutionLogs(false)} aria-label="Close modal">Ã—</button>
+                <button type="button" className={styles.closeBtn} onClick={() => setShowExecutionLogs(false)} aria-label="Close">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
               </div>
               {hasExecutionLogs ? (
                 <pre className={styles.logsModalBody}>{executionLogs}</pre>

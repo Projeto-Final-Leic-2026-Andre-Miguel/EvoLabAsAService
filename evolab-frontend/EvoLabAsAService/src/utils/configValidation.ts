@@ -60,9 +60,11 @@ export function validateConfigValues(
     if (!Number.isFinite(maxIter) || maxIter < 1) {
         errors.maxIter = "Max iterations must be greater than 0.";
     }
-    if (!Number.isFinite(checkPointInterval) || checkPointInterval < 1) {
-        errors.checkPointInterval = "Checkpoint interval must be greater than 0.";
-    }
+  if (!Number.isFinite(checkPointInterval) || checkPointInterval < 1) {
+    errors.checkPointInterval = "Checkpoint interval must be greater than 0.";
+  } else if (Number.isFinite(maxIter) && maxIter > 0 && checkPointInterval > maxIter) {
+    errors.checkPointInterval = "Checkpoint interval cannot be greater than the maximum number of iterations.";
+  }
 
     for (const [key, rule] of Object.entries(numericRules)) {
         const message = validateNumericValue(advancedParams[key] ?? "", rule);

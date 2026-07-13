@@ -4,6 +4,16 @@ type ProjectStartRequirements = {
     evaluatorCode: string | null;
 };
 
+type ProjectStatus = 'CREATED' | 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+
+export type ProjectActionPermissions = {
+    details: boolean;
+    start: boolean;
+    restart: boolean;
+    update: boolean;
+    delete: boolean;
+};
+
 export function getMissingProjectRequirements(project: ProjectStartRequirements): string[] {
     const missing: string[] = [];
 
@@ -12,4 +22,17 @@ export function getMissingProjectRequirements(project: ProjectStartRequirements)
     if (!project.evaluatorCode?.trim()) missing.push("evaluator code");
 
     return missing;
+}
+
+export function getProjectActionPermissions(status: ProjectStatus): ProjectActionPermissions {
+    const isActive = status === 'QUEUED' || status === 'RUNNING';
+    const isTerminal = status === 'COMPLETED' || status === 'FAILED';
+
+    return {
+        details: true,
+        start: status === 'CREATED',
+        restart: isTerminal,
+        update: !isActive,
+        delete: !isActive,
+    };
 }

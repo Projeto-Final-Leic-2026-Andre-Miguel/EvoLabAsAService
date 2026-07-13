@@ -197,7 +197,7 @@
   border-color: #e2e8f0;
 }
 
-.actionBtn:hover {
+.actionBtn:hover:not(:disabled) {
   background: #f1f5f9;
 }
 
@@ -217,7 +217,7 @@
 .editBtn {
   color: var(--primary-color, #4F46E5);
 }
-.editBtn:hover {
+.editBtn:hover:not(:disabled) {
   background: #eef2ff;
   border-color: #c7d2fe;
 }
@@ -227,7 +227,7 @@
   background: #10b981;
   border-color: #10b981;
 }
-.startBtn:hover {
+.startBtn:hover:not(:disabled) {
   background: #059669;
 }
 .startBtn:disabled {
@@ -239,7 +239,7 @@
 .deleteBtn {
   color: #ef4444;
 }
-.deleteBtn:hover {
+.deleteBtn:hover:not(:disabled) {
   background: #fef2f2;
   border-color: #fecaca;
 }
@@ -247,7 +247,7 @@
 .restartBtn {
   color: #d97706;
 }
-.restartBtn:hover {
+.restartBtn:hover:not(:disabled) {
   background: #fffbeb;
   border-color: #fde68a;
 }
@@ -506,7 +506,7 @@
   color: var(--text-soft);
 }
 
-.actionBtn:hover,
+.actionBtn:hover:not(:disabled),
 .backBtn:hover,
 .uploadBtn:hover,
 .cancelBtn:hover {
@@ -554,6 +554,6 @@
 }
 
 .saveBtn:hover:not(:disabled),
-.startBtn:hover {
+.startBtn:hover:not(:disabled) {
   background: var(--primary-hover);
 }

@@ -16,6 +16,7 @@ import { getCredentialLabel } from '../../utils/credentialLabels';
 import { useToast } from '../../hooks/useToast';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { validateConfigValues } from '../../utils/configValidation';
+import { ANTHROPIC_MODELS, GEMINI_MODELS, OPENAI_MODELS, isPredefinedModel } from '../../utils/modelOptions';
 
 const defaultAdvancedParams = (): Record<string, string> => ({
   'llm.temperature': '',
@@ -71,10 +72,6 @@ const sortedStringify = (params: Record<string, string>): string => {
   return JSON.stringify(sorted);
 };
 
-const OPENAI_MODELS = ['gpt-4.1-mini', 'gpt-4o-mini', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
-const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash'];
-const ANTHROPIC_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6', 'claude-opus-4-6'];
-
 const CUSTOM_MODEL_SENTINEL = '__custom__';
 const MODEL_NAME_REGEX = /^[a-zA-Z0-9._\-/]+$/;
 const HIDDEN_ADDITIONAL_PARAMS = new Set(['llm.api_base']);
@@ -108,14 +105,6 @@ const PARAM_DESCRIPTIONS: Record<string, string> = {
   'evaluator.cascade_threshold_3': 'Minimum score needed to pass the final cascade stage.',
   'diff_based_evolution': 'Evolves patches/diffs instead of full programs where supported.',
 };
-
-function isPredefinedModel(llm: LLM | undefined, value: string): boolean {
-  if (!llm || !value) return false;
-  if (llm === 'OPENAI') return OPENAI_MODELS.includes(value);
-  if (llm === 'GEMINI') return GEMINI_MODELS.includes(value);
-  if (llm === 'ANTHROPIC') return ANTHROPIC_MODELS.includes(value);
-  return true;
-}
 
 function placeholderForProvider(llm: LLM | undefined): string {
   if (llm === 'OPENAI') return 'e.g., gpt-4.1-mini';
@@ -564,34 +553,28 @@ const Configs: React.FC = () => {
               onClick={() => setViewingConfig(config)}
             >
               <div className={styles.cardHeader}>
-                <h3 className={styles.configIdText}>{config.modelName}</h3>
-                <span className={styles.modelBadge}>Config #{config.configId}</span>
+                <div>
+                  <h3 className={styles.configIdText}>Config</h3>
+                  <p className={styles.configProvider}>
+                    {credentials.find(credential => credential.id === config.llmCredentialsId)
+                      ? `${getCredentialLabel(credentials.find(credential => credential.id === config.llmCredentialsId)!)} · ${config.modelName}`
+                      : config.modelName}
+                  </p>
+                </div>
               </div>
+
+              <p className={styles.configSummary}>
+                {config.maxIter} iterations · checkpoint every {config.checkPointInterval} iterations
+              </p>
 
               <div className={styles.cardDetails}>
                 <div className={styles.detailRow}>
                   <span>Linked Project:</span>
                   <strong>
                     {config.projectId
-                      ? projects.find(project => project.id === config.projectId)?.name ?? `Project #${config.projectId}`
+                      ? projects.find(project => project.id === config.projectId)?.name ?? 'Unavailable project'
                       : 'Unassigned'}
                   </strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Credential:</span>
-                  <strong>
-                    {credentials.find(credential => credential.id === config.llmCredentialsId)
-                      ? getCredentialLabel(credentials.find(credential => credential.id === config.llmCredentialsId)!)
-                      : `Credential #${config.llmCredentialsId}`}
-                  </strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Max Iterations:</span>
-                  <strong>{config.maxIter}</strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Checkpoint Interval:</span>
-                  <strong>{config.checkPointInterval}</strong>
                 </div>
                 
                 {Object.entries(visibleAdditionalParams(config.additionalParams)).length > 0 && (
@@ -654,10 +637,6 @@ const Configs: React.FC = () => {
 
               <div className={styles.detailGrid}>
                 <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Config ID</span>
-                  <span className={styles.detailValue}>{viewingConfig.configId}</span>
-                </div>
-                <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Model Name</span>
                   <span className={styles.detailValue}>{viewingConfig.modelName}</span>
                 </div>
@@ -666,14 +645,14 @@ const Configs: React.FC = () => {
                   <span className={styles.detailValue}>
                     {credentials.find(credential => credential.id === viewingConfig.llmCredentialsId)
                       ? getCredentialLabel(credentials.find(credential => credential.id === viewingConfig.llmCredentialsId)!)
-                      : `Credential #${viewingConfig.llmCredentialsId}`}
+                      : 'Unavailable credential'}
                   </span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Linked Project</span>
                   <span className={styles.detailValue}>
                     {viewingConfig.projectId
-                      ? projects.find(project => project.id === viewingConfig.projectId)?.name ?? `Project #${viewingConfig.projectId}`
+                      ? projects.find(project => project.id === viewingConfig.projectId)?.name ?? 'Unavailable project'
                       : 'Unassigned'}
                   </span>
                 </div>

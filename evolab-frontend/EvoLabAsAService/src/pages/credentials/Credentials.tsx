@@ -275,17 +275,26 @@ export function Credentials() {
                                 </div>
 
                                 <div className={styles.actions}>
-                                    <button onClick={() => handleValidate(cred.id)} className={`${styles.actionBtn} ${styles.validateBtn}`}>
+                                    <button
+                                        onClick={() => handleValidate(cred.id)}
+                                        className={`${styles.actionBtn} ${styles.validateBtn}`}
+                                        aria-label={`Validate ${getCredentialLabel(cred)} credential`}
+                                    >
                                         Validate
                                     </button>
-                                    <button onClick={() => dispatch({ type: "OPEN_MODAL_EDIT", payload: cred })} className={`${styles.actionBtn} ${styles.updateBtn}`}>
+                                    <button
+                                        onClick={() => dispatch({ type: "OPEN_MODAL_EDIT", payload: cred })}
+                                        className={`${styles.actionBtn} ${styles.updateBtn}`}
+                                        aria-label={`Update ${getCredentialLabel(cred)} credential`}
+                                    >
                                         Update
                                     </button>
                                     <button
                                         onClick={() => setCredentialToDelete(cred)}
                                         className={`${styles.actionBtn} ${styles.deleteBtn}`}
                                         disabled={deleteDisabled}
-                                        title={deleteDisabled ? `In use by configuration #${configIds[0]} \u2014 delete it first.` : "Delete credential"}
+                                        title={deleteDisabled ? 'In use by a configuration. Delete it first.' : `Delete ${getCredentialLabel(cred)} credential`}
+                                        aria-label={`Delete ${getCredentialLabel(cred)} credential`}
                                     >
                                         Delete
                                     </button>
