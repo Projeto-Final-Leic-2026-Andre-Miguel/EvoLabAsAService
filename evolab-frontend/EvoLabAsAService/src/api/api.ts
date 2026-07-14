@@ -55,7 +55,7 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
         }
 
         const response = await fetch(url, {
-            credentials: "include",
+            credentials: "include", // faz com que sejam enviados os cookies diretamente com o pedido.
             ...options,
             headers,
         });
@@ -69,6 +69,7 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
                 error: new ApiError(response.status, title, detail, response.statusText)
             };
         }
+        // sucesso e sem corpo
         if (response.status === 204) {
             return {type: "Success", data: null as T, error: null };
         }
@@ -78,10 +79,13 @@ export async function request<T>(url: string, options?: RequestInit): Promise<Re
         }
         let data: T;
         try {
+            // se existir corpo tentamos ler o json.
             data = await response.json();
         } catch {
+            // caso não consiga devolve sucesso com null.
             return {type: "Success", data: null as T, error: null };
         }
+
 
         return {type: "Success", data, error: null };
     } catch (e) {

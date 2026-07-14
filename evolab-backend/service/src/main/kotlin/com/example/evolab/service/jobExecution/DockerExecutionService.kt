@@ -72,15 +72,21 @@ class DockerExecutionService {
     private lateinit var dockerClient: DockerClient
     private val logger = LoggerFactory.getLogger(DockerExecutionService::class.java)
 
+
+    // Post construct serve para indicar que a função anotada deve ser executada depois de criada/instanciada.
+    // Esta função é resposnavél por inicializar/criar o cliente docker, com o qual o backend vai comunicar para criar,executar e remover containers.
+    // função responsvavé por preparar a ligação do backend com o Docker
     @PostConstruct
     fun init() {
         val dockerHostEnv = System.getenv("DOCKER_HOST")
 
+        // cria um configBuilder,
         val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
         if (!dockerHostEnv.isNullOrBlank()) {
             configBuilder.withDockerHost(dockerHostEnv)
             logger.info("Initializing Docker client with env DOCKER_HOST: $dockerHostEnv")
         } else {
+            // aqui tenta encontrar o socket correto onde o docker daemon está à escuta, dependendo do sistema operativo.
             val os = System.getProperty("os.name").lowercase()
             val socketPath = if (os.contains("mac")) {
                 val home = System.getProperty("user.home")
@@ -96,16 +102,18 @@ class DockerExecutionService {
                 "unix:///var/run/docker.sock"
             }
             logger.info("Initializing Docker client with forced socket: $socketPath")
+            // associa o socket/host ao configBuilder.
             configBuilder.withDockerHost(socketPath)
         }
 
+        // constroi o config
         val config = configBuilder.build()
 
+        // cria o cliente http com ZerodepDockerHttpClient com o qual vai comunicar.
         val httpClient = ZerodepDockerHttpClient.Builder()
             .dockerHost(config.dockerHost)
             .sslConfig(config.sslConfig)
             .build()
-
         dockerClient = DockerClientImpl.getInstance(config, httpClient)
 
         logger.info("Docker client built successfully")
@@ -149,6 +157,7 @@ class DockerExecutionService {
                 // Extract output from container before removal
                 extractOutputFromContainer(containerId, tempDir, workerId)
 
+                // remove o container depois de ter terminado
                 removeContainer(containerId)
 
                 val extraction = extractAndPersistResults(tempDir, logsBuilder.toString(), project.id, workerId)
@@ -169,6 +178,9 @@ class DockerExecutionService {
         }
     }
 
+
+    // Esta função baixa a imagem e garante que ela existe.
+    // ela é assincrona claro, e portanto fazemos o pull e esperamos até que ela termine.
     private fun pullDockerImage(workerId: Int) {
         try {
             dockerClient.pullImageCmd(IMAGE_NAME).exec(PullImageResultCallback()).awaitCompletion()
@@ -196,9 +208,14 @@ class DockerExecutionService {
         return cmdArgs
     }
 
+
+    // função responsavél por criar o contentor, mas não o inicia.
     private fun createContainer(environment: Map<String, String>, cmdArgs: List<String>): String {
+        // cria a configuração do contentor
         val hostConfig = HostConfig.newHostConfig()
+            // define a rede do contentor
             .withNetworkMode("host")
+            // usado para ligação aos modelos locais.
             .withExtraHosts("host.docker.internal:host-gateway")
 
         val createCmdResponse = dockerClient.createContainerCmd(IMAGE_NAME)
@@ -206,11 +223,17 @@ class DockerExecutionService {
             .withWorkingDir("/workspace")
             .withEnv(environment.map { (key, value) -> "$key=$value" })
             .withCmd(cmdArgs)
+            // o comando exec é responsavél por enviar o comando ao docker daemon para executar.
             .exec()
 
+        // retorna o containerId não iniciado.
         return createCmdResponse.id
     }
 
+
+
+    // função responsavél por copiar os ficheiros initial_program, função de avaliação e ficherio de configuração para dentro do container.
+    // a biblioteca docker trabalho com ficheiros .tar.
     private fun copyFilesToContainer(containerId: String, sourceDir: File, workerId: Int) {
         val baos = ByteArrayOutputStream()
         TarArchiveOutputStream(baos).use { tar ->
@@ -233,6 +256,8 @@ class DockerExecutionService {
         logger.info("Worker-$workerId: Ficheiros copiados para o contentor via tar stream")
     }
 
+
+    // função responsavél por extrar a diretoria de output do openEvolve para fora do container
     private fun extractOutputFromContainer(containerId: String, targetDir: File, workerId: Int) {
         try {
             val inputStream = dockerClient.copyArchiveFromContainerCmd(containerId, "/workspace/openevolve_output")
@@ -257,11 +282,13 @@ class DockerExecutionService {
         }
     }
 
+
+    // função responsavél por recolher os logs todos do container e guardar em logsBuilder
     private fun collectContainerLogs(containerId: String, logsBuilder: StringBuilder) {
         dockerClient.logContainerCmd(containerId)
-            .withStdOut(true)
-            .withStdErr(true)
-            .withFollowStream(true)
+            .withStdOut(true) // lê output normal
+            .withStdErr(true) // lê erros
+            .withFollowStream(true) // continua a acompanhar os logs enquanto o contentor estiver vivo.
             .exec(object : ResultCallback.Adapter<Frame>() {
                 override fun onNext(frame: Frame) {
                     val msg = String(frame.payload, Charsets.UTF_8)
@@ -270,6 +297,7 @@ class DockerExecutionService {
             })
     }
 
+    // espera até que o contentor termine e retorna o exitCode, ou seja o código de saida.
     private fun waitForContainer(containerId: String): Int {
         return dockerClient.waitContainerCmd(containerId)
             .exec(WaitContainerResultCallback())

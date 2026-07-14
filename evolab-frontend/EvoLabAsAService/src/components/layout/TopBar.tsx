@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import styles from "./TopBar.module.css";
 import { useAuth } from "../../contexts/AuthContext";
-import { apiUsers } from "../../pages/Auth/data/apiUsers";
+import { apiUsers } from "../../pages/auth/data/apiUsers";
 import { clearAuthCookies } from "../../utils/authCookies";
 
 export function TopBar() {

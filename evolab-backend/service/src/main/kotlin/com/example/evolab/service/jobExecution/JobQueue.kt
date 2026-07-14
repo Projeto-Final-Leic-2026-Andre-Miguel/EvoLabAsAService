@@ -7,7 +7,7 @@ import com.example.evolab.service.auxiliary.success
 import jakarta.inject.Named
 import kotlinx.coroutines.channels.Channel
 
-private const val CAPACITY = 100
+private const val CAPACITY = 15
 
 @Named
 class JobQueue {
